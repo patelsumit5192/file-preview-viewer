@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "@files-preview-app/preview-file",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "All-in-one universal file preview for React, Angular, Vue, and Vanilla JS. Preview PDF, Word, Excel, PowerPoint, CSV, ZIP, Markdown, 3D Models (STL/OBJ), Images, Video, Audio, and Code with built-in toolbar.",
   "keywords": [
     "file-preview",

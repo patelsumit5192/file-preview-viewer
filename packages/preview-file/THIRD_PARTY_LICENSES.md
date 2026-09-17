@@ -1,4 +1,4 @@
-﻿# Third-Party Licenses
+# Third-Party Licenses
 
 This project uses the following open-source libraries. All dependencies use strictly permissive licenses (MIT, Apache-2.0, or BSD) that allow free commercial and personal use with zero copyright claims or restrictions.
 

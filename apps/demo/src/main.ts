@@ -1,4 +1,4 @@
-﻿import { FilePreviewViewer } from '@files-preview-app/preview-file';
+import { FilePreviewViewer } from '@files-preview-app/preview-file';
 import '@files-preview-app/preview-file/styles.css';
 
 // Initialize the universal viewer

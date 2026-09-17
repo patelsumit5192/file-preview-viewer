@@ -1,4 +1,4 @@
-﻿import { FilePreviewViewer as CoreViewer } from '@patel.sumit51/core';
+import { FilePreviewViewer as CoreViewer } from '@patel.sumit51/core';
 import { pdfPlugin } from '@patel.sumit51/plugin-pdf';
 import { mediaPlugin } from '@patel.sumit51/plugin-media';
 import { docxPlugin } from '@patel.sumit51/plugin-docx';
