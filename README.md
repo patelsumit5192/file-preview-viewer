@@ -1,9 +1,9 @@
-# @patel.sumit51/preview-file
+# @files-preview-app/preview-file
 
 > **Universal, all-in-one client-side file preview package for React, Angular, Vue, and Vanilla JS.**  
 > Preview **PDF, Word (.docx), Excel (.xlsx), CSV, Images, Video, Audio, and Code/Text** with a built-in toolbar (zoom, rotate, thumbnails, page jump, download, print). 100% free, permissive open-source, and client-side (no cloud or server needed).
 
-[![npm version](https://img.shields.io/npm/v/@patel.sumit51/preview-file.svg)](https://www.npmjs.com/package/@patel.sumit51/preview-file)
+[![npm version](https://img.shields.io/npm/v/@files-preview-app/preview-file.svg)](https://www.npmjs.com/package/@files-preview-app/preview-file)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -13,31 +13,31 @@
 Just install this **single package** in your project:
 
 ```bash
-npm install @patel.sumit51/preview-file
+npm install @files-preview-app/preview-file
 ```
 
 Or using Yarn / pnpm:
 ```bash
-yarn add @patel.sumit51/preview-file
+yarn add @files-preview-app/preview-file
 # or
-pnpm add @patel.sumit51/preview-file
+pnpm add @files-preview-app/preview-file
 ```
 
 Import the toolbar stylesheet in your main CSS or component:
 ```css
-import '@patel.sumit51/preview-file/styles.css';
+import '@files-preview-app/preview-file/styles.css';
 ```
 
 ---
 
 ## 🚀 Quick Start by Framework
 
-### 1. React (`@patel.sumit51/preview-file/react`)
+### 1. React (`@files-preview-app/preview-file/react`)
 
 ```tsx
 import React, { useState } from 'react';
-import { FilePreview } from '@patel.sumit51/preview-file/react';
-import '@patel.sumit51/preview-file/styles.css';
+import { FilePreview } from '@files-preview-app/preview-file/react';
+import '@files-preview-app/preview-file/styles.css';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | string>('https://example.com/sample.pdf');
@@ -70,13 +70,13 @@ export default function App() {
 
 ---
 
-### 2. Angular (`@patel.sumit51/preview-file/angular`)
+### 2. Angular (`@files-preview-app/preview-file/angular`)
 
 In your standalone component or NgModule:
 
 ```typescript
 import { Component } from '@angular/core';
-import { FilePreviewComponent } from '@patel.sumit51/preview-file/angular';
+import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
 
 @Component({
   selector: 'app-root',
@@ -94,7 +94,7 @@ import { FilePreviewComponent } from '@patel.sumit51/preview-file/angular';
       />
     </div>
   `,
-  styleUrls: ['@patel.sumit51/preview-file/styles.css']
+  styleUrls: ['@files-preview-app/preview-file/styles.css']
 })
 export class AppComponent {
   fileSource: string | File = 'https://example.com/report.xlsx';
@@ -118,7 +118,7 @@ export class AppComponent {
 
 ---
 
-### 3. Vue 3 (`@patel.sumit51/preview-file/vue`)
+### 3. Vue 3 (`@files-preview-app/preview-file/vue`)
 
 ```vue
 <template>
@@ -136,8 +136,8 @@ export class AppComponent {
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { FilePreview } from '@patel.sumit51/preview-file/vue';
-import '@patel.sumit51/preview-file/styles.css';
+import { FilePreview } from '@files-preview-app/preview-file/vue';
+import '@files-preview-app/preview-file/styles.css';
 
 const currentFile = ref<File | string>('/sample.docx');
 
@@ -160,15 +160,15 @@ function handleError(err: unknown) {
 
 ---
 
-### 4. Vanilla JavaScript / TypeScript (`@patel.sumit51/preview-file`)
+### 4. Vanilla JavaScript / TypeScript (`@files-preview-app/preview-file`)
 
 ```html
-<link rel="stylesheet" href="node_modules/@patel.sumit51/preview-file/dist/styles.css" />
+<link rel="stylesheet" href="node_modules/@files-preview-app/preview-file/dist/styles.css" />
 
 <div id="viewer-container" style="width: 100%; height: 800px;"></div>
 
 <script type="module">
-  import { FilePreviewViewer } from '@patel.sumit51/preview-file';
+  import { FilePreviewViewer } from '@files-preview-app/preview-file';
 
   const container = document.getElementById('viewer-container');
   const viewer = new FilePreviewViewer();
