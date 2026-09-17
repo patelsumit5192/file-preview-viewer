@@ -24,6 +24,11 @@ const ICON_MAP: Record<string, string> = {
   'page-next': icons.ICON_PAGE_NEXT,
   'chevron-left': icons.ICON_PAGE_PREV,
   'chevron-right': icons.ICON_PAGE_NEXT,
+  'fast-forward': icons.ICON_FAST_FORWARD,
+  'forward-10': icons.ICON_FAST_FORWARD,
+  'rewind': icons.ICON_REWIND,
+  'replay-10': icons.ICON_REWIND,
+  'speed': icons.ICON_SPEED,
 };
 
 export class ToolbarController {

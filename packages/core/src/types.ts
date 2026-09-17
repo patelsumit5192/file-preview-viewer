@@ -90,6 +90,10 @@ export interface PreviewInstance {
   play?(): void;
   pause?(): void;
   isPlaying?(): boolean;
+  fastForward?(seconds?: number): void;
+  rewind?(seconds?: number): void;
+  setPlaybackRate?(rate: number): void;
+  getPlaybackRate?(): number;
 
   // --- Thumbnails ---
   getThumbnails?(): Thumbnail[] | Promise<Thumbnail[]>;

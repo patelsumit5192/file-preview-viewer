@@ -5,6 +5,7 @@ import type {
   PreviewPlugin, 
   PreviewInstance 
 } from '@patel.sumit51/core';
+import { CfbfReader } from '@patel.sumit51/core';
 import * as docx from 'docx-preview';
 import { unzipSync, strFromU8 } from 'fflate';
 import DOMPurify from 'dompurify';
@@ -78,7 +79,7 @@ export class DocxPlugin implements PreviewPlugin {
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
     wrapper.style.padding = '24px 16px';
-    wrapper.style.maxWidth = '900px';
+    wrapper.style.maxWidth = '950px';
     wrapper.style.margin = '0 auto';
     wrapper.style.boxSizing = 'border-box';
     
@@ -86,12 +87,35 @@ export class DocxPlugin implements PreviewPlugin {
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(wrapper);
 
+    // Inject override styles so docx-preview pages match our modern light theme
+    const styleOverride = document.createElement('style');
+    styleOverride.textContent = `
+      .fp-docx-wrapper .docx-wrapper {
+        background: transparent !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+      }
+      .fp-docx-wrapper section.docx {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+        border-radius: 4px !important;
+        margin-bottom: 24px !important;
+        background-color: #ffffff !important;
+      }
+    `;
+    ctx.container.appendChild(styleOverride);
+
     let scale = 1.0;
     let renderedSuccessfully = false;
+    const createdBlobUrls: string[] = [];
 
-    // Step 1: Try high-fidelity docx-preview with safe options
+    // Step 1: Try high-fidelity docx-preview
+    // IMPORTANT: Pass wrapper as styleContainer (param 3) instead of ctx.container.
+    // docx-preview calls removeAllElements(styleContainer), which previously deleted wrapper from ctx.container!
     try {
-      await docx.renderAsync(ctx.buffer, wrapper, ctx.container, {
+      await docx.renderAsync(ctx.buffer, wrapper, wrapper, {
         inWrapper: true,
         ignoreWidth: false,
         ignoreHeight: false,
@@ -100,22 +124,30 @@ export class DocxPlugin implements PreviewPlugin {
         experimental: true,
       });
 
-      // Verify if docx-preview rendered actual visible content
+      // Ensure wrapper remains attached to container
+      if (!ctx.container.contains(wrapper)) {
+        ctx.container.appendChild(wrapper);
+      }
+
+      // Check if visible content was actually produced
       if (wrapper.children.length > 0 && (wrapper.textContent?.trim().length ?? 0) > 0) {
         renderedSuccessfully = true;
       }
     } catch (err) {
-      console.warn('[DocxPlugin] docx-preview failed, triggering native XML fallback:', err);
+      console.warn('[DocxPlugin] docx-preview failed, triggering native fallback:', err);
     }
 
-    // Step 2: Graceful Native OpenXML Fallback (100% client-side guarantee)
+    // Step 2: Graceful Native Fallback (100% client-side guarantee)
     if (!renderedSuccessfully) {
       try {
         wrapper.innerHTML = '';
-        this.renderXmlFallback(ctx, wrapper);
+        this.renderXmlFallback(ctx, wrapper, createdBlobUrls);
+        if (!ctx.container.contains(wrapper)) {
+          ctx.container.appendChild(wrapper);
+        }
         renderedSuccessfully = true;
       } catch (fallbackErr) {
-        console.error('[DocxPlugin] XML fallback failed:', fallbackErr);
+        console.error('[DocxPlugin] Native fallback failed:', fallbackErr);
         wrapper.innerHTML = `
           <div style="text-align:center; padding: 48px; background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
             <div style="font-size:48px; margin-bottom: 16px;">📄</div>
@@ -123,11 +155,18 @@ export class DocxPlugin implements PreviewPlugin {
             <p style="color: #64748b; margin: 0;">Could not parse document content</p>
           </div>
         `;
+        if (!ctx.container.contains(wrapper)) {
+          ctx.container.appendChild(wrapper);
+        }
       }
     }
 
     const cleanup = () => {
+      for (const url of createdBlobUrls) {
+        URL.revokeObjectURL(url);
+      }
       wrapper.remove();
+      styleOverride.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -167,14 +206,55 @@ export class DocxPlugin implements PreviewPlugin {
     };
   }
 
-  private renderXmlFallback(ctx: RenderContext, wrapper: HTMLElement): void {
+  private renderXmlFallback(ctx: RenderContext, wrapper: HTMLElement, createdBlobUrls: string[]): void {
+    // Check if the file is actually a legacy binary CFBF .doc file renamed to .docx
+    const magic = new Uint8Array(ctx.buffer.slice(0, 8));
+    if (magic[0] === 0xD0 && magic[1] === 0xCF && magic[2] === 0x11 && magic[3] === 0xE0) {
+      this.renderBinaryDocFallback(ctx, wrapper);
+      return;
+    }
+
     const unzipped = unzipSync(new Uint8Array(ctx.buffer));
-    const docXmlEntry = unzipped['word/document.xml'];
+    const docKey = Object.keys(unzipped).find(k => k.replace(/^[./\\]+/, '').toLowerCase() === 'word/document.xml');
+    const docXmlEntry = docKey ? unzipped[docKey] : undefined;
     if (!docXmlEntry) throw new Error('Missing word/document.xml in DOCX package');
 
     const xmlStr = strFromU8(docXmlEntry);
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlStr, 'application/xml');
+
+    // Parse image relationships if present
+    const imageMap: Record<string, string> = {};
+    const relsKey = Object.keys(unzipped).find(k => k.replace(/^[./\\]+/, '').toLowerCase() === 'word/_rels/document.xml.rels');
+    if (relsKey && unzipped[relsKey]) {
+      try {
+        const relsXml = strFromU8(unzipped[relsKey]);
+        const relsDoc = parser.parseFromString(relsXml, 'application/xml');
+        const relEls = Array.from(relsDoc.getElementsByTagName('Relationship'));
+        for (const rel of relEls) {
+          const rId = rel.getAttribute('Id');
+          const target = rel.getAttribute('Target');
+          if (rId && target) {
+            const cleanTarget = target.replace(/^\.\.\//, '').replace(/^\//, '');
+            const fullTargetKey = Object.keys(unzipped).find(k => {
+              const norm = k.replace(/^[./\\]+/, '').toLowerCase();
+              return norm === ('word/' + cleanTarget).toLowerCase() || norm === cleanTarget.toLowerCase();
+            });
+            if (fullTargetKey && unzipped[fullTargetKey]) {
+              const bytes = unzipped[fullTargetKey];
+              const ext = cleanTarget.split('.').pop()?.toLowerCase() || 'png';
+              const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'gif' ? 'image/gif' : ext === 'svg' ? 'image/svg+xml' : 'image/png';
+              const blob = new Blob([bytes], { type: mime });
+              const blobUrl = URL.createObjectURL(blob);
+              imageMap[rId] = blobUrl;
+              createdBlobUrls.push(blobUrl);
+            }
+          }
+        }
+      } catch (relsErr) {
+        console.warn('[DocxPlugin] Error parsing relationships:', relsErr);
+      }
+    }
 
     const card = document.createElement('div');
     card.className = 'fp-docx-page-card';
@@ -197,7 +277,7 @@ export class DocxPlugin implements PreviewPlugin {
         const styleVal = pStyle?.getAttribute('w:val') || pStyle?.getAttribute('val') || '';
         const numPr = child.getElementsByTagNameNS('*', 'numPr')[0];
 
-        const textContent = this.extractParagraphHtml(child);
+        const textContent = this.extractParagraphHtml(child, imageMap);
         if (!textContent.trim()) {
           html += '<div style="height: 10px;"></div>';
           continue;
@@ -224,7 +304,7 @@ export class DocxPlugin implements PreviewPlugin {
           html += `<tr style="${rIdx === 0 ? 'background-color: #f8fafc; font-weight: 600;' : ''}">`;
           const cells = Array.from(tr.getElementsByTagNameNS('*', 'tc'));
           cells.forEach((tc) => {
-            const cellText = this.extractParagraphHtml(tc);
+            const cellText = this.extractParagraphHtml(tc, imageMap);
             html += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px;">${cellText || '&nbsp;'}</td>`;
           });
           html += '</tr>';
@@ -234,32 +314,62 @@ export class DocxPlugin implements PreviewPlugin {
     }
 
     card.innerHTML = DOMPurify.sanitize(html, {
-      ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 'img', 'div'],
+      ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 's', 'strike', 'img', 'div', 'br'],
       ADD_ATTR: ['style', 'src', 'alt', 'colspan', 'rowspan']
     });
 
     wrapper.appendChild(card);
   }
 
-  private extractParagraphHtml(pElement: Element): string {
+  private extractParagraphHtml(pElement: Element, imageMap: Record<string, string> = {}): string {
     let result = '';
-    const runs = Array.from(pElement.getElementsByTagNameNS('*', 'r'));
 
-    if (runs.length === 0) {
+    // Check for inline drawings in this paragraph
+    const drawings = Array.from(pElement.getElementsByTagNameNS('*', 'drawing'));
+    for (const drawing of drawings) {
+      const blip = drawing.getElementsByTagNameNS('*', 'blip')[0];
+      const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
+      if (rId && imageMap[rId]) {
+        result += `<div style="text-align:center; margin: 12px 0;"><img src="${imageMap[rId]}" style="max-width: 100%; height: auto; border-radius: 4px;" /></div>`;
+      }
+    }
+
+    const runs = Array.from(pElement.getElementsByTagNameNS('*', 'r'));
+    if (runs.length === 0 && !result) {
       return DOMPurify.sanitize(pElement.textContent || '');
     }
 
     for (const r of runs) {
+      const blip = r.getElementsByTagNameNS('*', 'blip')[0] || r.getElementsByTagNameNS('*', 'imagedata')[0];
+      const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
+      if (rId && imageMap[rId]) {
+        result += `<img src="${imageMap[rId]}" style="max-width: 100%; height: auto; display: inline-block; margin: 4px;" />`;
+      }
+
+      // Check for breaks <w:br/>
+      const brs = r.getElementsByTagNameNS('*', 'br');
+      for (let i = 0; i < brs.length; i++) {
+        result += '<br/>';
+      }
+
+      // Check for tabs <w:tab/>
+      const tabs = r.getElementsByTagNameNS('*', 'tab');
+      if (tabs.length > 0) {
+        result += '&emsp;';
+      }
+
       const rPr = r.getElementsByTagNameNS('*', 'rPr')[0];
       const isBold = !!(rPr?.getElementsByTagNameNS('*', 'b')[0]);
       const isItalic = !!(rPr?.getElementsByTagNameNS('*', 'i')[0]);
       const isUnderline = !!(rPr?.getElementsByTagNameNS('*', 'u')[0]);
+      const isStrike = !!(rPr?.getElementsByTagNameNS('*', 'strike')[0]);
       const colorNode = rPr?.getElementsByTagNameNS('*', 'color')[0];
       const colorVal = colorNode?.getAttribute('w:val') || colorNode?.getAttribute('val');
+      const szNode = rPr?.getElementsByTagNameNS('*', 'sz')[0];
+      const szVal = szNode?.getAttribute('w:val') || szNode?.getAttribute('val');
 
       const texts = Array.from(r.getElementsByTagNameNS('*', 't'));
       let text = texts.map(t => t.textContent || '').join('');
-
       if (!text) continue;
       text = DOMPurify.sanitize(text);
 
@@ -267,7 +377,12 @@ export class DocxPlugin implements PreviewPlugin {
       if (isBold) styles += 'font-weight: bold; ';
       if (isItalic) styles += 'font-style: italic; ';
       if (isUnderline) styles += 'text-decoration: underline; ';
+      if (isStrike) styles += 'text-decoration: line-through; ';
       if (colorVal && colorVal !== 'auto') styles += `color: #${colorVal}; `;
+      if (szVal) {
+        const pt = parseInt(szVal, 10) / 2;
+        if (!isNaN(pt) && pt > 0) styles += `font-size: ${pt}pt; `;
+      }
 
       if (styles) {
         result += `<span style="${styles}">${text}</span>`;
@@ -278,6 +393,57 @@ export class DocxPlugin implements PreviewPlugin {
 
     return result;
   }
+
+  private renderBinaryDocFallback(ctx: RenderContext, wrapper: HTMLElement): void {
+    const card = document.createElement('div');
+    card.className = 'fp-docx-page-card';
+    card.style.backgroundColor = '#ffffff';
+    card.style.borderRadius = '6px';
+    card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+    card.style.padding = '48px 56px';
+    card.style.fontFamily = 'Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    card.style.color = '#1e293b';
+    card.style.lineHeight = '1.6';
+
+    try {
+      const cfbf = new CfbfReader(ctx.buffer);
+      const wordDocStream = cfbf.readStream('WordDocument');
+      if (wordDocStream && wordDocStream.length >= 512) {
+        const text = this.extractReadableStrings(wordDocStream);
+        card.innerHTML = `<div style="white-space: pre-wrap;">${DOMPurify.sanitize(text)}</div>`;
+        wrapper.appendChild(card);
+        return;
+      }
+    } catch {
+      // Direct extraction fallback
+    }
+
+    const text = this.extractReadableStrings(new Uint8Array(ctx.buffer));
+    card.innerHTML = `<div style="white-space: pre-wrap;">${DOMPurify.sanitize(text)}</div>`;
+    wrapper.appendChild(card);
+  }
+
+  private extractReadableStrings(bytes: Uint8Array): string {
+    let result = '';
+    let current = '';
+    for (let i = 0; i < bytes.length; i++) {
+      const b = bytes[i];
+      if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
+        current += String.fromCharCode(b);
+      } else if (b === 0 && i + 1 < bytes.length && bytes[i + 1] >= 32 && bytes[i + 1] <= 126) {
+        continue;
+      } else {
+        if (current.trim().length > 3) {
+          result += current.trim() + '\n\n';
+        }
+        current = '';
+      }
+    }
+    if (current.trim().length > 3) {
+      result += current.trim();
+    }
+    return result;
+  }
 }
 
 export function docxPlugin(): DocxPlugin {
@@ -285,3 +451,4 @@ export function docxPlugin(): DocxPlugin {
 }
 
 export default DocxPlugin;
+

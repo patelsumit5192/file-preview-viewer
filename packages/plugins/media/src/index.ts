@@ -80,6 +80,16 @@ export class MediaPlugin implements PreviewPlugin {
     if (instance.play) {
       actions.push(
         {
+          id: 'replay-10',
+          icon: 'replay-10',
+          label: 'Rewind 10s',
+          type: 'button',
+          group: 'actions',
+          execute: () => {
+            instance.rewind?.(10);
+          }
+        },
+        {
           id: 'play',
           icon: 'play',
           label: 'Play',
@@ -97,6 +107,26 @@ export class MediaPlugin implements PreviewPlugin {
           group: 'actions',
           execute: () => {
             instance.pause?.();
+          }
+        },
+        {
+          id: 'forward-10',
+          icon: 'forward-10',
+          label: 'Fast Forward 10s',
+          type: 'button',
+          group: 'actions',
+          execute: () => {
+            instance.fastForward?.(10);
+          }
+        },
+        {
+          id: 'speed',
+          icon: 'speed',
+          label: 'Playback Speed',
+          type: 'button',
+          group: 'actions',
+          execute: () => {
+            (instance as any).cycleSpeed?.();
           }
         }
       );
@@ -233,6 +263,28 @@ export class MediaPlugin implements PreviewPlugin {
       play: mediaElement ? () => mediaElement?.play() : undefined,
       pause: mediaElement ? () => mediaElement?.pause() : undefined,
       isPlaying: mediaElement ? () => !mediaElement?.paused : undefined,
+      fastForward: mediaElement ? (seconds = 10) => {
+        if (mediaElement) {
+          mediaElement.currentTime = Math.min(mediaElement.duration || Infinity, mediaElement.currentTime + seconds);
+        }
+      } : undefined,
+      rewind: mediaElement ? (seconds = 10) => {
+        if (mediaElement) {
+          mediaElement.currentTime = Math.max(0, mediaElement.currentTime - seconds);
+        }
+      } : undefined,
+      cycleSpeed: mediaElement ? () => {
+        if (mediaElement) {
+          const speeds = [1.0, 1.25, 1.5, 2.0, 0.5];
+          const curIndex = speeds.indexOf(mediaElement.playbackRate);
+          const nextIndex = curIndex === -1 ? 0 : (curIndex + 1) % speeds.length;
+          mediaElement.playbackRate = speeds[nextIndex];
+        }
+      } : undefined,
+      setPlaybackRate: mediaElement ? (rate: number) => {
+        if (mediaElement) mediaElement.playbackRate = rate;
+      } : undefined,
+      getPlaybackRate: mediaElement ? () => mediaElement?.playbackRate ?? 1.0 : undefined,
       download: () => {
         const a = document.createElement('a');
         a.href = url;
