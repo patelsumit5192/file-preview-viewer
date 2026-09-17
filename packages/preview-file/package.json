@@ -55,11 +55,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/patelsumit5192/preview-application.git"
+    "url": "https://github.com/patelsumit5192/preview-file.git"
   },
-  "homepage": "https://github.com/patelsumit5192/preview-application#readme",
+  "homepage": "https://github.com/patelsumit5192/preview-file#readme",
   "bugs": {
-    "url": "https://github.com/patelsumit5192/preview-application/issues"
+    "url": "https://github.com/patelsumit5192/preview-file/issues"
   },
   "scripts": {
     "build": "tsup",

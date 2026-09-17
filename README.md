@@ -287,7 +287,7 @@ See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full licensing detail
 **Sumit Patel**
 - GitHub: [@patelsumit5192](https://github.com/patelsumit5192)
 - npm: [patel.sumit51](https://www.npmjs.com/~patel.sumit51)
-- Repository: [https://github.com/patelsumit5192/preview-application](https://github.com/patelsumit5192/preview-application)
+- Repository: [https://github.com/patelsumit5192/preview-file](https://github.com/patelsumit5192/preview-file)
 
 ---
 
