@@ -1,0 +1,41 @@
+{
+  "name": "@patel.sumit51/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Universal file preview library — framework-agnostic, plugin-based, 100% client-side",
+  "keywords": [
+    "file-preview",
+    "document-viewer",
+    "pdf-viewer",
+    "image-preview",
+    "react",
+    "vue",
+    "angular"
+  ],
+  "author": "Sumit",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "turbo": "^2.4.0",
+    "typescript": "~5.8.2",
+    "tsup": "^8.4.0",
+    "vitest": "^3.2.0",
+    "prettier": "^3.5.0"
+  }
+}

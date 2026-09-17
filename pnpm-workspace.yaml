@@ -1,0 +1,9 @@
+packages:
+  - packages/core
+  - packages/plugins/*
+  - packages/adapters/*
+  - apps/*
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild

@@ -1,0 +1,54 @@
+{
+  "name": "@patel.sumit51/core",
+  "version": "0.1.0",
+  "description": "Core engine for @file-preview — file detection, plugin registry, toolbar, and lifecycle management",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./styles": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dompurify": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.2.0",
+    "happy-dom": "^20.14.5",
+    "rimraf": "^6.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Sumit Patel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patelsumit5192/preview-application.git"
+  },
+  "homepage": "https://github.com/patelsumit5192/preview-application#readme",
+  "bugs": {
+    "url": "https://github.com/patelsumit5192/preview-application/issues"
+  }
+}

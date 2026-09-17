@@ -1,0 +1,48 @@
+{
+  "name": "@patel.sumit51/vue",
+  "version": "0.1.0",
+  "description": "Vue 3 wrapper for @file-preview — universal file preview component",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist"
+  },
+  "peerDependencies": {
+    "@patel.sumit51/core": "workspace:*",
+    "vue": ">=3.3.0"
+  },
+  "devDependencies": {
+    "@patel.sumit51/core": "workspace:*",
+    "vue": "^3.5.0",
+    "typescript": "^5.7.0",
+    "tsup": "^8.4.0",
+    "rimraf": "^6.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Sumit Patel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patelsumit5192/preview-application.git"
+  },
+  "homepage": "https://github.com/patelsumit5192/preview-application#readme",
+  "bugs": {
+    "url": "https://github.com/patelsumit5192/preview-application/issues"
+  }
+}
