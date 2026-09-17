@@ -5,18 +5,13 @@ import type {
   PreviewPlugin, 
   PreviewInstance 
 } from '@patel.sumit51/core';
-import * as docx from 'docx-preview';
+import { RTFJS } from 'rtf.js';
 
-export class DocxPlugin implements PreviewPlugin {
-  id = 'docx';
-  name = 'Word Document Preview';
-  extensions = ['.docx', '.docm', '.dotx', '.dotm'];
-  mimeTypes = [
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-word.document.macroEnabled.12',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
-    'application/vnd.ms-word.template.macroEnabled.12'
-  ];
+export class RtfPlugin implements PreviewPlugin {
+  id = 'rtf';
+  name = 'Rich Text Format (RTF)';
+  extensions = ['.rtf'];
+  mimeTypes = ['text/rtf', 'application/rtf'];
   weight = 80;
 
   supports(file: FileInfo): boolean {
@@ -33,9 +28,7 @@ export class DocxPlugin implements PreviewPlugin {
         label: 'Zoom Out',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.zoomOut?.();
-        }
+        execute: () => instance.zoomOut?.()
       },
       {
         id: 'zoom-in',
@@ -43,9 +36,7 @@ export class DocxPlugin implements PreviewPlugin {
         label: 'Zoom In',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.zoomIn?.();
-        }
+        execute: () => instance.zoomIn?.()
       },
       {
         id: 'fit-page',
@@ -53,9 +44,7 @@ export class DocxPlugin implements PreviewPlugin {
         label: 'Fit to Page',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.fitToPage?.();
-        }
+        execute: () => instance.fitToPage?.()
       },
       {
         id: 'download',
@@ -63,9 +52,7 @@ export class DocxPlugin implements PreviewPlugin {
         label: 'Download',
         type: 'button',
         group: 'actions',
-        execute: () => {
-          instance.download?.();
-        }
+        execute: () => instance.download?.()
       },
       {
         id: 'print',
@@ -73,39 +60,42 @@ export class DocxPlugin implements PreviewPlugin {
         label: 'Print',
         type: 'button',
         group: 'actions',
-        execute: () => {
-          instance.print?.();
-        }
+        execute: () => instance.print?.()
       }
     ];
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const wrapper = document.createElement('div');
-    wrapper.className = 'fp-docx-wrapper';
+    wrapper.className = 'fp-rtf-wrapper';
+    wrapper.style.padding = '32px';
+    wrapper.style.maxWidth = '850px';
+    wrapper.style.margin = '0 auto';
+    wrapper.style.backgroundColor = '#fff';
+    wrapper.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    wrapper.style.borderRadius = '4px';
+    wrapper.style.minHeight = '100%';
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
-    wrapper.style.padding = '16px';
-    
+
     ctx.container.style.overflow = 'auto';
+    ctx.container.style.padding = '24px';
+    ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(wrapper);
 
     let scale = 1.0;
 
     try {
-      await docx.renderAsync(ctx.buffer, wrapper, ctx.container, {
-        inWrapper: true,
-        ignoreWidth: false,
-        ignoreHeight: false,
-      });
-    } catch {
-      wrapper.innerHTML = `
-        <div style="text-align:center; padding: 40px; color: #666;">
-          <div style="font-size:48px; margin-bottom: 16px;">📄</div>
-          <h3>${ctx.metadata.name || 'Word Document'}</h3>
-          <p>DOCX render preview</p>
-        </div>
-      `;
+      const doc = new RTFJS.Document(ctx.buffer, {});
+      const htmlElements = await doc.render();
+      for (const el of htmlElements) {
+        wrapper.appendChild(el);
+      }
+    } catch (err) {
+      console.warn('[RtfPlugin] RTF render error, fallback text:', err);
+      const text = new TextDecoder('latin1').decode(ctx.buffer);
+      const clean = text.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '');
+      wrapper.innerHTML = `<pre style="white-space: pre-wrap; font-family: serif; color: #333;">${clean}</pre>`;
     }
 
     const cleanup = () => {
@@ -132,14 +122,14 @@ export class DocxPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         scale = 1.0;
-        wrapper.style.transform = `scale(1)`;
+        wrapper.style.transform = 'scale(1)';
       },
       download: () => {
-        const blob = new Blob([ctx.buffer], { type: this.mimeTypes[0] });
+        const blob = new Blob([ctx.buffer], { type: 'application/rtf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = ctx.metadata.name || 'document.docx';
+        a.download = ctx.metadata.name || 'document.rtf';
         a.click();
         URL.revokeObjectURL(url);
       },
@@ -150,8 +140,8 @@ export class DocxPlugin implements PreviewPlugin {
   }
 }
 
-export function docxPlugin(): DocxPlugin {
-  return new DocxPlugin();
+export function rtfPlugin(): RtfPlugin {
+  return new RtfPlugin();
 }
 
-export default DocxPlugin;
+export default RtfPlugin;

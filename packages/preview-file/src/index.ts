@@ -9,12 +9,21 @@ import { archivePlugin } from '@patel.sumit51/plugin-archive';
 import { markdownPlugin } from '@patel.sumit51/plugin-markdown';
 import { pptxPlugin } from '@patel.sumit51/plugin-pptx';
 import { threeDPlugin } from '@patel.sumit51/plugin-3d';
+import { rtfPlugin } from '@patel.sumit51/plugin-rtf';
+import { htmlPreviewPlugin } from '@patel.sumit51/plugin-html-preview';
+import { openDocumentPlugin } from '@patel.sumit51/plugin-opendocument';
+import { docPlugin } from '@patel.sumit51/plugin-doc';
+import { pptPlugin } from '@patel.sumit51/plugin-ppt';
 import type { PreviewPlugin } from '@patel.sumit51/core';
 
 /**
  * Returns all built-in default preview plugins:
- * PDF, Word (DOCX), Excel (XLSX), PowerPoint (PPTX), CSV/TSV,
- * ZIP Archives, Markdown, 3D Models (STL/OBJ), Media (Images/Video/Audio/SVG), and Code/Text.
+ * PDF, Word (DOCX, DOCM, DOTX, DOTM), Legacy Word (DOC, DOT),
+ * Excel/Spreadsheets (XLSX, XLS, XLSM, XLSB, XLTX, XLTM, ODS),
+ * PowerPoint (PPTX, PPSX, PPTM, PPSM, POTX, POTM), Legacy PowerPoint (PPT, PPS, POT),
+ * OpenDocument Suite (ODT, ODP, ODS, ODG, ODF), Rich Text (RTF),
+ * Sandboxed HTML, CSV/TSV, ZIP Archives, Markdown, 3D Models (STL/OBJ),
+ * Media (Images/Video/Audio/SVG), and Code/Text (190+ languages).
  */
 export function getDefaultPlugins(): PreviewPlugin[] {
   return [
@@ -23,6 +32,11 @@ export function getDefaultPlugins(): PreviewPlugin[] {
     docxPlugin(),
     excelPlugin(),
     pptxPlugin(),
+    docPlugin(),
+    pptPlugin(),
+    openDocumentPlugin(),
+    rtfPlugin(),
+    htmlPreviewPlugin(),
     csvPlugin(),
     archivePlugin(),
     markdownPlugin(),
@@ -33,7 +47,7 @@ export function getDefaultPlugins(): PreviewPlugin[] {
 
 /**
  * Universal File Preview Viewer.
- * Pre-loads all format plugins by default so any file format can be previewed immediately.
+ * Pre-loads all format plugins by default so 50+ file formats can be previewed immediately.
  */
 export class FilePreviewViewer extends CoreViewer {
   constructor(options?: { autoRegisterDefaults?: boolean }) {
@@ -51,6 +65,11 @@ export {
   docxPlugin,
   excelPlugin,
   pptxPlugin,
+  docPlugin,
+  pptPlugin,
+  openDocumentPlugin,
+  rtfPlugin,
+  htmlPreviewPlugin,
   csvPlugin,
   archivePlugin,
   markdownPlugin,
@@ -58,5 +77,5 @@ export {
   codePlugin,
 };
 
-// Re-export all core types, utilities, controllers, and events
+// Re-export all core classes, controllers, and types
 export * from '@patel.sumit51/core';

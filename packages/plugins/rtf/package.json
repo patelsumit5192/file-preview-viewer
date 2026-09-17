@@ -1,7 +1,7 @@
 {
-  "name": "@patel.sumit51/plugin-excel",
+  "name": "@patel.sumit51/plugin-rtf",
   "version": "0.1.0",
-  "description": "Excel preview plugin for @file-preview",
+  "description": "RTF (Rich Text Format) preview plugin for @file-preview",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.cjs",
@@ -9,9 +9,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -23,28 +23,19 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
-    "xlsx": "^0.18.5"
+    "rtf.js": "^3.0.9"
   },
   "peerDependencies": {
     "@patel.sumit51/core": "workspace:*"
   },
   "devDependencies": {
     "@patel.sumit51/core": "workspace:*",
-    "rimraf": "^6.0.0",
+    "typescript": "^5.7.0",
     "tsup": "^8.4.0",
-    "typescript": "^5.7.0"
+    "rimraf": "^6.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
-  "author": "Sumit Patel",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/patelsumit5192/preview-file.git"
-  },
-  "homepage": "https://github.com/patelsumit5192/preview-file#readme",
-  "bugs": {
-    "url": "https://github.com/patelsumit5192/preview-file/issues"
-  }
+  "author": "Sumit Patel"
 }

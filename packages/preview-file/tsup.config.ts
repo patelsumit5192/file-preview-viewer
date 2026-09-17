@@ -31,7 +31,9 @@ export default defineConfig({
     'fflate',
     'marked',
     'pptx-browser',
-    'three'
+    'rtf.js',
+    'three',
+    'xlsx'
   ],
   noExternal: [
     '@patel.sumit51/core',
@@ -45,6 +47,11 @@ export default defineConfig({
     '@patel.sumit51/plugin-markdown',
     '@patel.sumit51/plugin-pptx',
     '@patel.sumit51/plugin-3d',
+    '@patel.sumit51/plugin-rtf',
+    '@patel.sumit51/plugin-html-preview',
+    '@patel.sumit51/plugin-opendocument',
+    '@patel.sumit51/plugin-doc',
+    '@patel.sumit51/plugin-ppt',
     '@patel.sumit51/react',
     '@patel.sumit51/vue',
     '@patel.sumit51/angular'

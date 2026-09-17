@@ -6,6 +6,6 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['@patel.sumit51/core', 'exceljs', 'xlsx'],
+  external: ['@patel.sumit51/core', 'dompurify'],
   treeshake: true,
 });

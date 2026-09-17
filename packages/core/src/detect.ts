@@ -3,7 +3,8 @@ import type { FileSource, FileMetadata, FileInfo } from './types';
 /** Magic number signatures for common file formats */
 const MAGIC_NUMBERS: Array<{ bytes: number[]; mask?: number[]; offset?: number; mime: string }> = [
   { bytes: [0x25, 0x50, 0x44, 0x46], mime: 'application/pdf' },                    // %PDF
-  { bytes: [0x50, 0x4B, 0x03, 0x04], mime: 'application/zip' },                    // PK.. (ZIP/DOCX/XLSX/PPTX)
+  { bytes: [0x50, 0x4B, 0x03, 0x04], mime: 'application/zip' },                    // PK.. (ZIP/DOCX/XLSX/PPTX/ODT/ODS/ODP)
+  { bytes: [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1], mime: 'application/x-cfbf' }, // CFBF/OLE2 (DOC/XLS/PPT)
   { bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], mime: 'image/png' }, // PNG
   { bytes: [0xFF, 0xD8, 0xFF], mime: 'image/jpeg' },                               // JPEG
   { bytes: [0x47, 0x49, 0x46, 0x38], mime: 'image/gif' },                          // GIF87a/GIF89a
@@ -24,14 +25,40 @@ const MAGIC_NUMBERS: Array<{ bytes: number[]; mask?: number[]; offset?: number; 
 
 /** Extension to MIME type mapping */
 const EXTENSION_MIME_MAP: Record<string, string> = {
-  // Documents
+  // Documents — Modern OOXML
   '.pdf': 'application/pdf',
   '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.docm': 'application/vnd.ms-word.document.macroEnabled.12',
+  '.dotx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+  '.dotm': 'application/vnd.ms-word.template.macroEnabled.12',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  '.xlsb': 'application/vnd.ms-excel.sheet.binary.macroEnabled.12',
+  '.xltx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+  '.xltm': 'application/vnd.ms-excel.template.macroEnabled.12',
   '.xls': 'application/vnd.ms-excel',
   '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.ppsx': 'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+  '.pptm': 'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
+  '.ppsm': 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12',
+  '.potx': 'application/vnd.openxmlformats-officedocument.presentationml.template',
+  '.potm': 'application/vnd.ms-powerpoint.template.macroEnabled.12',
   '.csv': 'text/csv',
   '.tsv': 'text/tab-separated-values',
+  // Documents — Legacy Binary (CFBF/OLE2)
+  '.doc': 'application/msword',
+  '.dot': 'application/msword',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pps': 'application/vnd.ms-powerpoint',
+  '.pot': 'application/vnd.ms-powerpoint',
+  // Documents — OpenDocument (ODF)
+  '.odt': 'application/vnd.oasis.opendocument.text',
+  '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+  '.odp': 'application/vnd.oasis.opendocument.presentation',
+  '.odg': 'application/vnd.oasis.opendocument.graphics',
+  '.odf': 'application/vnd.oasis.opendocument.formula',
+  // Documents — RTF
+  '.rtf': 'text/rtf',
   // Images
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -132,14 +159,16 @@ export function detectMagicBytes(buffer: ArrayBuffer): string | null {
 }
 
 /**
- * Detect OOXML sub-type (docx vs xlsx vs pptx) by checking ZIP entry names.
+ * Detect ZIP sub-type (OOXML or OpenDocument) by checking ZIP entry names.
  * All OOXML formats use ZIP container with PK header.
+ * OpenDocument formats also use ZIP with a 'mimetype' entry at offset 0.
  */
 export function detectOoxmlType(buffer: ArrayBuffer): string | null {
   const text = new TextDecoder('ascii', { fatal: false }).decode(
-    new Uint8Array(buffer.slice(0, 4000))
+    new Uint8Array(buffer.slice(0, 8000))
   );
 
+  // OOXML detection
   if (text.includes('word/')) {
     return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   }
@@ -148,6 +177,23 @@ export function detectOoxmlType(buffer: ArrayBuffer): string | null {
   }
   if (text.includes('ppt/')) {
     return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  }
+
+  // OpenDocument detection — the 'mimetype' file is stored uncompressed at the start
+  if (text.includes('application/vnd.oasis.opendocument.text')) {
+    return 'application/vnd.oasis.opendocument.text';
+  }
+  if (text.includes('application/vnd.oasis.opendocument.spreadsheet')) {
+    return 'application/vnd.oasis.opendocument.spreadsheet';
+  }
+  if (text.includes('application/vnd.oasis.opendocument.presentation')) {
+    return 'application/vnd.oasis.opendocument.presentation';
+  }
+  if (text.includes('application/vnd.oasis.opendocument.graphics')) {
+    return 'application/vnd.oasis.opendocument.graphics';
+  }
+  if (text.includes('application/vnd.oasis.opendocument.formula')) {
+    return 'application/vnd.oasis.opendocument.formula';
   }
 
   return 'application/zip';

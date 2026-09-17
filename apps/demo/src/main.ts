@@ -202,6 +202,26 @@ export async function initViewer(containerId: string, url: string) {
       data: new Blob([svgContent], { type: 'image/svg+xml' })
     };
   },
+  rtf: () => ({
+    name: 'document.rtf',
+    ext: '.rtf',
+    data: getSampleUrl('document.rtf')
+  }),
+  odt: () => ({
+    name: 'document.odt',
+    ext: '.odt',
+    data: getSampleUrl('document.odt')
+  }),
+  ods: () => ({
+    name: 'spreadsheet.ods',
+    ext: '.ods',
+    data: getSampleUrl('spreadsheet.ods')
+  }),
+  html: () => ({
+    name: 'webpage.html',
+    ext: '.html',
+    data: getSampleUrl('webpage.html')
+  }),
   photo: () => ({
     name: 'photo.jpg',
     ext: '.jpg',

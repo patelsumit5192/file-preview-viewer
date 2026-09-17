@@ -12,10 +12,14 @@ import { PptxRenderer } from 'pptx-browser';
 export class PptxPlugin implements PreviewPlugin {
   id = 'pptx';
   name = 'PowerPoint Presentation';
-  extensions = ['.pptx', '.ppsx'];
+  extensions = ['.pptx', '.ppsx', '.pptm', '.ppsm', '.potx', '.potm'];
   mimeTypes = [
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/vnd.openxmlformats-officedocument.presentationml.slideshow'
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+    'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
+    'application/vnd.ms-powerpoint.slideshow.macroEnabled.12',
+    'application/vnd.openxmlformats-officedocument.presentationml.template',
+    'application/vnd.ms-powerpoint.template.macroEnabled.12'
   ];
   weight = 80;
 

@@ -246,6 +246,28 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/plugins/doc:
+    dependencies:
+      dompurify:
+        specifier: ^3.2.4
+        version: 3.4.15
+    devDependencies:
+      '@patel.sumit51/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.28)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.8.3
+
   packages/plugins/docx:
     dependencies:
       docx-preview:
@@ -270,6 +292,9 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*
@@ -283,6 +308,28 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+
+  packages/plugins/html-preview:
+    dependencies:
+      dompurify:
+        specifier: ^3.2.4
+        version: 3.4.15
+    devDependencies:
+      '@patel.sumit51/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.28)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.8.3
 
   packages/plugins/markdown:
     dependencies:
@@ -337,6 +384,31 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/plugins/opendocument:
+    dependencies:
+      dompurify:
+        specifier: ^3.2.4
+        version: 3.4.15
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
+    devDependencies:
+      '@patel.sumit51/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.28)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.8.3
+
   packages/plugins/pdf:
     dependencies:
       pdfjs-dist:
@@ -356,11 +428,52 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/plugins/ppt:
+    dependencies:
+      dompurify:
+        specifier: ^3.2.4
+        version: 3.4.15
+    devDependencies:
+      '@patel.sumit51/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.28)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.8.3
+
   packages/plugins/pptx:
     dependencies:
       pptx-browser:
         specifier: ^4.1.5
         version: 4.1.5
+    devDependencies:
+      '@patel.sumit51/core':
+        specifier: workspace:*
+        version: link:../../core
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.28)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.8.3
+
+  packages/plugins/rtf:
+    dependencies:
+      rtf.js:
+        specifier: ^3.0.9
+        version: 3.0.9
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*
@@ -407,9 +520,15 @@ importers:
       pptx-browser:
         specifier: ^4.1.5
         version: 4.1.5
+      rtf.js:
+        specifier: ^3.0.9
+        version: 3.0.9
       three:
         specifier: ^0.186.0
         version: 0.186.0
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
     devDependencies:
       '@angular/common':
         specifier: ^19.0.0
@@ -435,24 +554,39 @@ importers:
       '@patel.sumit51/plugin-csv':
         specifier: workspace:*
         version: link:../plugins/csv
+      '@patel.sumit51/plugin-doc':
+        specifier: workspace:*
+        version: link:../plugins/doc
       '@patel.sumit51/plugin-docx':
         specifier: workspace:*
         version: link:../plugins/docx
       '@patel.sumit51/plugin-excel':
         specifier: workspace:*
         version: link:../plugins/excel
+      '@patel.sumit51/plugin-html-preview':
+        specifier: workspace:*
+        version: link:../plugins/html-preview
       '@patel.sumit51/plugin-markdown':
         specifier: workspace:*
         version: link:../plugins/markdown
       '@patel.sumit51/plugin-media':
         specifier: workspace:*
         version: link:../plugins/media
+      '@patel.sumit51/plugin-opendocument':
+        specifier: workspace:*
+        version: link:../plugins/opendocument
       '@patel.sumit51/plugin-pdf':
         specifier: workspace:*
         version: link:../plugins/pdf
+      '@patel.sumit51/plugin-ppt':
+        specifier: workspace:*
+        version: link:../plugins/ppt
       '@patel.sumit51/plugin-pptx':
         specifier: workspace:*
         version: link:../plugins/pptx
+      '@patel.sumit51/plugin-rtf':
+        specifier: workspace:*
+        version: link:../plugins/rtf
       '@patel.sumit51/react':
         specifier: workspace:*
         version: link:../adapters/react
@@ -1586,6 +1720,10 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  adler-32@1.3.1:
+    resolution: {integrity: sha512-ynZ4w/nUUv5rrsR8UUGoe1VC9hZj6V5hU9Qw1HlMDJGEJw5S7TfTErWTjMys6M7vr0YWcPqs3qAr4ss0nDfP+A==}
+    engines: {node: '>=0.8'}
+
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
 
@@ -1715,6 +1853,10 @@ packages:
   caniuse-lite@1.0.30001810:
     resolution: {integrity: sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg==}
 
+  cfb@1.2.2:
+    resolution: {integrity: sha512-KfdUZsSOw19/ObEWasvBP/Ac4reZvAGauZhs6S/gqNhXhI7cKwvlH7ulj+dOEYnca4bm4SGo8C1bTAQvnTjgQA==}
+    engines: {node: '>=0.8'}
+
   chai@5.3.3:
     resolution: {integrity: sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==}
     engines: {node: '>=18'}
@@ -1755,6 +1897,10 @@ packages:
 
   clone@1.0.4:
     resolution: {integrity: sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==}
+    engines: {node: '>=0.8'}
+
+  codepage@1.15.0:
+    resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
     engines: {node: '>=0.8'}
 
   color-convert@2.0.1:
@@ -1981,6 +2127,10 @@ packages:
 
   fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
+
+  frac@1.1.2:
+    resolution: {integrity: sha512-w/XBfkibaTl3YDqASwfDUqkna4Z2p9cFSr1aHDt0WoMTECnRfBOv2WArlZILlqgWlmdIlALXGpM2AOhEk5W3IA==}
+    engines: {node: '>=0.8'}
 
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
@@ -2616,6 +2766,9 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
+  rtf.js@3.0.9:
+    resolution: {integrity: sha512-I1GpDat4i548WzmeZXv27f/743984fvEeeBS8BC01/Sop17pMlUl3M7DYcdcB3PUvOZTrFIMxGZx8qw7cSMAKQ==}
+
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
@@ -2701,6 +2854,10 @@ packages:
 
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
+
+  ssf@0.11.2:
+    resolution: {integrity: sha512-+idbmIXoYET47hH+d7dfm2epdOMUDjqcB4648sTZ+t2JwoyBFL/insLfB/racrDmsKB3diwsDA696pZMieAC5g==}
+    engines: {node: '>=0.8'}
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
@@ -2960,6 +3117,14 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  wmf@1.0.2:
+    resolution: {integrity: sha512-/p9K7bEh0Dj6WbXg4JG0xvLQmIadrner1bi45VMJTfnbVHsc7yIajZyoSoK60/dtVBs12Fm6WkUI5/3WAVsNMw==}
+    engines: {node: '>=0.8'}
+
+  word@0.3.0:
+    resolution: {integrity: sha512-OELeY0Q61OXpdUfTp+oweA/vtLVg5VDOXh+3he3PNzLGG/y0oylSOC1xRVj0+l4vQ3tj/bB1HVHv1ocXkQceFA==}
+    engines: {node: '>=0.8'}
+
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
@@ -2978,6 +3143,11 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  xlsx@0.18.5:
+    resolution: {integrity: sha512-dmg3LCjBPHZnQp5/F/+nnTa+miPJxUXB6vtk42YjBBKayDNagxGEeIdWApkYPOf3Z3pm3k62Knjzp7lMeTEtFQ==}
+    engines: {node: '>=0.8'}
+    hasBin: true
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
@@ -3985,6 +4155,8 @@ snapshots:
 
   acorn@8.18.0: {}
 
+  adler-32@1.3.1: {}
+
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -4126,6 +4298,11 @@ snapshots:
 
   caniuse-lite@1.0.30001810: {}
 
+  cfb@1.2.2:
+    dependencies:
+      adler-32: 1.3.1
+      crc-32: 1.2.2
+
   chai@5.3.3:
     dependencies:
       assertion-error: 2.0.1
@@ -4168,6 +4345,8 @@ snapshots:
       wrap-ansi: 7.0.0
 
   clone@1.0.4: {}
+
+  codepage@1.15.0: {}
 
   color-convert@2.0.1:
     dependencies:
@@ -4417,6 +4596,8 @@ snapshots:
       magic-string: 0.30.21
       mlly: 1.8.2
       rollup: 4.63.3
+
+  frac@1.1.2: {}
 
   fs-constants@1.0.0: {}
 
@@ -5031,6 +5212,10 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.63.3
       fsevents: 2.3.3
 
+  rtf.js@3.0.9:
+    dependencies:
+      codepage: 1.15.0
+
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
@@ -5099,6 +5284,10 @@ snapshots:
       signal-exit: 4.1.0
 
   sprintf-js@1.0.3: {}
+
+  ssf@0.11.2:
+    dependencies:
+      frac: 1.1.2
 
   stackback@0.0.2: {}
 
@@ -5408,6 +5597,10 @@ snapshots:
       siginfo: 2.0.0
       stackback: 0.0.2
 
+  wmf@1.0.2: {}
+
+  word@0.3.0: {}
+
   wrap-ansi@7.0.0:
     dependencies:
       ansi-styles: 4.3.0
@@ -5417,6 +5610,16 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.21.3: {}
+
+  xlsx@0.18.5:
+    dependencies:
+      adler-32: 1.3.1
+      cfb: 1.2.2
+      codepage: 1.15.0
+      crc-32: 1.2.2
+      ssf: 0.11.2
+      wmf: 1.0.2
+      word: 0.3.0
 
   xmlchars@2.2.0: {}
 

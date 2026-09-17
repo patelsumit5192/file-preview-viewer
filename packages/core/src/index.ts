@@ -46,3 +46,6 @@ export type {
   EventHandler,
   Unsubscribe,
 } from './types';
+
+// CFBF / OLE2 Binary Container Reader
+export { CfbfReader, type CfbfEntry } from './cfbf/cfbf-reader';

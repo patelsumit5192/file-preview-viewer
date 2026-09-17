@@ -1,7 +1,7 @@
 {
   "name": "@files-preview-app/preview-file",
-  "version": "1.1.6",
-  "description": "All-in-one universal file preview for React, Angular, Vue, and Vanilla JS. Preview PDF, Word, Excel, PowerPoint, CSV, ZIP, Markdown, 3D Models (STL/OBJ), Images, Video, Audio, and Code with built-in toolbar.",
+  "version": "1.2.0",
+  "description": "Universal file preview library for Web, React, Angular, and Vue. 100% client-side with zero cloud dependency. Preview PDF, Word, Excel, PowerPoint, CSV, ZIP, Markdown, 3D Models (STL/OBJ), Images, Video, Audio, and Code with built-in toolbar.",
   "keywords": [
     "file-preview",
     "preview-file",
@@ -116,7 +116,9 @@
     "papaparse": "^5.4.1",
     "pdfjs-dist": "^4.10.38",
     "pptx-browser": "^4.1.5",
-    "three": "^0.186.0"
+    "rtf.js": "^3.0.9",
+    "three": "^0.186.0",
+    "xlsx": "^0.18.5"
   },
   "peerDependencies": {
     "@angular/common": ">=17.0.0",
@@ -141,12 +143,17 @@
     "@patel.sumit51/plugin-archive": "workspace:*",
     "@patel.sumit51/plugin-code": "workspace:*",
     "@patel.sumit51/plugin-csv": "workspace:*",
+    "@patel.sumit51/plugin-doc": "workspace:*",
     "@patel.sumit51/plugin-docx": "workspace:*",
     "@patel.sumit51/plugin-excel": "workspace:*",
+    "@patel.sumit51/plugin-html-preview": "workspace:*",
     "@patel.sumit51/plugin-markdown": "workspace:*",
     "@patel.sumit51/plugin-media": "workspace:*",
+    "@patel.sumit51/plugin-opendocument": "workspace:*",
     "@patel.sumit51/plugin-pdf": "workspace:*",
+    "@patel.sumit51/plugin-ppt": "workspace:*",
     "@patel.sumit51/plugin-pptx": "workspace:*",
+    "@patel.sumit51/plugin-rtf": "workspace:*",
     "@patel.sumit51/react": "workspace:*",
     "@patel.sumit51/vue": "workspace:*",
     "@types/react": "^18.3.0",
