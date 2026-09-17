@@ -1,5 +1,6 @@
 packages:
   - packages/core
+  - packages/preview-file
   - packages/plugins/*
   - packages/adapters/*
   - apps/*

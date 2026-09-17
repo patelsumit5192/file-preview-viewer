@@ -1,0 +1,114 @@
+{
+  "name": "@patel.sumit51/preview-file",
+  "version": "1.0.0",
+  "description": "All-in-one universal file preview for React, Angular, Vue, and Vanilla JS. Preview PDF, Word, Excel, CSV, Images, Video, Audio, and Code with built-in toolbar.",
+  "keywords": [
+    "file-preview",
+    "preview-file",
+    "document-viewer",
+    "pdf-viewer",
+    "docx-preview",
+    "excel-preview",
+    "csv-viewer",
+    "react",
+    "vue",
+    "angular",
+    "universal-preview"
+  ],
+  "author": "Sumit Patel",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js",
+      "require": "./dist/vue.cjs"
+    },
+    "./angular": {
+      "types": "./dist/angular.d.ts",
+      "import": "./dist/angular.js",
+      "require": "./dist/angular.cjs"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patelsumit5192/preview-application.git"
+  },
+  "homepage": "https://github.com/patelsumit5192/preview-application#readme",
+  "bugs": {
+    "url": "https://github.com/patelsumit5192/preview-application/issues"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@panzoom/panzoom": "^4.6.0",
+    "dompurify": "^3.2.4",
+    "docx-preview": "^0.3.2",
+    "exceljs": "^4.4.0",
+    "highlight.js": "^11.9.0",
+    "papaparse": "^5.4.1",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=17.0.0",
+    "@angular/core": ">=17.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "vue": { "optional": true },
+    "@angular/core": { "optional": true },
+    "@angular/common": { "optional": true }
+  },
+  "devDependencies": {
+    "@angular/common": "^19.0.0",
+    "@angular/core": "^19.0.0",
+    "@patel.sumit51/angular": "workspace:*",
+    "@patel.sumit51/core": "workspace:*",
+    "@patel.sumit51/plugin-code": "workspace:*",
+    "@patel.sumit51/plugin-csv": "workspace:*",
+    "@patel.sumit51/plugin-docx": "workspace:*",
+    "@patel.sumit51/plugin-excel": "workspace:*",
+    "@patel.sumit51/plugin-media": "workspace:*",
+    "@patel.sumit51/plugin-pdf": "workspace:*",
+    "@patel.sumit51/react": "workspace:*",
+    "@patel.sumit51/vue": "workspace:*",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "rimraf": "^6.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "~5.8.2",
+    "vue": "^3.5.0"
+  }
+}
