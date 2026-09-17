@@ -6,6 +6,6 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['@patel.sumit51/core', 'docx-preview'],
+  external: ['@patel.sumit51/core', 'docx-preview', 'dompurify', 'fflate'],
   treeshake: true,
 });

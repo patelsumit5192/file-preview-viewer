@@ -6,18 +6,18 @@ import type {
   PreviewInstance 
 } from '@patel.sumit51/core';
 
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-const VIDEO_EXTS = ['.mp4', '.webm', '.ogg'];
-const AUDIO_EXTS = ['.mp3', '.wav', '.ogg'];
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', '.tiff', '.tif', '.avif'];
+const VIDEO_EXTS = ['.mp4', '.m4v', '.webm', '.ogv', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.3gp', '.mpg', '.mpeg'];
+const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma', '.opus', '.weba'];
 
 export class MediaPlugin implements PreviewPlugin {
   id = 'media';
-  name = 'Media Preview';
+  name = 'Media Preview (Image, Video, Audio)';
   extensions = [...IMAGE_EXTS, ...VIDEO_EXTS, ...AUDIO_EXTS];
   mimeTypes = [
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-    'video/mp4', 'video/webm', 'video/ogg',
-    'audio/mpeg', 'audio/wav', 'audio/ogg'
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon', 'image/tiff', 'image/avif',
+    'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-flv', 'video/x-ms-wmv', 'video/3gpp', 'video/mpeg',
+    'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/mp4', 'audio/x-ms-wma', 'audio/opus', 'audio/webm'
   ];
   weight = 90;
 
@@ -164,8 +164,12 @@ export class MediaPlugin implements PreviewPlugin {
       const video = document.createElement('video');
       video.src = url;
       video.controls = true;
-      video.style.maxWidth = '100%';
-      video.style.maxHeight = '100%';
+      video.playsInline = true;
+      video.style.maxWidth = '90%';
+      video.style.maxHeight = '90%';
+      video.style.borderRadius = '8px';
+      video.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)';
+      video.style.backgroundColor = '#000000';
       element = video;
       mediaElement = video;
     } else if (isAudio) {

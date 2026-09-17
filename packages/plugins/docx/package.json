@@ -23,7 +23,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "docx-preview": "^0.3.2"
+    "docx-preview": "^0.3.2",
+    "dompurify": "^3.2.4",
+    "fflate": "^0.8.3"
   },
   "peerDependencies": {
     "@patel.sumit51/core": "workspace:*"

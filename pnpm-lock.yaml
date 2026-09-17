@@ -273,6 +273,12 @@ importers:
       docx-preview:
         specifier: ^0.3.2
         version: 0.3.7
+      dompurify:
+        specifier: ^3.2.4
+        version: 3.4.15
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*

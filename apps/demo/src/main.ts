@@ -231,6 +231,11 @@ export async function initViewer(containerId: string, url: string) {
     name: 'audio.mp3',
     ext: '.mp3',
     data: getSampleUrl('audio.mp3')
+  }),
+  video: () => ({
+    name: 'video.mp4',
+    ext: '.mp4',
+    data: getSampleUrl('video.mp4')
   })
 };
 

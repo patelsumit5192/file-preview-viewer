@@ -20,6 +20,10 @@ const ICON_MAP: Record<string, string> = {
   'copy': icons.ICON_COPY,
   'prev': icons.ICON_PAGE_PREV,
   'next': icons.ICON_PAGE_NEXT,
+  'page-prev': icons.ICON_PAGE_PREV,
+  'page-next': icons.ICON_PAGE_NEXT,
+  'chevron-left': icons.ICON_PAGE_PREV,
+  'chevron-right': icons.ICON_PAGE_NEXT,
 };
 
 export class ToolbarController {
@@ -60,7 +64,13 @@ export class ToolbarController {
       actions: []
     };
 
-    for (const action of this.actions) {
+    // If a page-nav component is present, deduplicate standalone prev/next buttons
+    const hasPageNav = this.actions.some(a => a.type === 'page-nav');
+    const effectiveActions = hasPageNav
+      ? this.actions.filter(a => a.id !== 'page-prev' && a.id !== 'page-next' && a.id !== 'prev' && a.id !== 'next')
+      : this.actions;
+
+    for (const action of effectiveActions) {
       if (groups[action.group]) {
         groups[action.group].push(action);
       }
@@ -86,11 +96,24 @@ export class ToolbarController {
         } else if (action.type === 'page-nav') {
           const prevBtn = this.createButton(
             'prev', icons.ICON_PAGE_PREV, 'Previous Page',
-            () => action.execute('prev')
+            () => {
+              const cur = parseInt(input.value, 10) || 1;
+              if (cur > 1) {
+                input.value = (cur - 1).toString();
+                action.execute('prev', cur - 1);
+              }
+            }
           );
           const nextBtn = this.createButton(
             'next', icons.ICON_PAGE_NEXT, 'Next Page',
-            () => action.execute('next')
+            () => {
+              const cur = parseInt(input.value, 10) || 1;
+              const max = action.max ?? 1;
+              if (cur < max) {
+                input.value = (cur + 1).toString();
+                action.execute('next', cur + 1);
+              }
+            }
           );
           const input = createElement('input', {
             className: 'fp-toolbar-input',
@@ -101,7 +124,10 @@ export class ToolbarController {
           }) as HTMLInputElement;
           
           input.addEventListener('change', () => {
-            action.execute('go', parseInt(input.value, 10));
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val)) {
+              action.execute('go', val);
+            }
           });
           
           const label = createElement('span', { className: 'fp-toolbar-label' }, ` / ${action.max ?? 1}`);
@@ -145,11 +171,11 @@ export class ToolbarController {
       'data-action-id': id
     }) as HTMLButtonElement;
     
-    const svg = ICON_MAP[iconHtml] || iconHtml;
-    if (svg && svg.startsWith('<svg')) {
+    const svg = ICON_MAP[iconHtml] || ICON_MAP[id] || (iconHtml && iconHtml.startsWith('<svg') ? iconHtml : null);
+    if (svg) {
       btn.innerHTML = sanitizeSVG(svg);
     } else {
-      btn.textContent = svg || title; 
+      btn.textContent = title || id; 
     }
     
     btn.addEventListener('click', onClick);

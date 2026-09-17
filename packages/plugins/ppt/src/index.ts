@@ -38,34 +38,26 @@ export class PptPlugin implements PreviewPlugin {
         execute: () => instance.toggleThumbnails?.()
       },
       {
-        id: 'page-prev',
-        icon: 'page-prev',
-        label: 'Previous Slide',
-        type: 'button',
-        group: 'navigation',
-        execute: () => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          if (cur > 1) instance.goToPage?.(cur - 1);
-        }
-      },
-      {
         id: 'page-nav',
         icon: '',
-        label: 'Slide Number',
+        label: 'Slide Navigation',
         type: 'page-nav',
         group: 'navigation',
-        execute: (p: unknown) => instance.goToPage?.(Number(p))
-      },
-      {
-        id: 'page-next',
-        icon: 'page-next',
-        label: 'Next Slide',
-        type: 'button',
-        group: 'navigation',
-        execute: () => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const total = instance.getPageCount?.() ?? 1;
-          if (cur < total) instance.goToPage?.(cur + 1);
+        value: instance.getCurrentPage?.() ?? 1,
+        max: instance.getPageCount?.() ?? 1,
+        execute: (action: unknown, page?: unknown) => {
+          if (action === 'prev') {
+            const cur = instance.getCurrentPage?.() ?? 1;
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            const cur = instance.getCurrentPage?.() ?? 1;
+            const total = instance.getPageCount?.() ?? 1;
+            if (cur < total) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          } else if (typeof action === 'number') {
+            instance.goToPage?.(action);
+          }
         }
       },
       {
