@@ -53,6 +53,16 @@ export class CodePlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'copy',
+        icon: 'copy',
+        label: 'Copy Content',
+        type: 'button',
+        group: 'actions',
+        execute: () => {
+          (instance as any).copy?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -148,6 +158,9 @@ export class CodePlugin implements PreviewPlugin {
       },
       print: () => {
         window.print();
+      },
+      copy: () => {
+        navigator.clipboard?.writeText(text);
       }
     };
   }

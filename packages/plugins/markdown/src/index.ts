@@ -50,6 +50,14 @@ export class MarkdownPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'copy',
+        icon: 'copy',
+        label: 'Copy Markdown',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).copy?.()
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download Markdown',
@@ -213,6 +221,9 @@ export class MarkdownPlugin implements PreviewPlugin {
       },
       print: () => {
         window.print();
+      },
+      copy: () => {
+        navigator.clipboard?.writeText(text);
       }
     };
   }

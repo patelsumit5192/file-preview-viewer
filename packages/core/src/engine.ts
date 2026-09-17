@@ -1,5 +1,6 @@
 import { EventEmitter } from './events';
 import { sourceToArrayBuffer } from './detect';
+import { downloadFile } from './utils';
 import { ToolbarController } from './toolbar/toolbar-controller';
 import { ThumbnailPanel } from './thumbnail/thumbnail-panel';
 import type {
@@ -27,6 +28,9 @@ export class FilePreviewViewer {
   private contentEl: HTMLElement | null = null;
   private currentBuffer: ArrayBuffer | null = null;
   private currentMetadata: import('./types').FileMetadata | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private currentContainer: HTMLElement | null = null;
+  private currentOptions: PreviewViewerOptions = {};
 
   /**
    * Register a preview plugin.
@@ -108,28 +112,52 @@ export class FilePreviewViewer {
 
       this.activeInstance = instance;
 
-      // 8. Setup toolbar with plugin's actions
+      // FAST STARTUP: Hide loading immediately once the instance is mounted!
+      this.hideLoading();
+      this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
+
+      // 8. Setup toolbar with plugin's actions + auto fullscreen button
       if (options.showToolbar !== false && this.toolbar) {
         const actions = matchedPlugin.getToolbarActions(instance);
+        const hasFullscreen = actions.some(a => a.id === 'fullscreen');
+        if (!hasFullscreen && this.wrapperEl) {
+          actions.push({
+            id: 'fullscreen',
+            icon: 'fullscreen',
+            label: 'Toggle Fullscreen',
+            type: 'button',
+            group: 'view',
+            execute: () => {
+              if (!document.fullscreenElement) {
+                this.wrapperEl?.requestFullscreen?.();
+              } else {
+                document.exitFullscreen?.();
+              }
+            }
+          });
+        }
         this.toolbar.update(actions);
         this.toolbar.show();
       }
 
-      // 9. Setup thumbnails if plugin supports them
+      // 9. Setup thumbnails asynchronously in background so initial preview is instant
       if (instance.getThumbnails && this.thumbnailPanel) {
-        const thumbnails = await Promise.resolve(instance.getThumbnails());
-        if (thumbnails && thumbnails.length > 0) {
-          this.thumbnailPanel.update(thumbnails, (index) => {
-            instance.goToPage?.(index + 1);
-          });
-          if (options.showThumbnails) {
-            this.thumbnailPanel.show();
+        Promise.resolve().then(async () => {
+          try {
+            const thumbnails = await Promise.resolve(instance.getThumbnails!());
+            if (thumbnails && thumbnails.length > 0 && this.thumbnailPanel) {
+              this.thumbnailPanel.update(thumbnails, (index) => {
+                instance.goToPage?.(index + 1);
+              });
+              if (options.showThumbnails) {
+                this.thumbnailPanel.show();
+              }
+            }
+          } catch (e) {
+            console.warn('[FilePreview] Non-critical thumbnail load error:', e);
           }
-        }
+        });
       }
-
-      this.hideLoading();
-      this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
 
       return instance;
     } catch (error: unknown) {
@@ -154,6 +182,10 @@ export class FilePreviewViewer {
    * Destroy the viewer and clean up all resources.
    */
   destroy(): void {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
     this.abort();
     this.destroyInstance();
     this.toolbar?.destroy();
@@ -170,6 +202,7 @@ export class FilePreviewViewer {
     this.thumbnailPanel = null;
     this.currentBuffer = null;
     this.currentMetadata = null;
+    this.currentContainer = null;
   }
 
   /**
@@ -205,6 +238,9 @@ export class FilePreviewViewer {
   }
 
   private setupDOM(container: HTMLElement, options: PreviewViewerOptions): void {
+    this.currentContainer = container;
+    this.currentOptions = options;
+
     // Only setup once, or re-setup if container changed
     if (this.wrapperEl?.parentNode === container) return;
 
@@ -219,6 +255,7 @@ export class FilePreviewViewer {
 
     this.wrapperEl = document.createElement('div');
     this.wrapperEl.className = `fp-viewer ${themeClass} ${options.className ?? ''}`.trim();
+    this.wrapperEl.tabIndex = 0; // allow keyboard focus
 
     // Toolbar container
     const toolbarEl = document.createElement('div');
@@ -252,6 +289,75 @@ export class FilePreviewViewer {
     // Initialize toolbar and thumbnail controllers
     this.toolbar = new ToolbarController(toolbarEl);
     this.thumbnailPanel = new ThumbnailPanel(thumbnailEl);
+
+    // Enable keyboard shortcuts & drag/drop
+    this.setupKeyboardShortcuts();
+    this.setupDragAndDrop(container, options);
+  }
+
+  private setupKeyboardShortcuts(): void {
+    if (this.keyHandler) return;
+
+    this.keyHandler = (e: KeyboardEvent) => {
+      // Don't intercept when user is typing in form controls
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (!this.activeInstance) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        const cur = this.activeInstance.getCurrentPage?.() ?? 1;
+        this.activeInstance.goToPage?.(cur + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        const cur = this.activeInstance.getCurrentPage?.() ?? 1;
+        this.activeInstance.goToPage?.(Math.max(1, cur - 1));
+      } else if (e.key === '+' || e.key === '=') {
+        this.activeInstance.zoomIn?.();
+      } else if (e.key === '-' || e.key === '_') {
+        this.activeInstance.zoomOut?.();
+      } else if (e.key === '0') {
+        this.activeInstance.fitToPage?.();
+      } else if (e.key === 'r' || e.key === 'R') {
+        this.activeInstance.rotateCW?.();
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+          this.wrapperEl?.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
+  private setupDragAndDrop(container: HTMLElement, options: PreviewViewerOptions): void {
+    if (!this.wrapperEl) return;
+
+    this.wrapperEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      this.wrapperEl?.classList.add('fp-dragover');
+    });
+
+    this.wrapperEl.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget === null || !this.wrapperEl?.contains(e.relatedTarget as Node)) {
+        this.wrapperEl?.classList.remove('fp-dragover');
+      }
+    });
+
+    this.wrapperEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      this.wrapperEl?.classList.remove('fp-dragover');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) {
+        this.preview(container, file, options);
+      }
+    });
   }
 
   private showLoading(): void {
@@ -273,10 +379,31 @@ export class FilePreviewViewer {
     this.contentEl.innerHTML = '';
     const errorEl = document.createElement('div');
     errorEl.className = 'fp-error';
+    errorEl.style.display = 'flex';
+    errorEl.style.flexDirection = 'column';
+    errorEl.style.alignItems = 'center';
+    errorEl.style.justifyContent = 'center';
+    errorEl.style.padding = '32px';
+    errorEl.style.textAlign = 'center';
+
+    const hasDownload = !!(this.currentBuffer && this.currentMetadata);
+
     errorEl.innerHTML = `
-      <div class="fp-error-icon">⚠️</div>
-      <div class="fp-error-message">${message}</div>
+      <div class="fp-error-icon" style="font-size:36px;margin-bottom:8px;">⚠️</div>
+      <div class="fp-error-message" style="font-size:16px;font-weight:600;margin-bottom:6px;">Cannot preview file</div>
+      <div class="fp-error-sub" style="font-size:13px;color:#64748b;max-width:420px;line-height:1.5;margin-bottom:16px;">${message}</div>
+      ${hasDownload ? '<button class="fp-error-download-btn" style="padding:8px 16px;background:#3b82f6;color:#ffffff;border:none;border-radius:6px;cursor:pointer;font-weight:500;font-size:13px;transition:background 0.2s;">Download Original File</button>' : ''}
     `;
+
+    if (hasDownload && this.currentBuffer) {
+      const btn = errorEl.querySelector('.fp-error-download-btn') as HTMLButtonElement;
+      if (btn) {
+        btn.addEventListener('click', () => {
+          downloadFile(this.currentBuffer!, this.currentMetadata?.name || 'download', this.currentMetadata?.mimeType);
+        });
+      }
+    }
+
     this.contentEl.appendChild(errorEl);
   }
 }

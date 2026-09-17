@@ -3,6 +3,25 @@ import { createElement, sanitizeSVG } from '../utils';
 import type { ToolbarAction, ToolbarGroup } from '../types';
 import * as icons from './icons';
 
+const ICON_MAP: Record<string, string> = {
+  'zoom-in': icons.ICON_ZOOM_IN,
+  'zoom-out': icons.ICON_ZOOM_OUT,
+  'fit-page': icons.ICON_FIT_PAGE,
+  'fit-slide': icons.ICON_FIT_PAGE,
+  'rotate-cw': icons.ICON_ROTATE_CW,
+  'rotate-ccw': icons.ICON_ROTATE_CCW,
+  'download': icons.ICON_DOWNLOAD,
+  'print': icons.ICON_PRINT,
+  'thumbnails': icons.ICON_THUMBNAILS,
+  'fullscreen': icons.ICON_FULLSCREEN,
+  'play': icons.ICON_PLAY,
+  'pause': icons.ICON_PAUSE,
+  'close': icons.ICON_CLOSE,
+  'copy': icons.ICON_COPY,
+  'prev': icons.ICON_PAGE_PREV,
+  'next': icons.ICON_PAGE_NEXT,
+};
+
 export class ToolbarController {
   private el: HTMLElement;
   private toolbarEl: HTMLElement;
@@ -126,10 +145,11 @@ export class ToolbarController {
       'data-action-id': id
     }) as HTMLButtonElement;
     
-    if (iconHtml.startsWith('<svg')) {
-      btn.innerHTML = sanitizeSVG(iconHtml);
+    const svg = ICON_MAP[iconHtml] || iconHtml;
+    if (svg && svg.startsWith('<svg')) {
+      btn.innerHTML = sanitizeSVG(svg);
     } else {
-      btn.textContent = iconHtml; 
+      btn.textContent = svg || title; 
     }
     
     btn.addEventListener('click', onClick);

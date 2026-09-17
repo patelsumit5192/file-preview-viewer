@@ -71,6 +71,13 @@
   transition: all 0.2s;
 }
 
+.fp-toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+}
+
 .fp-toolbar-btn:hover {
   background: var(--fp-btn-hover-bg);
 }
@@ -78,6 +85,11 @@
 .fp-toolbar-btn:active, .fp-toolbar-btn.active {
   background: var(--fp-btn-active-bg);
   color: var(--fp-accent);
+}
+
+.fp-viewer.fp-dragover {
+  outline: 2px dashed var(--fp-accent);
+  outline-offset: -4px;
 }
 
 .fp-toolbar-btn:disabled {
