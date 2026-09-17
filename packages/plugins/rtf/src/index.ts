@@ -5,7 +5,8 @@ import type {
   PreviewPlugin, 
   PreviewInstance 
 } from '@patel.sumit51/core';
-import { RTFJS } from 'rtf.js';
+// @ts-ignore - rtf.js bundle has no individual d.ts
+import * as RTFJS from 'rtf.js/dist/RTFJS.bundle.js';
 
 export class RtfPlugin implements PreviewPlugin {
   id = 'rtf';
@@ -86,7 +87,10 @@ export class RtfPlugin implements PreviewPlugin {
     let scale = 1.0;
 
     try {
-      const doc = new RTFJS.Document(ctx.buffer, {});
+      if (typeof (RTFJS as any).loggingEnabled === 'function') {
+        (RTFJS as any).loggingEnabled(false);
+      }
+      const doc = new (RTFJS as any).Document(ctx.buffer, {});
       const htmlElements = await doc.render();
       for (const el of htmlElements) {
         wrapper.appendChild(el);

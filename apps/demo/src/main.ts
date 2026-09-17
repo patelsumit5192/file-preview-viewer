@@ -43,15 +43,30 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.docx',
     data: getSampleUrl('document.docx')
   }),
+  doc: () => ({
+    name: 'document.doc',
+    ext: '.doc',
+    data: getSampleUrl('document.doc')
+  }),
   xlsx: () => ({
     name: 'financial-report.xlsx',
     ext: '.xlsx',
     data: getSampleUrl('financial-report.xlsx')
   }),
+  xls: () => ({
+    name: 'spreadsheet.xls',
+    ext: '.xls',
+    data: getSampleUrl('spreadsheet.xls')
+  }),
   pptx: () => ({
     name: 'presentation.pptx',
     ext: '.pptx',
     data: getSampleUrl('presentation.pptx')
+  }),
+  ppt: () => ({
+    name: 'presentation.ppt',
+    ext: '.ppt',
+    data: getSampleUrl('presentation.ppt')
   }),
   csv: () => {
     const csvContent = `ID,Product Name,Category,Quantity,Price,Revenue

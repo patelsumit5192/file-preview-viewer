@@ -200,6 +200,46 @@ export function detectOoxmlType(buffer: ArrayBuffer): string | null {
 }
 
 /**
+ * Detect CFBF / OLE2 sub-type (DOC, XLS, PPT) by searching for stream signatures.
+ */
+export function detectCfbfType(buffer: ArrayBuffer): { mime: string; extension: string } | null {
+  const bytes = new Uint8Array(buffer);
+  
+  const hasUtf16le = (str: string): boolean => {
+    const target = new Uint8Array(str.length * 2);
+    for (let i = 0; i < str.length; i++) {
+      target[i * 2] = str.charCodeAt(i);
+      target[i * 2 + 1] = 0;
+    }
+    const targetLen = target.length;
+    const max = bytes.length - targetLen;
+    for (let i = 0; i <= max; i++) {
+      let match = true;
+      for (let j = 0; j < targetLen; j++) {
+        if (bytes[i + j] !== target[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return true;
+    }
+    return false;
+  };
+
+  if (hasUtf16le('PowerPoint Document')) {
+    return { mime: 'application/vnd.ms-powerpoint', extension: '.ppt' };
+  }
+  if (hasUtf16le('WordDocument')) {
+    return { mime: 'application/msword', extension: '.doc' };
+  }
+  if (hasUtf16le('Workbook') || hasUtf16le('Book')) {
+    return { mime: 'application/vnd.ms-excel', extension: '.xls' };
+  }
+
+  return null;
+}
+
+/**
  * Extract file extension from a filename or URL.
  */
 export function extractExtension(nameOrUrl: string): string | undefined {
@@ -286,6 +326,19 @@ export async function sourceToArrayBuffer(
         else if (ooxmlMime.includes('presentation')) metadata.extension = metadata.extension ?? '.pptx';
       } else {
         metadata.mimeType = metadata.mimeType ?? magicMime;
+      }
+    } else if (magicMime === 'application/x-cfbf') {
+      // Disambiguate legacy CFBF/OLE2 formats (DOC, XLS, PPT)
+      if (metadata.extension) {
+        metadata.mimeType = mimeFromExtension(metadata.extension) ?? magicMime;
+      } else {
+        const cfbf = detectCfbfType(buffer);
+        if (cfbf) {
+          metadata.mimeType = cfbf.mime;
+          metadata.extension = cfbf.extension;
+        } else {
+          metadata.mimeType = magicMime;
+        }
       }
     } else {
       metadata.mimeType = magicMime;

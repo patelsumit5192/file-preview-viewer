@@ -25,7 +25,10 @@ export class ExcelPlugin implements PreviewPlugin {
   supports(file: FileInfo): boolean {
     const ext = file.metadata.extension?.toLowerCase();
     const mime = file.metadata.mimeType?.toLowerCase();
-    return this.extensions.includes(ext || '') || this.mimeTypes.includes(mime || '');
+    if (ext) {
+      return this.extensions.includes(ext);
+    }
+    return this.mimeTypes.includes(mime || '');
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {

@@ -18,7 +18,10 @@ export class DocPlugin implements PreviewPlugin {
   supports(file: FileInfo): boolean {
     const ext = file.metadata.extension?.toLowerCase();
     const mime = file.metadata.mimeType?.toLowerCase();
-    return this.extensions.includes(ext || '') || this.mimeTypes.includes(mime || '');
+    if (ext) {
+      return this.extensions.includes(ext);
+    }
+    return this.mimeTypes.includes(mime || '');
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
@@ -282,28 +285,35 @@ export class DocPlugin implements PreviewPlugin {
    * Scans a byte array for continuous sequences of readable characters (ANSI and UTF-16LE)
    */
   private extractStringsFromBytes(bytes: Uint8Array): string {
-    const chars: string[] = [];
-    const len = bytes.length;
+    const rawAnsi = new TextDecoder('latin1').decode(bytes);
+    const rawUtf16 = new TextDecoder('utf-16le', { fatal: false }).decode(bytes);
 
-    for (let i = 0; i < len; i++) {
-      const b = bytes[i];
-      // Check printable ASCII and common control codes
-      if (b === 0x0D || b === 0x0A || b === 0x09 || (b >= 0x20 && b <= 0x7E) || (b >= 0xA0 && b <= 0xFF)) {
-        chars.push(String.fromCharCode(b));
-      } else if (b === 0x00 && i + 1 < len && bytes[i + 1] >= 0x20 && bytes[i + 1] <= 0x7E) {
-        // UTF-16LE pattern where ASCII is second byte
-        chars.push(String.fromCharCode(bytes[i + 1]));
-        i++;
-      } else if (b === 0x07) {
-        // Table cell divider in Word
-        chars.push('\t');
-      } else if (b === 0x0C) {
-        // Page break
-        chars.push('\n\n---PAGE---\n\n');
+    // Extract meaningful runs of ASCII text (length >= 4)
+    const ansiRuns = rawAnsi.match(/[\x20-\x7E\t\r\n]{4,}/g) || [];
+    const utf16Runs = rawUtf16.match(/[\x20-\x7E\t\r\n]{4,}/g) || [];
+
+    const candidateLines: string[] = [];
+    const seen = new Set<string>();
+
+    for (const run of [...ansiRuns, ...utf16Runs]) {
+      const trimmed = run.trim();
+      // Must contain at least one letter and have reasonable length
+      if (trimmed.length >= 4 && /[a-zA-Z]/.test(trimmed) && !seen.has(trimmed)) {
+        // Exclude internal Word structures / headers
+        if (
+          !trimmed.includes('Normal.dot') &&
+          !trimmed.includes('Microsoft Word') &&
+          !trimmed.includes('Times New Roman') &&
+          !trimmed.startsWith('ÐÏà¡±á') &&
+          !/^[\W_0-9]+$/.test(trimmed)
+        ) {
+          seen.add(trimmed);
+          candidateLines.push(trimmed);
+        }
       }
     }
 
-    return chars.join('');
+    return candidateLines.join('\n\n');
   }
 
   private heuristicTextExtraction(buffer: ArrayBuffer): string {
