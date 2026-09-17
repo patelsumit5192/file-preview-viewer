@@ -1,0 +1,43 @@
+﻿{
+  "name": "@patel.sumit51/plugin-markdown",
+  "version": "0.1.0",
+  "description": "Rich Markdown preview plugin for @file-preview",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "marked": "^18.0.13",
+    "dompurify": "^3.2.4",
+    "highlight.js": "^11.9.0"
+  },
+  "peerDependencies": {
+    "@patel.sumit51/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@patel.sumit51/core": "workspace:*",
+    "@types/dompurify": "^3.2.0",
+    "typescript": "^5.7.0",
+    "tsup": "^8.4.0",
+    "rimraf": "^6.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

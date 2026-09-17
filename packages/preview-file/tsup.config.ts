@@ -1,4 +1,6 @@
-import { defineConfig } from 'tsup';
+﻿import { defineConfig } from 'tsup';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export default defineConfig({
   entry: {
@@ -25,7 +27,11 @@ export default defineConfig({
     'papaparse',
     'highlight.js',
     '@panzoom/panzoom',
-    'dompurify'
+    'dompurify',
+    'fflate',
+    'marked',
+    'pptx-browser',
+    'three'
   ],
   noExternal: [
     '@patel.sumit51/core',
@@ -35,8 +41,17 @@ export default defineConfig({
     '@patel.sumit51/plugin-excel',
     '@patel.sumit51/plugin-csv',
     '@patel.sumit51/plugin-code',
+    '@patel.sumit51/plugin-archive',
+    '@patel.sumit51/plugin-markdown',
+    '@patel.sumit51/plugin-pptx',
+    '@patel.sumit51/plugin-3d',
     '@patel.sumit51/react',
     '@patel.sumit51/vue',
     '@patel.sumit51/angular'
-  ]
+  ],
+  onSuccess: async () => {
+    const src = path.resolve(__dirname, '../core/src/toolbar/toolbar.css');
+    const dest = path.resolve(__dirname, 'dist/styles.css');
+    fs.copyFileSync(src, dest);
+  }
 });

@@ -1,15 +1,20 @@
-import { FilePreviewViewer as CoreViewer } from '@patel.sumit51/core';
+﻿import { FilePreviewViewer as CoreViewer } from '@patel.sumit51/core';
 import { pdfPlugin } from '@patel.sumit51/plugin-pdf';
 import { mediaPlugin } from '@patel.sumit51/plugin-media';
 import { docxPlugin } from '@patel.sumit51/plugin-docx';
 import { excelPlugin } from '@patel.sumit51/plugin-excel';
 import { csvPlugin } from '@patel.sumit51/plugin-csv';
 import { codePlugin } from '@patel.sumit51/plugin-code';
+import { archivePlugin } from '@patel.sumit51/plugin-archive';
+import { markdownPlugin } from '@patel.sumit51/plugin-markdown';
+import { pptxPlugin } from '@patel.sumit51/plugin-pptx';
+import { threeDPlugin } from '@patel.sumit51/plugin-3d';
 import type { PreviewPlugin } from '@patel.sumit51/core';
 
 /**
  * Returns all built-in default preview plugins:
- * PDF, Media (Images/Video/Audio/SVG), Word (DOCX), Excel (XLSX), CSV/TSV, and Code/Text.
+ * PDF, Word (DOCX), Excel (XLSX), PowerPoint (PPTX), CSV/TSV,
+ * ZIP Archives, Markdown, 3D Models (STL/OBJ), Media (Images/Video/Audio/SVG), and Code/Text.
  */
 export function getDefaultPlugins(): PreviewPlugin[] {
   return [
@@ -17,7 +22,11 @@ export function getDefaultPlugins(): PreviewPlugin[] {
     mediaPlugin(),
     docxPlugin(),
     excelPlugin(),
+    pptxPlugin(),
     csvPlugin(),
+    archivePlugin(),
+    markdownPlugin(),
+    threeDPlugin(),
     codePlugin(),
   ];
 }
@@ -41,7 +50,11 @@ export {
   mediaPlugin,
   docxPlugin,
   excelPlugin,
+  pptxPlugin,
   csvPlugin,
+  archivePlugin,
+  markdownPlugin,
+  threeDPlugin,
   codePlugin,
 };
 

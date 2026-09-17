@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@files-preview-app/preview-file — Live Interactive Demo</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body class="theme-light">
+  <div class="app-layout">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-icon">👁️</span>
+        <span class="brand-title">preview-file</span>
+        <span class="badge">v1.1.0</span>
+      </div>
+      <div class="header-actions">
+        <a href="https://www.npmjs.com/package/@files-preview-app/preview-file" target="_blank" class="nav-btn npm-btn">
+          <span>npm i @files-preview-app/preview-file</span>
+        </a>
+        <a href="https://github.com/patelsumit5192/preview-file" target="_blank" class="nav-btn">
+          GitHub
+        </a>
+        <button id="theme-toggle" class="theme-btn" title="Toggle Light/Dark Theme">
+          🌙
+        </button>
+      </div>
+    </header>
+
+    <div class="app-main">
+      <aside class="sidebar">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="file-input" class="file-input-hidden" />
+          <div class="drop-content">
+            <span class="drop-icon">📁</span>
+            <span class="drop-text">Drag & drop any file here</span>
+            <span class="drop-subtext">or click to browse your computer</span>
+          </div>
+        </div>
+
+        <div class="section-title">TEST WITH INSTANT SAMPLES</div>
+        <div class="sample-grid">
+          <button class="sample-btn" data-sample="pdf">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">PDF Document</span>
+          </button>
+          <button class="sample-btn" data-sample="docx">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">Word (.docx)</span>
+          </button>
+          <button class="sample-btn" data-sample="xlsx">
+            <span class="sample-icon">📊</span>
+            <span class="sample-label">Excel (.xlsx)</span>
+          </button>
+          <button class="sample-btn" data-sample="pptx">
+            <span class="sample-icon">📽️</span>
+            <span class="sample-label">PowerPoint (.pptx)</span>
+          </button>
+          <button class="sample-btn" data-sample="csv">
+            <span class="sample-icon">📈</span>
+            <span class="sample-label">CSV Table</span>
+          </button>
+          <button class="sample-btn" data-sample="zip">
+            <span class="sample-icon">📦</span>
+            <span class="sample-label">ZIP Archive</span>
+          </button>
+          <button class="sample-btn" data-sample="markdown">
+            <span class="sample-icon">📑</span>
+            <span class="sample-label">Rich Markdown</span>
+          </button>
+          <button class="sample-btn" data-sample="3d">
+            <span class="sample-icon">🧊</span>
+            <span class="sample-label">3D Model (STL)</span>
+          </button>
+          <button class="sample-btn" data-sample="code">
+            <span class="sample-icon">💻</span>
+            <span class="sample-label">Code (TypeScript)</span>
+          </button>
+          <button class="sample-btn" data-sample="svg">
+            <span class="sample-icon">🖼️</span>
+            <span class="sample-label">Vector (SVG)</span>
+          </button>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="compliance-badge">
+            <span class="check-icon">✓</span> 100% Client-Side · Permissive MIT License
+          </div>
+        </div>
+      </aside>
+
+      <main class="content-area">
+        <div class="preview-card">
+          <div class="preview-header">
+            <div class="active-file-info">
+              <span id="file-name" class="active-file-name">sample.pdf</span>
+              <span id="file-meta" class="active-file-meta">Loading preview...</span>
+            </div>
+          </div>
+          <div id="preview-viewport" class="preview-viewport"></div>
+        </div>
+
+        <div class="snippet-card">
+          <div class="snippet-header">
+            <span class="snippet-title">HOW TO USE IN YOUR PROJECT</span>
+            <div class="snippet-tabs">
+              <button class="tab-btn active" data-tab="react">React</button>
+              <button class="tab-btn" data-tab="angular">Angular</button>
+              <button class="tab-btn" data-tab="vue">Vue 3</button>
+              <button class="tab-btn" data-tab="vanilla">Vanilla JS</button>
+            </div>
+          </div>
+          <div class="snippet-body">
+            <pre><code id="snippet-code"></code></pre>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

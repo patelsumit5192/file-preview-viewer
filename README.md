@@ -1,4 +1,4 @@
-# @files-preview-app/preview-file
+﻿# @files-preview-app/preview-file
 
 > **Universal, all-in-one client-side file preview package for React, Angular, Vue, and Vanilla JS.**  
 > Preview **PDF, Word (.docx), Excel (.xlsx), CSV, Images, Video, Audio, and Code/Text** with a built-in toolbar (zoom, rotate, thumbnails, page jump, download, print). 100% free, permissive open-source, and client-side (no cloud or server needed).
@@ -8,7 +8,7 @@
 
 ---
 
-## 📦 Installation
+## ðŸ“¦ Installation
 
 Just install this **single package** in your project:
 
@@ -30,7 +30,7 @@ import '@files-preview-app/preview-file/styles.css';
 
 ---
 
-## 🚀 Quick Start by Framework
+## ðŸš€ Quick Start by Framework
 
 ### 1. React (`@files-preview-app/preview-file/react`)
 
@@ -183,7 +183,7 @@ function handleError(err: unknown) {
 
 ---
 
-## 📂 Supported Extensions & Built-in Controls
+## ðŸ“‚ Supported Extensions & Built-in Controls
 
 The viewer automatically recognizes the file extension and magic binary bytes, activating the corresponding renderer and controls:
 
@@ -192,15 +192,19 @@ The viewer automatically recognizes the file extension and magic binary bytes, a
 | **PDF** | `.pdf` | Zoom In/Out, Fit to Page, Rotate CW/CCW, Page Navigation Jump, Thumbnails Sidebar, Download, Print |
 | **Word Document** | `.docx` | Full layout rendering, Zoom In/Out, Fit to Page, Download, Print |
 | **Excel Spreadsheet** | `.xlsx`, `.xls` | Multi-Sheet Tabs Navigation, Formatted Grid Table, Zoom In/Out, Download, Print |
+| **PowerPoint** | `.pptx`, `.ppsx` | Slide-by-Slide Navigation, Slide Thumbnails Sidebar, Zoom In/Out, Fit to Slide, Download, Print |
 | **CSV / TSV Data** | `.csv`, `.tsv` | Tabular Grid with Header Styling, Comma/Tab auto-detection, Zoom In/Out, Download, Print |
-| **Images** | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.svg`, `.ico`, `.tiff` | Pan & Zoom, Reset / Fit, Rotate 90°, Download, Print |
+| **ZIP Archives** | `.zip` | File Tree & Table Explorer, Compression Stats, Search Filter, Individual File Download, Download Zip |
+| **Rich Markdown** | `.md`, `.markdown` | Rendered GitHub Markdown (Tables, Checklists, Blockquotes), Syntax Highlighted Code, Font Zoom, Download, Print |
+| **3D Models** | `.stl`, `.obj` | 360° Orbit Mouse Controls, Perspective Camera, Lighting, Wireframe Toggle, Zoom, Reset View, Download |
+| **Images** | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.svg`, `.ico`, `.tiff` | Pan & Zoom, Reset / Fit, Rotate 90Â°, Download, Print |
 | **Video** | `.mp4`, `.webm`, `.ogg`, `.mov` | Play / Pause, Rotate, Fullscreen, Download |
 | **Audio** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac` | Play / Pause, Volume, Seek, Download |
 | **Code & Text** | `.js`, `.ts`, `.jsx`, `.tsx`, `.html`, `.css`, `.json`, `.xml`, `.yaml`, `.py`, `.java`, `.cpp`, `.sql`, `.md`, `.txt`, `.sh`, etc. (190+ languages) | Syntax Highlighting via highlight.js, Font Scaling Zoom In/Out, Download, Print |
 
 ---
 
-## 📥 How to Pass Values (`src` prop)
+## ðŸ“¥ How to Pass Values (`src` prop)
 
 You can pass the file source in **any** of the following formats:
 
@@ -234,7 +238,7 @@ const buffer = await response.arrayBuffer();
 
 ---
 
-## 🎛️ Toolbar Features Matrix
+## ðŸŽ›ï¸ Toolbar Features Matrix
 
 | Control | How it Works |
 |---|---|
@@ -249,7 +253,7 @@ const buffer = await response.arrayBuffer();
 
 ---
 
-## 🎨 Viewer Options
+## ðŸŽ¨ Viewer Options
 
 Pass configuration via the `options` object:
 
@@ -272,7 +276,7 @@ interface PreviewViewerOptions {
 
 ---
 
-## 🛡️ Security & Licensing
+## ðŸ›¡ï¸ Security & Licensing
 
 - **100% Client-Side**: No document or file data is ever sent to any remote server or third-party cloud.
 - **XSS Protection**: HTML and SVG previews are sanitized with `DOMPurify`.
@@ -282,7 +286,7 @@ See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full licensing detail
 
 ---
 
-## 👨‍💻 Author
+## ðŸ‘¨â€ðŸ’» Author
 
 **Sumit Patel**
 - GitHub: [@patelsumit5192](https://github.com/patelsumit5192)
@@ -291,6 +295,6 @@ See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full licensing detail
 
 ---
 
-## 📄 License
+## ðŸ“„ License
 
-MIT © 2026 Sumit Patel
+MIT Â© 2026 Sumit Patel

@@ -1,0 +1,41 @@
+﻿{
+  "name": "@patel.sumit51/plugin-3d",
+  "version": "0.1.0",
+  "description": "3D model (STL/OBJ) preview plugin for @file-preview",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "three": "^0.186.0"
+  },
+  "peerDependencies": {
+    "@patel.sumit51/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@patel.sumit51/core": "workspace:*",
+    "@types/three": "^0.186.0",
+    "typescript": "^5.7.0",
+    "tsup": "^8.4.0",
+    "rimraf": "^6.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
