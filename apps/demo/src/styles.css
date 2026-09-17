@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg-app: #f8fafc;
   --bg-card: #ffffff;
   --bg-sidebar: #ffffff;
@@ -231,6 +231,19 @@ body.theme-dark .dropzone:hover, body.theme-dark .dropzone.dragover {
 .sample-btn:hover {
   border-color: var(--primary);
   background: var(--accent);
+}
+
+.sample-btn.active {
+  border-color: var(--primary);
+  background: #eff6ff;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+body.theme-dark .sample-btn.active {
+  background: #1e293b;
+  border-color: var(--primary);
+  color: #60a5fa;
 }
 
 .sample-icon {

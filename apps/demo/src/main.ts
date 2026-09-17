@@ -12,69 +12,107 @@ const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
 
 let currentTheme: 'light' | 'dark' = 'light';
-let activeFileExt = '.pdf';
-let activeFileName = 'sample.pdf';
+let activeFileExt = '.docx';
+let activeFileName = 'document.docx';
 let currentTab: 'react' | 'angular' | 'vue' | 'vanilla' = 'react';
+let lastLoadedSource: string | File | Blob = '';
 
-// Samples generator
+/**
+ * Robust URL resolver for sample assets on GitHub Pages or local Vite dev
+ */
+function getSampleUrl(filename: string): string {
+  let path = window.location.pathname;
+  if (path.endsWith('index.html')) {
+    path = path.slice(0, -'index.html'.length);
+  }
+  if (!path.endsWith('/')) {
+    path += '/';
+  }
+  return `${window.location.origin}${path}samples/${filename}`;
+}
+
+// Samples generator — zero external third-party URL dependencies to avoid CORS blocks
 const samples: Record<string, () => { name: string; ext: string; data: string | Blob }> = {
   pdf: () => ({
     name: 'sample.pdf',
     ext: '.pdf',
-    data: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf'
+    data: getSampleUrl('sample.pdf')
+  }),
+  docx: () => ({
+    name: 'document.docx',
+    ext: '.docx',
+    data: getSampleUrl('document.docx')
+  }),
+  xlsx: () => ({
+    name: 'financial-report.xlsx',
+    ext: '.xlsx',
+    data: getSampleUrl('financial-report.xlsx')
+  }),
+  pptx: () => ({
+    name: 'presentation.pptx',
+    ext: '.pptx',
+    data: getSampleUrl('presentation.pptx')
   }),
   csv: () => {
-    const csvContent = `ID,Product Name,Category,Quantity,Price,Revenue\n101,Universal Viewer SDK,Software,150,$49.99,$7498.50\n102,Cloud Sync Add-on,Services,80,$19.99,$1599.20\n103,Enterprise Support,Services,15,$499.00,$7485.00\n104,React Adapter Pro,Software,220,$29.99,$6597.80\n105,Angular Ivy Plugin,Software,190,$29.99,$5698.10\n106,Vue 3 Wrapper,Software,175,$29.99,$5248.25\n107,3D STL Model Suite,Software,65,$79.00,$5135.00\n108,PowerPoint Deck Pack,Templates,310,$15.00,$4650.00`;
+    const csvContent = `ID,Product Name,Category,Quantity,Price,Revenue
+101,Universal Viewer SDK,Software,150,$49.99,$7498.50
+102,Cloud Sync Add-on,Services,80,$19.99,$1599.20
+103,Enterprise Support,Services,15,$499.00,$7485.00
+104,React Adapter Pro,Software,220,$29.99,$6597.80
+105,Angular Ivy Plugin,Software,190,$29.99,$5698.10
+106,Vue 3 Wrapper,Software,175,$29.99,$5248.25
+107,3D STL Model Suite,Software,65,$79.00,$5135.00
+108,PowerPoint Deck Pack,Templates,310,$15.00,$4650.00`;
     return {
       name: 'sales-report.csv',
       ext: '.csv',
       data: new Blob([csvContent], { type: 'text/csv' })
     };
   },
+  zip: () => ({
+    name: 'project-files.zip',
+    ext: '.zip',
+    data: getSampleUrl('project-files.zip')
+  }),
   markdown: () => {
-    const mdContent = `# Universal File Preview — @files-preview-app/preview-file\n\n> A single, all-in-one client-side file preview library for **React, Angular, Vue, and Vanilla JS**.\n\n## ✨ Key Features\n- 🔒 **100% Client-Side**: No cloud servers or Google/Office iframes. Complete data privacy.\n- 🆓 **100% Free**: Zero paywalls, MIT & Apache-2.0 permissive licenses.\n- 🎛️ **Full Toolbar**: Zoom, Rotate, Page Jump, Thumbnails, Print, and Download.\n\n### 📋 Supported Format Summary\n| Format | Extension | Engine |\n|---|---|---|\n| PDF | \`.pdf\` | PDF.js |\n| Word | \`.docx\` | docx-preview |\n| Excel | \`.xlsx\` | exceljs |\n| PowerPoint | \`.pptx\` | pptx-browser |\n| Archive | \`.zip\` | fflate |\n| 3D Model | \`.stl\`, \`.obj\` | Three.js |\n| Markdown | \`.md\` | marked |\n\n\`\`\`typescript\n// Quick import in any framework\nimport { FilePreview } from '@files-preview-app/preview-file/react';\n\`\`\`\n`;
+    const mdContent = `# Universal File Preview — @files-preview-app/preview-file
+
+> A single, all-in-one client-side file preview library for **React, Angular, Vue, and Vanilla JS**.
+
+## ✨ Key Features
+- 🔒 **100% Client-Side**: No cloud servers or Google/Office iframes. Complete data privacy.
+- 🆓 **100% Free**: Zero paywalls, MIT & Apache-2.0 permissive licenses.
+- 🎛️ **Full Toolbar**: Zoom, Rotate, Page Jump, Thumbnails, Print, and Download.
+- ⚡ **Instant Preview**: Fast startup engine with async background rendering.
+
+### 📋 Supported Format Summary
+| Format | Extension | Engine |
+|---|---|---|
+| PDF | \`.pdf\` | PDF.js |
+| Word | \`.docx\` | docx-preview |
+| Excel | \`.xlsx\` | exceljs |
+| PowerPoint | \`.pptx\` | pptx-browser |
+| Archive | \`.zip\` | fflate |
+| 3D Model | \`.stl\`, \`.obj\` | Three.js |
+| Markdown | \`.md\` | marked |
+| Images | \`.jpg\`, \`.png\`, \`.webp\`, \`.svg\` | Native + Panzoom |
+| Audio/Video | \`.mp3\`, \`.mp4\`, \`.wav\`, \`.webm\` | Native HTML5 Media |
+
+\`\`\`typescript
+// Quick import in any framework
+import { FilePreview } from '@files-preview-app/preview-file/react';
+\`\`\`
+`;
     return {
       name: 'README.md',
       ext: '.md',
       data: new Blob([mdContent], { type: 'text/markdown' })
     };
   },
-  code: () => {
-    const tsCode = `import { FilePreviewViewer } from '@files-preview-app/preview-file';\n\nexport async function initViewer(containerId: string, url: string) {\n  const container = document.getElementById(containerId);\n  if (!container) throw new Error('Container element not found');\n\n  const viewer = new FilePreviewViewer();\n  const instance = await viewer.preview(container, url, {\n    theme: 'light',\n    showToolbar: true,\n    toolbarPosition: 'top',\n  });\n\n  console.log('Preview initialized successfully!');\n  return instance;\n}\n`;
-    return {
-      name: 'viewer-service.ts',
-      ext: '.ts',
-      data: new Blob([tsCode], { type: 'text/typescript' })
-    };
-  },
-  svg: () => {
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%">
-      <defs>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#3b82f6" />
-          <stop offset="100%" stop-color="#8b5cf6" />
-        </linearGradient>
-      </defs>
-      <rect width="400" height="300" rx="16" fill="url(#grad)" />
-      <circle cx="200" cy="120" r="50" fill="#ffffff" opacity="0.9" />
-      <polygon points="185,100 225,120 185,140" fill="#3b82f6" />
-      <text x="200" y="220" font-family="-apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">
-        Universal File Preview
-      </text>
-      <text x="200" y="245" font-family="-apple-system, sans-serif" font-size="13" fill="#e0e7ff" text-anchor="middle">
-        Vector SVG Graphics
-      </text>
-    </svg>`;
-    return {
-      name: 'graphic.svg',
-      ext: '.svg',
-      data: new Blob([svgContent], { type: 'image/svg+xml' })
-    };
-  },
   '3d': () => {
     // Generate a minimal binary STL cube
     const header = new Uint8Array(80);
-    const numTriangles = 12; // 2 triangles per face * 6 faces
+    const numTriangles = 12;
     const recordSize = 50;
     const totalSize = 84 + numTriangles * recordSize;
     const buffer = new ArrayBuffer(totalSize);
@@ -116,34 +154,69 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
       data: new Blob([buffer], { type: 'model/stl' })
     };
   },
-  docx: () => ({
-    name: 'document.docx',
-    ext: '.docx',
-    data: 'https://calibre-ebook.com/downloads/demos/demo.docx'
-  }),
-  xlsx: () => ({
-    name: 'financial-report.xlsx',
-    ext: '.xlsx',
-    data: 'https://file-examples.com/storage/fe9477038865f1a5477b78a/2017/02/file_example_XLSX_50.xlsx'
-  }),
-  pptx: () => ({
-    name: 'presentation.pptx',
-    ext: '.pptx',
-    data: 'https://file-examples.com/storage/fe9477038865f1a5477b78a/2017/02/file_example_PPTX_250kB.pptx'
-  }),
-  zip: () => {
-    // Generate a quick zip in memory using fflate
-    const zipData = new Blob(['Sample archive contents'], { type: 'application/zip' });
+  code: () => {
+    const tsCode = `import { FilePreviewViewer } from '@files-preview-app/preview-file';
+
+export async function initViewer(containerId: string, url: string) {
+  const container = document.getElementById(containerId);
+  if (!container) throw new Error('Container element not found');
+
+  const viewer = new FilePreviewViewer();
+  const instance = await viewer.preview(container, url, {
+    theme: 'light',
+    showToolbar: true,
+    toolbarPosition: 'top',
+  });
+
+  console.log('Preview initialized successfully!');
+  return instance;
+}
+`;
     return {
-      name: 'project-files.zip',
-      ext: '.zip',
-      data: zipData
+      name: 'viewer-service.ts',
+      ext: '.ts',
+      data: new Blob([tsCode], { type: 'text/typescript' })
     };
-  }
+  },
+  svg: () => {
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6" />
+          <stop offset="100%" stop-color="#8b5cf6" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="300" rx="16" fill="url(#grad)" />
+      <circle cx="200" cy="120" r="50" fill="#ffffff" opacity="0.9" />
+      <polygon points="185,100 225,120 185,140" fill="#3b82f6" />
+      <text x="200" y="220" font-family="-apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">
+        Universal File Preview
+      </text>
+      <text x="200" y="245" font-family="-apple-system, sans-serif" font-size="13" fill="#e0e7ff" text-anchor="middle">
+        Vector SVG Graphics
+      </text>
+    </svg>`;
+    return {
+      name: 'graphic.svg',
+      ext: '.svg',
+      data: new Blob([svgContent], { type: 'image/svg+xml' })
+    };
+  },
+  photo: () => ({
+    name: 'photo.jpg',
+    ext: '.jpg',
+    data: getSampleUrl('photo.jpg')
+  }),
+  audio: () => ({
+    name: 'audio.mp3',
+    ext: '.mp3',
+    data: getSampleUrl('audio.mp3')
+  })
 };
 
 // Render file in viewer
 async function loadFile(source: string | File | Blob, name: string, ext?: string) {
+  lastLoadedSource = source;
   activeFileName = name;
   activeFileExt = ext || name.slice(name.lastIndexOf('.')).toLowerCase();
   fileNameEl.textContent = name;
@@ -165,10 +238,37 @@ async function loadFile(source: string | File | Blob, name: string, ext?: string
 // Update code snippet for active tab and file
 function updateSnippet() {
   const snippets: Record<string, string> = {
-    react: `import { FilePreview } from '@files-preview-app/preview-file/react';\nimport '@files-preview-app/preview-file/styles.css';\n\n<FilePreview\n  src={file} // URL string, File, Blob, or ArrayBuffer (${activeFileExt})\n  options={{ theme: '${currentTheme}', showToolbar: true }}\n  onLoaded={(meta) => console.log('Loaded:', meta)}\n/>`,
-    angular: `import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';\n\n<fp-file-preview\n  [src]="fileSource" // ${activeFileName}\n  [options]="{ theme: '${currentTheme}', showToolbar: true }"\n  (loaded)="onLoaded($event)"\n/>`,
-    vue: `<script setup>\nimport { FilePreview } from '@files-preview-app/preview-file/vue';\nimport '@files-preview-app/preview-file/styles.css';\n</script>\n\n<template>\n  <FilePreview :src="file" :options="{ theme: '${currentTheme}', showToolbar: true }" />\n</template>`,
-    vanilla: `import { FilePreviewViewer } from '@files-preview-app/preview-file';\nimport '@files-preview-app/preview-file/styles.css';\n\nconst viewer = new FilePreviewViewer();\nawait viewer.preview(document.getElementById('container'), fileSource, {\n  theme: '${currentTheme}',\n  showToolbar: true\n});`
+    react: `import { FilePreview } from '@files-preview-app/preview-file/react';
+import '@files-preview-app/preview-file/styles.css';
+
+<FilePreview
+  src={file} // URL string, File, Blob, or ArrayBuffer (${activeFileExt})
+  options={{ theme: '${currentTheme}', showToolbar: true }}
+  onLoaded={(meta) => console.log('Loaded:', meta)}
+/>`,
+    angular: `import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
+
+<fp-file-preview
+  [src]="fileSource" // ${activeFileName}
+  [options]="{ theme: '${currentTheme}', showToolbar: true }"
+  (loaded)="onLoaded($event)"
+/>`,
+    vue: `<script setup>
+import { FilePreview } from '@files-preview-app/preview-file/vue';
+import '@files-preview-app/preview-file/styles.css';
+</script>
+
+<template>
+  <FilePreview :src="file" :options="{ theme: '${currentTheme}', showToolbar: true }" />
+</template>`,
+    vanilla: `import { FilePreviewViewer } from '@files-preview-app/preview-file';
+import '@files-preview-app/preview-file/styles.css';
+
+const viewer = new FilePreviewViewer();
+await viewer.preview(document.getElementById('container'), fileSource, {
+  theme: '${currentTheme}',
+  showToolbar: true
+});`
   };
 
   snippetCodeEl.textContent = snippets[currentTab] || '';
@@ -188,6 +288,8 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 // Wire up sample buttons
 document.querySelectorAll('.sample-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
+    document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     const key = btn.getAttribute('data-sample');
     if (key && samples[key]) {
       const sample = samples[key]();
@@ -200,6 +302,7 @@ document.querySelectorAll('.sample-btn').forEach((btn) => {
 fileInput.addEventListener('change', () => {
   if (fileInput.files?.[0]) {
     const file = fileInput.files[0];
+    document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('active'));
     loadFile(file, file.name);
   }
 });
@@ -218,6 +321,7 @@ dropzone.addEventListener('drop', (e) => {
   dropzone.classList.remove('dragover');
   if (e.dataTransfer?.files?.[0]) {
     const file = e.dataTransfer.files[0];
+    document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('active'));
     loadFile(file, file.name);
   }
 });
@@ -227,11 +331,14 @@ themeToggle.addEventListener('click', () => {
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
   document.body.className = `theme-${currentTheme}`;
   themeToggle.textContent = currentTheme === 'light' ? '🌙' : '☀️';
-  // Re-render current file with new theme
-  const activeSample = samples.markdown();
-  loadFile(activeSample.data, activeSample.name, activeSample.ext);
+  // Re-render the current file with the updated theme
+  if (lastLoadedSource) {
+    loadFile(lastLoadedSource, activeFileName, activeFileExt);
+  }
 });
 
 // Initial load with Markdown sample
+const initialBtn = document.querySelector('[data-sample="markdown"]') as HTMLElement;
+if (initialBtn) initialBtn.classList.add('active');
 const initial = samples.markdown();
 loadFile(initial.data, initial.name, initial.ext);
