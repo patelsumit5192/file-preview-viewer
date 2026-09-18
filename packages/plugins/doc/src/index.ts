@@ -241,6 +241,7 @@ export class DocPlugin implements PreviewPlugin {
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
+      container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
@@ -469,37 +470,46 @@ export class DocPlugin implements PreviewPlugin {
   private splitIntoPages(text: string): string[] {
     if (!text) return [''];
     
+    // Normalize \r\n, \r, and Word 97 table marks (\x07)
+    const normalized = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\x0B/g, '\n')
+      .replace(/\x07\n/g, '\n')
+      .replace(/\x07/g, '\t');
+
     // Split by explicit form feeds or page break text first
-    const explicitParts = text.split(/[\x0C\f]|\r?\n\s*[-=_]{3,}\s*(?:PAGE|Page|page break)[\s\d\w-]*[-=_]{3,}\s*\r?\n/i)
+    const explicitParts = normalized.split(/[\x0C\f]|\n\s*[-=_]{3,}\s*(?:PAGE|Page|page break)[\s\d\w-]*[-=_]{3,}\s*\n/i)
       .map(p => p.trim())
       .filter(p => p.length > 0);
       
-    if (explicitParts.length === 0) explicitParts.push(text);
+    if (explicitParts.length === 0) explicitParts.push(normalized);
     
-    const maxLinesPerPage = 48;
+    const maxLinesPerPage = 32;
+    const charsPerLine = 80;
     const finalPages: string[] = [];
     
     for (const part of explicitParts) {
-      const lines = part.split(/\r?\n/);
+      const lines = part.split('\n');
       let currentLines: string[] = [];
       let count = 0;
       
       for (const line of lines) {
-        currentLines.push(line);
-        count++;
-        
-        if (count >= maxLinesPerPage) {
+        const vLines = Math.max(1, Math.ceil((line.length || 1) / charsPerLine));
+        if (count + vLines > maxLinesPerPage && currentLines.length > 0) {
           finalPages.push(currentLines.join('\n'));
           currentLines = [];
           count = 0;
         }
+        currentLines.push(line);
+        count += vLines;
       }
       if (currentLines.length > 0) {
         finalPages.push(currentLines.join('\n'));
       }
     }
     
-    return finalPages.length > 0 ? finalPages : [text];
+    return finalPages.length > 0 ? finalPages : [normalized];
   }
 
   /**
@@ -510,7 +520,9 @@ export class DocPlugin implements PreviewPlugin {
     const lines = text
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
-      .replace(/\x0B/g, '\n') // Line break
+      .replace(/\x0B/g, '\n')
+      .replace(/\x07\n/g, '\n')
+      .replace(/\x07/g, '\t')
       .split('\n');
 
     let html = '';
@@ -519,12 +531,14 @@ export class DocPlugin implements PreviewPlugin {
     
     const flushTable = () => {
       if (tableLines.length > 0) {
-        html += '<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">';
-        for (const tLine of tableLines) {
-          html += '<tr>';
-          const cols = tLine.split('\t');
+        html += '<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; font-family: Calibri, sans-serif;">';
+        for (let rIdx = 0; rIdx < tableLines.length; rIdx++) {
+          const tLine = tableLines[rIdx];
+          const isHeader = rIdx === 0;
+          html += `<tr style="${isHeader ? 'background-color: #f8fafc; font-weight: 600;' : ''}">`;
+          const cols = tLine.split('\t').filter(c => c.trim().length > 0);
           for (const col of cols) {
-            html += `<td style="border: 1px solid #cbd5e1; padding: 6px 8px;">${DOMPurify.sanitize(col.trim())}</td>`;
+            html += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px;">${DOMPurify.sanitize(col.trim())}</td>`;
           }
           html += '</tr>';
         }
@@ -538,36 +552,23 @@ export class DocPlugin implements PreviewPlugin {
       let line = lines[i];
       let tabCount = (line.match(/\t/g) || []).length;
       
-      // Lookahead for table detection (3+ consecutive lines with same tab count > 0)
+      // Table detection: line contains tabs
       if (tabCount > 0) {
-        let consecutiveTableLines = 1;
-        let j = i + 1;
-        while (j < lines.length) {
-          const nextTabCount = (lines[j].match(/\t/g) || []).length;
-          if (nextTabCount === tabCount) {
-            consecutiveTableLines++;
-            j++;
-          } else {
-            break;
-          }
+        let j = i;
+        while (j < lines.length && (lines[j].match(/\t/g) || []).length > 0) {
+          j++;
         }
-        
-        if (consecutiveTableLines >= 3) {
-          if (inList) { html += '</ul>'; inList = false; }
-          // consume these lines as table
-          tableLines = lines.slice(i, j);
-          flushTable();
-          i = j;
-          continue;
-        }
+        if (inList) { html += '</ul>'; inList = false; }
+        tableLines = lines.slice(i, j);
+        flushTable();
+        i = j;
+        continue;
       }
       
-      const rawLine = line;
       line = line.trim();
       
       if (!line) {
         if (inList) { html += '</ul>'; inList = false; }
-        // Detect blank line as paragraph separator - adding some spacing
         html += '<div style="height: 1.15em;"></div>';
         i++;
         continue;

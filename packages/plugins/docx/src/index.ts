@@ -161,6 +161,12 @@ export class DocxPlugin implements PreviewPlugin {
         ignoreFonts: true, // Avoid crashes on embedded obfuscated fonts
         breakPages: true,
         experimental: true,
+        ignoreLastRenderedPageBreak: false, // Honor Word's exact page breaks!
+        renderHeaders: true,
+        renderFooters: true,
+        renderFootnotes: true,
+        renderEndnotes: true,
+        useBase64URL: true,
       });
 
       // Ensure wrapper remains attached to container
@@ -185,13 +191,18 @@ export class DocxPlugin implements PreviewPlugin {
           ctx.container.appendChild(wrapper);
         }
         renderedSuccessfully = true;
-      } catch (fallbackErr) {
+      } catch (fallbackErr: any) {
         console.error('[DocxPlugin] Native fallback failed:', fallbackErr);
+        const isCorrupt = fallbackErr?.message?.includes('invalid zip') || fallbackErr?.message?.includes('corrupted');
         wrapper.innerHTML = `
-          <div style="text-align:center; padding: 48px; background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
-            <div style="font-size:48px; margin-bottom: 16px;">📄</div>
-            <h3 style="margin: 0 0 8px; color: #1e293b;">${ctx.metadata.name || 'Word Document'}</h3>
-            <p style="color: #64748b; margin: 0;">Could not parse document content</p>
+          <div style="text-align:center; padding: 48px 32px; background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); max-width: 600px; margin: 40px auto;">
+            <div style="font-size:48px; margin-bottom: 16px;">${isCorrupt ? '⚠️' : '📄'}</div>
+            <h3 style="margin: 0 0 8px; color: #1e293b; font-size: 18px;">${ctx.metadata.name || 'Word Document'}</h3>
+            <p style="color: #64748b; margin: 0 0 16px; font-size: 14px; line-height: 1.5;">
+              ${isCorrupt 
+                ? 'This document appears to be corrupted or contains invalid archive data and cannot be opened (matches Microsoft Word on Windows).'
+                : 'Could not render document content. The file structure may be damaged.'}
+            </p>
           </div>
         `;
         if (!ctx.container.contains(wrapper)) {
@@ -206,52 +217,79 @@ export class DocxPlugin implements PreviewPlugin {
     // If docx-preview produced only 1 section, but that section contains multiple pages of content:
     if (sections.length === 1 && cards.length === 0) {
       const singleSec = sections[0];
-      const pageH = 1056; // Standard US Letter page height at 96 DPI
+      const contentContainer = (singleSec.querySelector('article') as HTMLElement) || singleSec;
+      const children = Array.from(contentContainer.children) as HTMLElement[];
+
+      // Measure page height (A4 is ~1122px, US Letter is ~1056px)
+      const pageH = singleSec.offsetHeight > 1300 ? 1122 : Math.max(1056, singleSec.offsetHeight);
       const secH = singleSec.offsetHeight || singleSec.scrollHeight;
 
-      if (secH > pageH * 1.25) {
-        const children = Array.from(singleSec.children) as HTMLElement[];
-        if (children.length > 1) {
-          const parent = singleSec.parentElement || wrapper;
-          const newSections: HTMLElement[] = [singleSec];
+      if (secH > pageH * 1.25 && children.length > 1) {
+        // First record heights while all elements are still in the DOM
+        const childHeights = children.map(c => {
+          const rectH = c.getBoundingClientRect().height;
+          const offH = c.offsetHeight;
+          const textLen = c.textContent?.trim().length || 0;
+          const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
+          return Math.max(rectH, offH, estH);
+        });
 
-          singleSec.innerHTML = '';
-          singleSec.style.minHeight = `${pageH}px`;
-          singleSec.style.maxHeight = `${pageH}px`;
-          singleSec.style.overflow = 'hidden';
-          singleSec.style.boxSizing = 'border-box';
+        const parent = singleSec.parentElement || wrapper;
+        const newSections: HTMLElement[] = [singleSec];
 
-          let curSec = singleSec;
-          let curH = 0;
-          const maxH = pageH - 96;
+        // Header / Footer preservation
+        const headerEl = singleSec.querySelector('header');
+        const footerEl = singleSec.querySelector('footer');
 
-          for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            curSec.appendChild(child);
-            const chH = child.offsetHeight || 28;
-            curH += chH;
+        contentContainer.innerHTML = '';
+        singleSec.style.minHeight = `${pageH}px`;
+        singleSec.style.boxSizing = 'border-box';
 
-            if (curH >= maxH && i < children.length - 1) {
-              const nextSec = document.createElement('section');
-              nextSec.className = singleSec.className;
-              nextSec.style.cssText = singleSec.style.cssText;
-              nextSec.style.width = singleSec.style.width || '816px';
-              nextSec.style.minHeight = `${pageH}px`;
-              nextSec.style.maxHeight = `${pageH}px`;
-              nextSec.style.overflow = 'hidden';
-              nextSec.style.boxSizing = 'border-box';
-              nextSec.style.backgroundColor = '#ffffff';
-              nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
-              nextSec.style.borderRadius = '4px';
-              nextSec.style.marginBottom = '24px';
-              parent.appendChild(nextSec);
-              newSections.push(nextSec);
-              curSec = nextSec;
-              curH = 0;
+        let curContent = contentContainer;
+        let curSec = singleSec;
+        let curH = 0;
+        const maxH = pageH - 140; // Printable area between margins/padding
+
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const chH = childHeights[i];
+
+          curContent.appendChild(child);
+          curH += chH;
+
+          if (curH >= maxH && i < children.length - 1) {
+            const nextSec = document.createElement('section');
+            nextSec.className = singleSec.className;
+            nextSec.style.cssText = singleSec.style.cssText;
+            nextSec.style.minHeight = `${pageH}px`;
+            nextSec.style.boxSizing = 'border-box';
+            nextSec.style.backgroundColor = '#ffffff';
+            nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
+            nextSec.style.borderRadius = '4px';
+            nextSec.style.marginBottom = '24px';
+
+            if (headerEl) {
+              nextSec.appendChild(headerEl.cloneNode(true));
             }
+
+            const nextArticle = document.createElement('article');
+            if (contentContainer.tagName.toLowerCase() === 'article') {
+              nextArticle.style.cssText = contentContainer.style.cssText;
+            }
+            nextSec.appendChild(nextArticle);
+
+            if (footerEl) {
+              nextSec.appendChild(footerEl.cloneNode(true));
+            }
+
+            parent.appendChild(nextSec);
+            newSections.push(nextSec);
+            curSec = nextSec;
+            curContent = nextArticle;
+            curH = 0;
           }
-          sections = newSections;
         }
+        sections = newSections;
       }
     }
 
@@ -293,6 +331,7 @@ export class DocxPlugin implements PreviewPlugin {
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
+      ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 

@@ -310,6 +310,7 @@ export class PdfPlugin implements PreviewPlugin {
       getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => {
+        container.scrollTop = 0;
         renderPage(page);
       },
       download: () => {

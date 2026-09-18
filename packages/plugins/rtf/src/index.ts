@@ -167,11 +167,67 @@ export class RtfPlugin implements PreviewPlugin {
       }
       const doc = new (RTFJS as any).Document(ctx.buffer, {});
       const htmlElements = await doc.render();
-      pageElements = htmlElements;
-      for (let i = 0; i < htmlElements.length; i++) {
-        const el = htmlElements[i];
-        el.style.display = i === 0 ? 'block' : 'none';
-        wrapper.appendChild(el);
+      
+      // If RTFJS returned 1 continuous element with large content, split into discrete A4 page cards
+      if (htmlElements.length === 1) {
+        const singleEl = htmlElements[0];
+        wrapper.appendChild(singleEl);
+        const children = Array.from(singleEl.children) as HTMLElement[];
+        const secH = singleEl.offsetHeight || singleEl.scrollHeight;
+
+        if (secH > 1300 && children.length > 1) {
+          const childHeights = children.map(c => {
+            const rectH = c.getBoundingClientRect().height;
+            const offH = c.offsetHeight;
+            const textLen = c.textContent?.trim().length || 0;
+            const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
+            return Math.max(rectH, offH, estH);
+          });
+
+          wrapper.innerHTML = '';
+          const createRtfCard = () => {
+            const card = document.createElement('div');
+            card.className = 'fp-rtf-page-card';
+            card.style.backgroundColor = '#ffffff';
+            card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+            card.style.borderRadius = '4px';
+            card.style.padding = '72px 56px';
+            card.style.width = '816px';
+            card.style.minHeight = '1056px';
+            card.style.boxSizing = 'border-box';
+            card.style.marginBottom = '24px';
+            return card;
+          };
+
+          let curCard = createRtfCard();
+          wrapper.appendChild(curCard);
+          pageElements = [curCard];
+          let curH = 0;
+          const maxH = 920; // A4/Letter printable height
+
+          for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const chH = childHeights[i];
+            curCard.appendChild(child);
+            curH += chH;
+
+            if (curH >= maxH && i < children.length - 1) {
+              curCard = createRtfCard();
+              wrapper.appendChild(curCard);
+              pageElements.push(curCard);
+              curH = 0;
+            }
+          }
+        } else {
+          pageElements = [singleEl];
+        }
+      } else {
+        pageElements = htmlElements;
+        for (let i = 0; i < htmlElements.length; i++) {
+          const el = htmlElements[i];
+          el.style.display = i === 0 ? 'block' : 'none';
+          wrapper.appendChild(el);
+        }
       }
     } catch (err) {
       console.warn('[RtfPlugin] RTF render error, fallback text:', err);
@@ -243,6 +299,7 @@ export class RtfPlugin implements PreviewPlugin {
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
+      ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 

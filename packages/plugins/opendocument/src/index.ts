@@ -330,12 +330,9 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         page.style.backgroundColor = '#ffffff';
         page.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
         page.style.borderRadius = '4px';
-        page.style.boxSizing = 'border-box';
         page.style.display = idx === 0 ? 'block' : 'none';
-        page.style.position = 'absolute';
-        page.style.top = '0';
-        page.style.left = '50%';
-        page.style.transform = 'translateX(-50%)';
+        page.style.margin = '0 auto 24px';
+        page.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
         
         elements.forEach(el => page.appendChild(el));
         wrapper.appendChild(page);
@@ -379,6 +376,7 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
+      container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 

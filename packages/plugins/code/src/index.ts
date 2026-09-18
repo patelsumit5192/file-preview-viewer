@@ -144,17 +144,44 @@ export class CodePlugin implements PreviewPlugin {
     let rawPages: string[] = [];
     if (isTxt) {
       const explicitPages = fullText.split(/(?:\f|\x0C)/);
+      const charsPerLine = 85;
+      const maxVisualLines = 45;
+      const charsPerPage = charsPerLine * maxVisualLines; // ~3825 characters per page
+
       for (const ep of explicitPages) {
         const lines = ep.split(/\r?\n/);
         let currentChunk: string[] = [];
+        let currentLines = 0;
+
         for (let i = 0; i < lines.length; i++) {
-          currentChunk.push(lines[i]);
-          if (currentChunk.length >= 46) {
+          const line = lines[i];
+          const vLines = Math.max(1, Math.ceil((line.length || 1) / charsPerLine));
+
+          if (currentLines + vLines > maxVisualLines && currentChunk.length > 0) {
             rawPages.push(currentChunk.join('\n'));
             currentChunk = [];
+            currentLines = 0;
+          }
+
+          if (vLines > maxVisualLines) {
+            // Large uninterrupted paragraph: break cleanly at word boundaries
+            let remaining = line;
+            while (remaining.length > charsPerPage) {
+              let splitIdx = remaining.lastIndexOf(' ', charsPerPage);
+              if (splitIdx < charsPerPage * 0.75) splitIdx = charsPerPage;
+              rawPages.push(remaining.slice(0, splitIdx));
+              remaining = remaining.slice(splitIdx).trimStart();
+            }
+            if (remaining.length > 0) {
+              currentChunk.push(remaining);
+              currentLines = Math.ceil(remaining.length / charsPerLine);
+            }
+          } else {
+            currentChunk.push(line);
+            currentLines += vLines;
           }
         }
-        if (currentChunk.length > 0 || lines.length === 0) {
+        if (currentChunk.length > 0) {
           rawPages.push(currentChunk.join('\n'));
         }
       }
@@ -279,6 +306,7 @@ export class CodePlugin implements PreviewPlugin {
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
+      container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
