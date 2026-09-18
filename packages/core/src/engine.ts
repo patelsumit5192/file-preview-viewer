@@ -31,6 +31,8 @@ export class FilePreviewViewer {
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private currentContainer: HTMLElement | null = null;
   private currentOptions: PreviewViewerOptions = {};
+  private resizeObserver: ResizeObserver | null = null;
+  private fullscreenHandler: (() => void) | null = null;
 
   /**
    * Register a preview plugin.
@@ -133,12 +135,30 @@ export class FilePreviewViewer {
             label: 'Toggle Fullscreen',
             type: 'button',
             group: 'view',
-            execute: () => {
-              if (!document.fullscreenElement) {
-                this.wrapperEl?.requestFullscreen?.();
-              } else {
-                document.exitFullscreen?.();
+            execute: async () => {
+              try {
+                const isNativeFs = !!document.fullscreenElement;
+                const isCssFs = this.wrapperEl?.classList.contains('fp-fullscreen-active');
+                if (!isNativeFs && !isCssFs) {
+                  if (this.wrapperEl?.requestFullscreen) {
+                    await this.wrapperEl.requestFullscreen().catch(() => {
+                      this.wrapperEl?.classList.add('fp-fullscreen-active');
+                    });
+                  } else {
+                    this.wrapperEl?.classList.add('fp-fullscreen-active');
+                  }
+                } else {
+                  if (document.fullscreenElement) {
+                    await document.exitFullscreen().catch(() => {});
+                  }
+                  this.wrapperEl?.classList.remove('fp-fullscreen-active');
+                }
+              } catch {
+                this.wrapperEl?.classList.toggle('fp-fullscreen-active');
               }
+              setTimeout(() => {
+                this.activeInstance?.fitToPage?.();
+              }, 120);
             }
           });
         }
@@ -192,6 +212,15 @@ export class FilePreviewViewer {
     if (this.keyHandler) {
       window.removeEventListener('keydown', this.keyHandler);
       this.keyHandler = null;
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    if (this.fullscreenHandler) {
+      document.removeEventListener('fullscreenchange', this.fullscreenHandler);
+      document.removeEventListener('webkitfullscreenchange', this.fullscreenHandler);
+      this.fullscreenHandler = null;
     }
     this.abort();
     this.destroyInstance();
@@ -300,6 +329,30 @@ export class FilePreviewViewer {
     // Enable keyboard shortcuts & drag/drop
     this.setupKeyboardShortcuts();
     this.setupDragAndDrop(container, options);
+    this.setupResizeAndFullscreenListeners();
+  }
+
+  private setupResizeAndFullscreenListeners(): void {
+    if (this.fullscreenHandler) return;
+
+    this.fullscreenHandler = () => {
+      setTimeout(() => {
+        this.activeInstance?.fitToPage?.();
+      }, 100);
+    };
+
+    document.addEventListener('fullscreenchange', this.fullscreenHandler);
+    document.addEventListener('webkitfullscreenchange', this.fullscreenHandler);
+
+    if (typeof ResizeObserver !== 'undefined' && this.contentEl) {
+      this.resizeObserver = new ResizeObserver(() => {
+        // Auto-fit content when viewport dimensions resize
+        if (this.activeInstance && (!this.activeInstance.getZoom || Math.abs((this.activeInstance.getZoom?.() ?? 1) - 1.0) < 0.05)) {
+          this.activeInstance.fitToPage?.();
+        }
+      });
+      this.resizeObserver.observe(this.contentEl);
+    }
   }
 
   private setupKeyboardShortcuts(): void {

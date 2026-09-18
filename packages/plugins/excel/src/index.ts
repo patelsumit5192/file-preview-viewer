@@ -80,6 +80,26 @@ export class ExcelPlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'fit-page',
+        icon: 'fit-page',
+        label: 'Fit to View',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.fitToPage?.();
+        }
+      },
+      {
+        id: 'rotate-cw',
+        icon: 'rotate-cw',
+        label: 'Rotate',
+        type: 'button',
+        group: 'view',
+        execute: () => {
+          instance.rotateCW?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -135,9 +155,25 @@ export class ExcelPlugin implements PreviewPlugin {
     ctx.container.appendChild(container);
 
     let scale = 1.0;
+    let rotation = 0;
     let currentSheetIndex = 1;
     let sheetNames: string[] = [];
     let wb: XLSX.WorkBook | null = null;
+
+    const applyTransform = () => {
+      contentArea.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      contentArea.style.transformOrigin = 'top left';
+    };
+
+    const calculateFitScale = () => {
+      const table = contentArea.querySelector('table');
+      if (!table) return 1.0;
+      const availW = Math.max(200, container.clientWidth - 48);
+      const availH = Math.max(200, container.clientHeight - 80);
+      const tW = table.offsetWidth || 800;
+      const tH = table.offsetHeight || 600;
+      return Math.min(1.0, Math.min(availW / tW, availH / tH));
+    };
 
     try {
       wb = XLSX.read(new Uint8Array(ctx.buffer), { type: 'array', cellDates: true });
@@ -243,17 +279,30 @@ export class ExcelPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
-        scale += 0.1;
-        contentArea.style.transform = `scale(${scale})`;
+        scale += 0.15;
+        applyTransform();
       },
       zoomOut: () => {
-        scale = Math.max(0.2, scale - 0.1);
-        contentArea.style.transform = `scale(${scale})`;
+        scale = Math.max(0.2, scale - 0.15);
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        contentArea.style.transform = `scale(${scale})`;
+        applyTransform();
+      },
+      fitToPage: () => {
+        scale = calculateFitScale();
+        rotation = 0;
+        applyTransform();
+      },
+      rotateCW: () => {
+        rotation = (rotation + 90) % 360;
+        applyTransform();
+      },
+      rotateCCW: () => {
+        rotation = (rotation - 90 + 360) % 360;
+        applyTransform();
       },
       goToPage: (page: number) => {
         if (page > 0 && page <= sheetNames.length) {

@@ -90,6 +90,14 @@ export class PptxPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'rotate-cw',
+        icon: 'rotate-cw',
+        label: 'Rotate',
+        type: 'button',
+        group: 'view',
+        execute: () => instance.rotateCW?.()
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download PPTX',
@@ -115,6 +123,7 @@ export class PptxPlugin implements PreviewPlugin {
     const slideCount = (renderer as any).slidePaths?.length || 1;
     let currentSlide = 1;
     let scale = 1.0;
+    let rotation = 0;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-pptx-wrapper';
@@ -139,6 +148,8 @@ export class PptxPlugin implements PreviewPlugin {
       background: #ffffff;
       transform-origin: top center;
       transition: transform 0.2s ease;
+      max-width: calc(100% - 32px);
+      max-height: calc(100% - 48px);
     `;
 
     const canvas = document.createElement('canvas');
@@ -149,10 +160,24 @@ export class PptxPlugin implements PreviewPlugin {
     ctx.container.style.overflow = 'auto';
     ctx.container.appendChild(wrapper);
 
+    const calculateFitScale = () => {
+      const availW = Math.max(200, ctx.container.clientWidth - 48);
+      const availH = Math.max(200, ctx.container.clientHeight - 72);
+      const cW = canvas.offsetWidth || 1280;
+      const cH = canvas.offsetHeight || 720;
+      return Math.min(1.0, Math.min(availW / cW, availH / cH));
+    };
+
+    const applyTransform = () => {
+      slideContainer.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+    };
+
     const renderCurrentSlide = async () => {
       try {
         await renderer.renderSlide(currentSlide - 1, canvas, 1280);
         ctx.emit('page-change', { page: currentSlide, totalPages: slideCount });
+        scale = calculateFitScale();
+        applyTransform();
       } catch (err) {
         console.error('[PptxPlugin] Failed to render slide:', err);
       }
@@ -179,21 +204,30 @@ export class PptxPlugin implements PreviewPlugin {
       getPageCount: () => slideCount,
       getCurrentPage: () => currentSlide,
       zoomIn: () => {
-        scale += 0.1;
-        slideContainer.style.transform = `scale(${scale})`;
+        scale += 0.15;
+        applyTransform();
       },
       zoomOut: () => {
-        scale = Math.max(0.2, scale - 0.1);
-        slideContainer.style.transform = `scale(${scale})`;
+        scale = Math.max(0.2, scale - 0.15);
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        slideContainer.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       fitToPage: () => {
-        scale = 1.0;
-        slideContainer.style.transform = 'scale(1)';
+        scale = calculateFitScale();
+        rotation = 0;
+        applyTransform();
+      },
+      rotateCW: () => {
+        rotation = (rotation + 90) % 360;
+        applyTransform();
+      },
+      rotateCCW: () => {
+        rotation = (rotation - 90 + 360) % 360;
+        applyTransform();
       },
       getThumbnails: (): Thumbnail[] => {
         const list: Thumbnail[] = [];

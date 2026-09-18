@@ -122,7 +122,8 @@ export class PdfPlugin implements PreviewPlugin {
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     container.style.alignItems = 'center';
-    container.style.padding = '24px 16px';
+    container.style.justifyContent = 'flex-start';
+    container.style.padding = '20px 16px';
     container.style.backgroundColor = '#0f172a';
     container.style.boxSizing = 'border-box';
     container.style.position = 'relative';
@@ -136,8 +137,9 @@ export class PdfPlugin implements PreviewPlugin {
     pageCard.style.lineHeight = '0';
     pageCard.style.transition = 'transform 0.15s ease';
     pageCard.style.position = 'relative';
+    pageCard.style.flexShrink = '0';
 
-    const canvas = document.createElement('canvas');
+    let canvas = document.createElement('canvas');
     pageCard.appendChild(canvas);
     container.appendChild(pageCard);
 
@@ -185,6 +187,11 @@ export class PdfPlugin implements PreviewPlugin {
         currentRenderTask = null;
       }
 
+      // Fresh canvas on every render to eliminate PDF.js canvas collision on fast render/rotation
+      const newCanvas = document.createElement('canvas');
+      pageCard.replaceChild(newCanvas, canvas);
+      canvas = newCanvas;
+
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
@@ -192,9 +199,16 @@ export class PdfPlugin implements PreviewPlugin {
       const page = await pdfDoc.getPage(currentPage);
 
       const containerWidth = container.clientWidth || 900;
+      const containerHeight = container.clientHeight || 700;
       const unscaledVp = page.getViewport({ scale: 1.0, rotation });
-      const baseScale = Math.min((containerWidth - 64) / unscaledVp.width, 1.6);
-      const effectiveScale = (baseScale > 0 ? baseScale : 1.0) * zoomScale;
+
+      // Dual-axis fit: fit BOTH width and height so entire page is visible without clipping
+      const availWidth = Math.max(100, containerWidth - 48);
+      const availHeight = Math.max(100, containerHeight - 88);
+      const scaleW = availWidth / unscaledVp.width;
+      const scaleH = availHeight / unscaledVp.height;
+      const fitScale = Math.min(scaleW, scaleH);
+      const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 
       const pixelRatio = window.devicePixelRatio || 1;
       const viewport = page.getViewport({ scale: effectiveScale, rotation });
@@ -257,6 +271,7 @@ export class PdfPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         zoomScale = 1.0;
+        rotation = 0;
         renderPage(currentPage);
       },
       rotateCW: () => {

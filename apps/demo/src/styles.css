@@ -283,6 +283,7 @@ body.theme-dark .compliance-badge {
 
 .preview-card {
   flex: 1;
+  min-height: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -300,6 +301,7 @@ body.theme-dark .compliance-badge {
   justify-content: space-between;
   padding: 0 16px;
   background: var(--bg-card);
+  flex-shrink: 0;
 }
 
 .active-file-name {
@@ -315,10 +317,11 @@ body.theme-dark .compliance-badge {
 
 .preview-viewport {
   flex: 1;
+  min-height: 0;
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: calc(100% - 48px);
+  height: 100%;
 }
 
 .snippet-card {

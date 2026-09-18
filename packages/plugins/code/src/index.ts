@@ -79,6 +79,26 @@ export class CodePlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'fit-page',
+        icon: 'fit-page',
+        label: 'Fit to View',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.fitToPage?.();
+        }
+      },
+      {
+        id: 'rotate-cw',
+        icon: 'rotate-cw',
+        label: 'Rotate',
+        type: 'button',
+        group: 'view',
+        execute: () => {
+          instance.rotateCW?.();
+        }
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Content',
@@ -133,6 +153,7 @@ export class CodePlugin implements PreviewPlugin {
     container.style.boxSizing = 'border-box';
     
     let fontSize = 13;
+    let rotation = 0;
     const pre = document.createElement('pre');
     pre.style.margin = '0';
     pre.style.fontFamily = 'Consolas, Menlo, Monaco, monospace';
@@ -225,6 +246,22 @@ export class CodePlugin implements PreviewPlugin {
       setZoom: (level: number) => {
         fontSize = Math.round(13 * level);
         pre.style.fontSize = `${fontSize}px`;
+      },
+      fitToPage: () => {
+        fontSize = 13;
+        rotation = 0;
+        pre.style.fontSize = '13px';
+        pre.style.transform = 'none';
+      },
+      rotateCW: () => {
+        rotation = (rotation + 90) % 360;
+        pre.style.transform = `rotate(${rotation}deg)`;
+        pre.style.transformOrigin = 'top left';
+      },
+      rotateCCW: () => {
+        rotation = (rotation - 90 + 360) % 360;
+        pre.style.transform = `rotate(${rotation}deg)`;
+        pre.style.transformOrigin = 'top left';
       },
       download: () => {
         const mimeType = ctx.metadata.mimeType || 'text/plain';

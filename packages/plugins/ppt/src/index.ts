@@ -93,6 +93,14 @@ export class PptPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'rotate-cw',
+        icon: 'rotate-cw',
+        label: 'Rotate',
+        type: 'button',
+        group: 'view',
+        execute: () => instance.rotateCW?.()
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -127,24 +135,41 @@ export class PptPlugin implements PreviewPlugin {
     const slideCard = document.createElement('div');
     slideCard.className = 'fp-ppt-slide-card';
     slideCard.style.width = '960px';
-    slideCard.style.maxWidth = '92%';
+    slideCard.style.maxWidth = 'calc(100% - 32px)';
+    slideCard.style.maxHeight = 'calc(100% - 48px)';
     slideCard.style.aspectRatio = '16 / 9';
     slideCard.style.backgroundColor = '#ffffff';
     slideCard.style.boxShadow = '0 12px 40px rgba(0,0,0,0.35)';
     slideCard.style.borderRadius = '8px';
     slideCard.style.boxSizing = 'border-box';
     slideCard.style.position = 'relative';
-    slideCard.style.overflow = 'hidden';
-    slideCard.style.transformOrigin = 'center center';
     slideCard.style.transition = 'transform 0.2s ease';
+    slideCard.style.transformOrigin = 'center center';
+    slideCard.style.flexShrink = '0';
 
     container.appendChild(slideCard);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
+    let rotation = 0;
     let currentSlide = 1;
     let slides: PptSlide[] = [];
     const createdBlobUrls: string[] = [];
+
+    const calculateFitScale = () => {
+      const availW = Math.max(200, container.clientWidth - 48);
+      const availH = Math.max(200, container.clientHeight - 72);
+      return Math.min(1.0, Math.min(availW / 960, availH / 540));
+    };
+
+    const applyTransform = () => {
+      slideCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+    };
+
+    setTimeout(() => {
+      scale = calculateFitScale();
+      applyTransform();
+    }, 60);
 
     try {
       const cfbf = new CfbfReader(ctx.buffer);
@@ -263,21 +288,30 @@ export class PptPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
-        scale += 0.1;
-        slideCard.style.transform = `scale(${scale})`;
+        scale += 0.15;
+        applyTransform();
       },
       zoomOut: () => {
-        scale = Math.max(0.3, scale - 0.1);
-        slideCard.style.transform = `scale(${scale})`;
+        scale = Math.max(0.2, scale - 0.15);
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        slideCard.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       fitToPage: () => {
-        scale = 1.0;
-        slideCard.style.transform = 'scale(1)';
+        scale = calculateFitScale();
+        rotation = 0;
+        applyTransform();
+      },
+      rotateCW: () => {
+        rotation = (rotation + 90) % 360;
+        applyTransform();
+      },
+      rotateCCW: () => {
+        rotation = (rotation - 90 + 360) % 360;
+        applyTransform();
       },
       goToPage: (page: number) => {
         if (page >= 1 && page <= totalSlides) {

@@ -77,6 +77,14 @@ export class DocPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'rotate-cw',
+        icon: 'rotate-cw',
+        label: 'Rotate',
+        type: 'button',
+        group: 'view',
+        execute: () => instance.rotateCW?.()
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Text',
@@ -234,6 +242,27 @@ export class DocPlugin implements PreviewPlugin {
       showPage(1);
     }
 
+    let rotation = 0;
+
+    const calculateFitScale = () => {
+      const activeCard = pageCards[currentPage - 1] || wrapper;
+      const elW = activeCard.offsetWidth || 850;
+      const elH = activeCard.offsetHeight || 1000;
+      const availW = Math.max(200, ctx.container.clientWidth - 48);
+      const availH = Math.max(200, ctx.container.clientHeight - 80);
+      return Math.min(1.1, Math.min(availW / elW, availH / elH));
+    };
+
+    const applyTransform = () => {
+      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      wrapper.style.transformOrigin = 'top center';
+    };
+
+    setTimeout(() => {
+      scale = calculateFitScale();
+      applyTransform();
+    }, 60);
+
     const cleanup = () => {
       indicator?.remove();
       container.remove();
@@ -248,21 +277,30 @@ export class DocPlugin implements PreviewPlugin {
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
-        scale += 0.1;
-        wrapper.style.transform = `scale(${scale})`;
+        scale += 0.15;
+        applyTransform();
       },
       zoomOut: () => {
-        scale = Math.max(0.2, scale - 0.1);
-        wrapper.style.transform = `scale(${scale})`;
+        scale = Math.max(0.2, scale - 0.15);
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        wrapper.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       fitToPage: () => {
-        scale = 1.0;
-        wrapper.style.transform = 'scale(1)';
+        scale = calculateFitScale();
+        rotation = 0;
+        applyTransform();
+      },
+      rotateCW: () => {
+        rotation = (rotation + 90) % 360;
+        applyTransform();
+      },
+      rotateCCW: () => {
+        rotation = (rotation - 90 + 360) % 360;
+        applyTransform();
       },
       copy: () => {
         navigator.clipboard.writeText(extractedRawText);
