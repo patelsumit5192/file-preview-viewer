@@ -137,9 +137,33 @@ export class CodePlugin implements PreviewPlugin {
     const decoder = new TextDecoder('utf-8');
     const fullText = decoder.decode(ctx.buffer);
 
-    // Check for Form Feed \f (\x0C) or explicit page breaks
-    const pageSplitRegex = /(?:\f|\x0C|(?:\r?\n|^)\s*[-=_]{3,}\s*(?:PAGE|Page|page break|Page Break)[\s\d\w-]*[-=_]{3,}\s*(?:\r?\n|$))/i;
-    const rawPages = fullText.split(pageSplitRegex).map(p => p.trim()).filter(p => p.length > 0);
+    const extRaw = ctx.metadata.extension?.toLowerCase();
+    const mimeRaw = ctx.metadata.mimeType?.toLowerCase();
+    const isTxt = extRaw === '.txt' || (mimeRaw === 'text/plain' && (!extRaw || !this.extensions.filter(e => e !== '.txt').includes(extRaw)));
+
+    let rawPages: string[] = [];
+    if (isTxt) {
+      const explicitPages = fullText.split(/(?:\f|\x0C)/);
+      for (const ep of explicitPages) {
+        const lines = ep.split(/\r?\n/);
+        let currentChunk: string[] = [];
+        for (let i = 0; i < lines.length; i++) {
+          currentChunk.push(lines[i]);
+          if (currentChunk.length >= 46) {
+            rawPages.push(currentChunk.join('\n'));
+            currentChunk = [];
+          }
+        }
+        if (currentChunk.length > 0 || lines.length === 0) {
+          rawPages.push(currentChunk.join('\n'));
+        }
+      }
+      if (rawPages.length === 0) rawPages = [''];
+    } else {
+      const pageSplitRegex = /(?:\f|\x0C|(?:\r?\n|^)\s*[-=_]{3,}\s*(?:PAGE|Page|page break|Page Break)[\s\d\w-]*[-=_]{3,}\s*(?:\r?\n|$))/i;
+      rawPages = fullText.split(pageSplitRegex).map(p => p.trim()).filter(p => p.length > 0);
+    }
+    
     const totalPages = Math.max(1, rawPages.length);
     let currentPage = 1;
     
@@ -147,37 +171,71 @@ export class CodePlugin implements PreviewPlugin {
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.overflow = 'auto';
-    container.style.backgroundColor = '#1e1e1e';
-    container.style.color = '#d4d4d4';
-    container.style.padding = '16px';
-    container.style.boxSizing = 'border-box';
     
     let fontSize = 13;
     let rotation = 0;
+    let zoomLevel = 1;
     const pre = document.createElement('pre');
-    pre.style.margin = '0';
-    pre.style.fontFamily = 'Consolas, Menlo, Monaco, monospace';
-    pre.style.fontSize = `${fontSize}px`;
-    pre.style.lineHeight = '1.5';
-    pre.style.whiteSpace = 'pre-wrap';
-    pre.style.wordBreak = 'break-all';
-
     const code = document.createElement('code');
+
+    if (isTxt) {
+      container.style.backgroundColor = '#f1f5f9';
+      container.style.padding = '32px';
+      container.style.boxSizing = 'border-box';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.alignItems = 'center';
+
+      pre.style.margin = '0';
+      pre.style.fontFamily = "Consolas, 'Courier New', monospace";
+      pre.style.fontSize = '13px';
+      pre.style.color = '#1e293b';
+      pre.style.lineHeight = '1.5';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordBreak = 'break-word';
+      
+      pre.style.backgroundColor = '#ffffff';
+      pre.style.width = '816px';
+      pre.style.minHeight = '1056px';
+      pre.style.padding = '72px 56px';
+      pre.style.boxSizing = 'border-box';
+      pre.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+      pre.style.borderRadius = '4px';
+      pre.style.transformOrigin = 'top center';
+    } else {
+      container.style.backgroundColor = '#1e1e1e';
+      container.style.color = '#d4d4d4';
+      container.style.padding = '16px';
+      container.style.boxSizing = 'border-box';
+
+      pre.style.margin = '0';
+      pre.style.fontFamily = 'Consolas, Menlo, Monaco, monospace';
+      pre.style.fontSize = `${fontSize}px`;
+      pre.style.lineHeight = '1.5';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordBreak = 'break-all';
+      pre.style.transformOrigin = 'top left';
+    }
+
     const ext = (ctx.metadata.extension || '').replace('.', '');
 
     const renderCodePage = (text: string) => {
-      try {
-        if (ext && hljs.getLanguage(ext)) {
-          code.innerHTML = hljs.highlight(text, { language: ext }).value;
-        } else {
-          code.innerHTML = hljs.highlightAuto(text).value;
-        }
-      } catch {
+      if (isTxt) {
         code.textContent = text;
+      } else {
+        try {
+          if (ext && hljs.getLanguage(ext)) {
+            code.innerHTML = hljs.highlight(text, { language: ext }).value;
+          } else {
+            code.innerHTML = hljs.highlightAuto(text).value;
+          }
+        } catch {
+          code.textContent = text;
+        }
       }
     };
 
-    renderCodePage(rawPages[0] || fullText);
+    renderCodePage(rawPages[0] || (isTxt ? '' : fullText));
     
     pre.appendChild(code);
     container.appendChild(pre);
@@ -188,15 +246,24 @@ export class CodePlugin implements PreviewPlugin {
       indicator.className = 'fp-code-page-indicator';
       indicator.style.position = 'sticky';
       indicator.style.bottom = '16px';
-      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-      indicator.style.backdropFilter = 'blur(8px)';
-      indicator.style.color = '#f8fafc';
+      
+      if (isTxt) {
+        indicator.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+        indicator.style.color = '#334155';
+        indicator.style.border = '1px solid #e2e8f0';
+        indicator.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+      } else {
+        indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
+        indicator.style.color = '#f8fafc';
+        indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+        indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+        indicator.style.backdropFilter = 'blur(8px)';
+      }
+      
       indicator.style.fontSize = '12px';
       indicator.style.fontWeight = '600';
       indicator.style.padding = '5px 14px';
       indicator.style.borderRadius = '20px';
-      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
       indicator.style.zIndex = '10';
       indicator.style.userSelect = 'none';
       indicator.style.pointerEvents = 'none';
@@ -208,7 +275,7 @@ export class CodePlugin implements PreviewPlugin {
 
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      renderCodePage(rawPages[currentPage - 1] || fullText);
+      renderCodePage(rawPages[currentPage - 1] || (isTxt ? '' : fullText));
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
@@ -228,6 +295,15 @@ export class CodePlugin implements PreviewPlugin {
     };
 
     ctx.signal.addEventListener('abort', cleanup);
+    
+    const updateTransform = () => {
+      if (isTxt) {
+        pre.style.transform = `scale(${zoomLevel}) rotate(${rotation}deg)`;
+      } else {
+        pre.style.transform = `rotate(${rotation}deg)`;
+        pre.style.fontSize = `${fontSize}px`;
+      }
+    };
 
     return {
       destroy: cleanup,
@@ -235,33 +311,43 @@ export class CodePlugin implements PreviewPlugin {
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
-        fontSize = Math.min(32, fontSize + 2);
-        pre.style.fontSize = `${fontSize}px`;
+        if (isTxt) {
+          zoomLevel = Math.min(3, zoomLevel + 0.1);
+        } else {
+          fontSize = Math.min(32, fontSize + 2);
+        }
+        updateTransform();
       },
       zoomOut: () => {
-        fontSize = Math.max(8, fontSize - 2);
-        pre.style.fontSize = `${fontSize}px`;
+        if (isTxt) {
+          zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+        } else {
+          fontSize = Math.max(8, fontSize - 2);
+        }
+        updateTransform();
       },
-      getZoom: () => fontSize / 13,
+      getZoom: () => isTxt ? zoomLevel : fontSize / 13,
       setZoom: (level: number) => {
-        fontSize = Math.round(13 * level);
-        pre.style.fontSize = `${fontSize}px`;
+        if (isTxt) {
+          zoomLevel = level;
+        } else {
+          fontSize = Math.round(13 * level);
+        }
+        updateTransform();
       },
       fitToPage: () => {
         fontSize = 13;
         rotation = 0;
-        pre.style.fontSize = '13px';
-        pre.style.transform = 'none';
+        zoomLevel = 1;
+        updateTransform();
       },
       rotateCW: () => {
         rotation = (rotation + 90) % 360;
-        pre.style.transform = `rotate(${rotation}deg)`;
-        pre.style.transformOrigin = 'top left';
+        updateTransform();
       },
       rotateCCW: () => {
         rotation = (rotation - 90 + 360) % 360;
-        pre.style.transform = `rotate(${rotation}deg)`;
-        pre.style.transformOrigin = 'top left';
+        updateTransform();
       },
       download: () => {
         const mimeType = ctx.metadata.mimeType || 'text/plain';

@@ -319,7 +319,8 @@ export async function sourceToArrayBuffer(
     if (magicMime === 'application/zip') {
       const ooxmlMime = detectOoxmlType(buffer);
       if (ooxmlMime && ooxmlMime !== 'application/zip') {
-        metadata.mimeType = ooxmlMime;
+        // Preserve extension-derived MIME (e.g. .docm/.dotx/.dotm) if already set
+        metadata.mimeType = metadata.mimeType ?? ooxmlMime;
         // Set extension from OOXML type
         if (ooxmlMime.includes('wordprocessing')) metadata.extension = metadata.extension ?? '.docx';
         else if (ooxmlMime.includes('spreadsheet')) metadata.extension = metadata.extension ?? '.xlsx';

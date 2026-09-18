@@ -241,7 +241,22 @@ export class PdfPlugin implements PreviewPlugin {
 
     await renderPage(1);
 
+    // Auto-refit on container resize (window resize, panel toggle, fullscreen)
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        // Only auto-refit if zoom is at default (not user-zoomed)
+        if (Math.abs(zoomScale - 1.0) < 0.05) {
+          renderPage(currentPage);
+        }
+      }, 150);
+    });
+    resizeObserver.observe(container);
+
     const cleanup = () => {
+      resizeObserver.disconnect();
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (currentRenderTask) {
         try { currentRenderTask.cancel(); } catch {}
       }

@@ -381,18 +381,67 @@ export class DocxPlugin implements PreviewPlugin {
       }
     }
 
-    const card = document.createElement('div');
-    card.className = 'fp-docx-page-card';
-    card.style.backgroundColor = '#ffffff';
-    card.style.borderRadius = '6px';
-    card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
-    card.style.padding = '48px 56px';
-    card.style.fontFamily = 'Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    card.style.color = '#1e293b';
-    card.style.lineHeight = '1.6';
+    // Parse page dimensions
+    const sectPrs = Array.from(doc.getElementsByTagNameNS('*', 'sectPr'));
+    const lastSectPr = sectPrs[sectPrs.length - 1];
+    
+    let defaultW = 12240; // US Letter 8.5"
+    let defaultH = 15840; // US Letter 11"
+    let margins = { top: 1440, right: 1440, bottom: 1440, left: 1440 }; // 1" margins
+    
+    if (lastSectPr) {
+      const pgSz = lastSectPr.getElementsByTagNameNS('*', 'pgSz')[0];
+      if (pgSz) {
+        defaultW = parseInt(pgSz.getAttribute('w:w') || pgSz.getAttribute('w') || '12240', 10);
+        defaultH = parseInt(pgSz.getAttribute('w:h') || pgSz.getAttribute('h') || '15840', 10);
+      }
+      const pgMar = lastSectPr.getElementsByTagNameNS('*', 'pgMar')[0];
+      if (pgMar) {
+        margins.top = parseInt(pgMar.getAttribute('w:top') || pgMar.getAttribute('top') || '1440', 10);
+        margins.bottom = parseInt(pgMar.getAttribute('w:bottom') || pgMar.getAttribute('bottom') || '1440', 10);
+        margins.left = parseInt(pgMar.getAttribute('w:left') || pgMar.getAttribute('left') || '1440', 10);
+        margins.right = parseInt(pgMar.getAttribute('w:right') || pgMar.getAttribute('right') || '1440', 10);
+      }
+    }
+
+    const createPageCard = () => {
+      const card = document.createElement('div');
+      card.className = 'fp-docx-page-card';
+      card.style.backgroundColor = '#ffffff';
+      card.style.borderRadius = '4px';
+      card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+      card.style.fontFamily = 'Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      card.style.color = '#1e293b';
+      card.style.lineHeight = '1.6';
+      card.style.boxSizing = 'border-box';
+      card.style.overflow = 'hidden';
+      card.style.position = 'relative';
+      card.style.marginBottom = '24px';
+      
+      // Convert twips to px (1 twip = 1/1440 inch, 1 inch = 96px => /15)
+      card.style.width = `${defaultW / 15}px`;
+      card.style.height = `${defaultH / 15}px`;
+      card.style.padding = `${margins.top / 15}px ${margins.right / 15}px ${margins.bottom / 15}px ${margins.left / 15}px`;
+      
+      return card;
+    };
+
+    let currentCard = createPageCard();
+    let currentHtml = '';
+    const pages: { card: HTMLElement, html: string }[] = [{ card: currentCard, html: '' }];
+
+    const flushHtml = () => {
+      pages[pages.length - 1].html += currentHtml;
+      currentHtml = '';
+    };
+
+    const newPage = () => {
+      flushHtml();
+      currentCard = createPageCard();
+      pages.push({ card: currentCard, html: '' });
+    };
 
     const body = doc.getElementsByTagNameNS('*', 'body')[0] || doc.documentElement;
-    let html = '';
 
     for (const child of Array.from(body.children)) {
       const tag = child.localName || child.nodeName.split(':').pop();
@@ -402,52 +451,67 @@ export class DocxPlugin implements PreviewPlugin {
         const styleVal = pStyle?.getAttribute('w:val') || pStyle?.getAttribute('val') || '';
         const numPr = child.getElementsByTagNameNS('*', 'numPr')[0];
 
-        const textContent = this.extractParagraphHtml(child, imageMap);
-        if (!textContent.trim()) {
-          html += '<div style="height: 10px;"></div>';
-          continue;
-        }
+        const chunks = this.extractParagraphChunks(child, imageMap);
+        
+        for (let i = 0; i < chunks.length; i++) {
+          if (i > 0) {
+            newPage();
+          }
+          
+          const textContent = chunks[i];
+          if (!textContent.trim() && !textContent.includes('<img')) {
+            currentHtml += '<div style="height: 10px;"></div>';
+            continue;
+          }
 
-        const lowerStyle = styleVal.toLowerCase();
-        if (lowerStyle.includes('title')) {
-          html += `<h1 style="font-size: 28px; font-weight: 700; color: #1e3a8a; margin: 24px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">${textContent}</h1>`;
-        } else if (lowerStyle.includes('heading1') || styleVal === '1') {
-          html += `<h2 style="font-size: 22px; font-weight: 700; color: #1e40af; margin: 20px 0 10px;">${textContent}</h2>`;
-        } else if (lowerStyle.includes('heading2') || styleVal === '2') {
-          html += `<h3 style="font-size: 18px; font-weight: 600; color: #2563eb; margin: 16px 0 8px;">${textContent}</h3>`;
-        } else if (lowerStyle.includes('heading3') || styleVal === '3') {
-          html += `<h4 style="font-size: 15px; font-weight: 600; color: #334155; margin: 12px 0 6px;">${textContent}</h4>`;
-        } else if (numPr) {
-          html += `<div style="display: flex; gap: 8px; margin: 4px 0 4px 20px;"><span style="color: #2563eb; font-weight: bold;">•</span><span>${textContent}</span></div>`;
-        } else {
-          html += `<p style="margin: 8px 0; font-size: 14px;">${textContent}</p>`;
+          const lowerStyle = styleVal.toLowerCase();
+          if (lowerStyle.includes('title')) {
+            currentHtml += `<h1 style="font-size: 28px; font-weight: 700; color: #1e3a8a; margin: 24px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">${textContent}</h1>`;
+          } else if (lowerStyle.includes('heading1') || styleVal === '1') {
+            currentHtml += `<h2 style="font-size: 22px; font-weight: 700; color: #1e40af; margin: 20px 0 10px;">${textContent}</h2>`;
+          } else if (lowerStyle.includes('heading2') || styleVal === '2') {
+            currentHtml += `<h3 style="font-size: 18px; font-weight: 600; color: #2563eb; margin: 16px 0 8px;">${textContent}</h3>`;
+          } else if (lowerStyle.includes('heading3') || styleVal === '3') {
+            currentHtml += `<h4 style="font-size: 15px; font-weight: 600; color: #334155; margin: 12px 0 6px;">${textContent}</h4>`;
+          } else if (numPr) {
+            currentHtml += `<div style="display: flex; gap: 8px; margin: 4px 0 4px 20px;"><span style="color: #2563eb; font-weight: bold;">•</span><span>${textContent}</span></div>`;
+          } else {
+            currentHtml += `<p style="margin: 8px 0; font-size: 14px;">${textContent}</p>`;
+          }
         }
       } else if (tag === 'tbl') {
-        html += '<table style="width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #cbd5e1;">';
+        currentHtml += '<table style="width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #cbd5e1;">';
         const rows = Array.from(child.getElementsByTagNameNS('*', 'tr'));
         rows.forEach((tr, rIdx) => {
-          html += `<tr style="${rIdx === 0 ? 'background-color: #f8fafc; font-weight: 600;' : ''}">`;
+          currentHtml += `<tr style="${rIdx === 0 ? 'background-color: #f8fafc; font-weight: 600;' : ''}">`;
           const cells = Array.from(tr.getElementsByTagNameNS('*', 'tc'));
           cells.forEach((tc) => {
             const cellText = this.extractParagraphHtml(tc, imageMap);
-            html += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px;">${cellText || '&nbsp;'}</td>`;
+            currentHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px;">${cellText || '&nbsp;'}</td>`;
           });
-          html += '</tr>';
+          currentHtml += '</tr>';
         });
-        html += '</table>';
+        currentHtml += '</table>';
       }
     }
+    flushHtml();
 
-    card.innerHTML = DOMPurify.sanitize(html, {
-      ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 's', 'strike', 'img', 'div', 'br'],
-      ADD_ATTR: ['style', 'src', 'alt', 'colspan', 'rowspan']
-    });
-
-    wrapper.appendChild(card);
+    for (const page of pages) {
+      page.card.innerHTML = DOMPurify.sanitize(page.html, {
+        ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 's', 'strike', 'img', 'div', 'br'],
+        ADD_ATTR: ['style', 'src', 'alt', 'colspan', 'rowspan']
+      });
+      wrapper.appendChild(page.card);
+    }
   }
 
   private extractParagraphHtml(pElement: Element, imageMap: Record<string, string> = {}): string {
-    let result = '';
+    return this.extractParagraphChunks(pElement, imageMap).join('<br/>');
+  }
+
+  private extractParagraphChunks(pElement: Element, imageMap: Record<string, string> = {}): string[] {
+    const chunks: string[] = [''];
+    let currentChunkIndex = 0;
 
     // Check for inline drawings in this paragraph
     const drawings = Array.from(pElement.getElementsByTagNameNS('*', 'drawing'));
@@ -455,32 +519,39 @@ export class DocxPlugin implements PreviewPlugin {
       const blip = drawing.getElementsByTagNameNS('*', 'blip')[0];
       const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
       if (rId && imageMap[rId]) {
-        result += `<div style="text-align:center; margin: 12px 0;"><img src="${imageMap[rId]}" style="max-width: 100%; height: auto; border-radius: 4px;" /></div>`;
+        chunks[currentChunkIndex] += `<div style="text-align:center; margin: 12px 0;"><img src="${imageMap[rId]}" style="max-width: 100%; height: auto; border-radius: 4px;" /></div>`;
       }
     }
 
     const runs = Array.from(pElement.getElementsByTagNameNS('*', 'r'));
-    if (runs.length === 0 && !result) {
-      return DOMPurify.sanitize(pElement.textContent || '');
+    if (runs.length === 0 && !chunks[currentChunkIndex]) {
+      chunks[currentChunkIndex] = DOMPurify.sanitize(pElement.textContent || '');
+      return chunks;
     }
 
     for (const r of runs) {
       const blip = r.getElementsByTagNameNS('*', 'blip')[0] || r.getElementsByTagNameNS('*', 'imagedata')[0];
       const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
       if (rId && imageMap[rId]) {
-        result += `<img src="${imageMap[rId]}" style="max-width: 100%; height: auto; display: inline-block; margin: 4px;" />`;
+        chunks[currentChunkIndex] += `<img src="${imageMap[rId]}" style="max-width: 100%; height: auto; display: inline-block; margin: 4px;" />`;
       }
 
       // Check for breaks <w:br/>
-      const brs = r.getElementsByTagNameNS('*', 'br');
-      for (let i = 0; i < brs.length; i++) {
-        result += '<br/>';
+      const brs = Array.from(r.getElementsByTagNameNS('*', 'br'));
+      for (const br of brs) {
+        const type = br.getAttribute('w:type') || br.getAttribute('type');
+        if (type === 'page') {
+          chunks.push('');
+          currentChunkIndex++;
+        } else {
+          chunks[currentChunkIndex] += '<br/>';
+        }
       }
 
       // Check for tabs <w:tab/>
       const tabs = r.getElementsByTagNameNS('*', 'tab');
       if (tabs.length > 0) {
-        result += '&emsp;';
+        chunks[currentChunkIndex] += '&emsp;';
       }
 
       const rPr = r.getElementsByTagNameNS('*', 'rPr')[0];
@@ -510,13 +581,13 @@ export class DocxPlugin implements PreviewPlugin {
       }
 
       if (styles) {
-        result += `<span style="${styles}">${text}</span>`;
+        chunks[currentChunkIndex] += `<span style="${styles}">${text}</span>`;
       } else {
-        result += text;
+        chunks[currentChunkIndex] += text;
       }
     }
 
-    return result;
+    return chunks;
   }
 
   private renderBinaryDocFallback(ctx: RenderContext, wrapper: HTMLElement): void {

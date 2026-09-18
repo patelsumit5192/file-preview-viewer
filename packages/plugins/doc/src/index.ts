@@ -121,22 +121,10 @@ export class DocPlugin implements PreviewPlugin {
     container.style.overflow = 'auto';
     container.style.padding = '32px 16px';
     container.style.backgroundColor = '#f1f5f9';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'flex-start';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'fp-doc-wrapper';
-    wrapper.style.maxWidth = '850px';
-    wrapper.style.margin = '0 auto';
-    wrapper.style.backgroundColor = '#ffffff';
-    wrapper.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
-    wrapper.style.borderRadius = '4px';
-    wrapper.style.padding = '56px 48px';
-    wrapper.style.minHeight = '100%';
-    wrapper.style.transformOrigin = 'top center';
-    wrapper.style.transition = 'transform 0.2s ease';
-    wrapper.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
-    wrapper.style.color = '#1e293b';
-
-    container.appendChild(wrapper);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
@@ -172,18 +160,24 @@ export class DocPlugin implements PreviewPlugin {
     const totalPages = Math.max(1, rawPages.length);
     let currentPage = 1;
 
-    wrapper.innerHTML = '';
     const pageCards: HTMLElement[] = [];
 
     for (let i = 0; i < totalPages; i++) {
       const pageCard = document.createElement('div');
       pageCard.className = 'fp-doc-page-card';
+      pageCard.style.width = '816px';
+      pageCard.style.height = '1056px';
       pageCard.style.backgroundColor = '#ffffff';
       pageCard.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
       pageCard.style.borderRadius = '4px';
-      pageCard.style.padding = '56px 48px';
-      pageCard.style.minHeight = '100%';
+      pageCard.style.padding = '96px 72px';
+      pageCard.style.boxSizing = 'border-box';
+      pageCard.style.overflow = 'hidden';
       pageCard.style.display = i === 0 ? 'block' : 'none';
+      pageCard.style.transformOrigin = 'top center';
+      pageCard.style.transition = 'transform 0.2s ease';
+      pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
+      pageCard.style.color = '#1e293b';
 
       if (isFallback && i === 0) {
         pageCard.innerHTML = `
@@ -197,7 +191,7 @@ export class DocPlugin implements PreviewPlugin {
         pageCard.innerHTML = this.formatDocToHtml(rawPages[i], ctx.metadata.name || 'Document');
       }
 
-      wrapper.appendChild(pageCard);
+      container.appendChild(pageCard);
       pageCards.push(pageCard);
     }
 
@@ -205,8 +199,10 @@ export class DocPlugin implements PreviewPlugin {
     if (totalPages > 1) {
       indicator = document.createElement('div');
       indicator.className = 'fp-doc-page-indicator';
-      indicator.style.position = 'sticky';
+      indicator.style.position = 'fixed';
       indicator.style.bottom = '16px';
+      indicator.style.left = '50%';
+      indicator.style.transform = 'translateX(-50%)';
       indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
       indicator.style.backdropFilter = 'blur(8px)';
       indicator.style.color = '#f8fafc';
@@ -220,18 +216,28 @@ export class DocPlugin implements PreviewPlugin {
       indicator.style.userSelect = 'none';
       indicator.style.pointerEvents = 'none';
       indicator.style.textAlign = 'center';
-      indicator.style.width = 'fit-content';
-      indicator.style.margin = '16px auto 0';
       container.appendChild(indicator);
     }
 
+    let rotation = 0;
+
+    const applyTransform = () => {
+      const activeCard = pageCards[currentPage - 1];
+      if (activeCard) {
+        activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      }
+    };
+
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      if (totalPages > 1) {
-        pageCards.forEach((card, idx) => {
-          card.style.display = idx + 1 === currentPage ? 'block' : 'none';
-        });
-      }
+      pageCards.forEach((card, idx) => {
+        if (idx + 1 === currentPage) {
+          card.style.display = 'block';
+          card.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        } else {
+          card.style.display = 'none';
+        }
+      });
       if (indicator) {
         indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
@@ -242,20 +248,12 @@ export class DocPlugin implements PreviewPlugin {
       showPage(1);
     }
 
-    let rotation = 0;
-
     const calculateFitScale = () => {
-      const activeCard = pageCards[currentPage - 1] || wrapper;
-      const elW = activeCard.offsetWidth || 850;
-      const elH = activeCard.offsetHeight || 1000;
+      const elW = 816;
+      const elH = 1056;
       const availW = Math.max(200, ctx.container.clientWidth - 48);
       const availH = Math.max(200, ctx.container.clientHeight - 80);
       return Math.min(1.1, Math.min(availW / elW, availH / elH));
-    };
-
-    const applyTransform = () => {
-      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'top center';
     };
 
     setTimeout(() => {
@@ -459,10 +457,38 @@ export class DocPlugin implements PreviewPlugin {
 
   private splitIntoPages(text: string): string[] {
     if (!text) return [''];
-    const parts = text.split(/[\x0C\f]|\r?\n\s*[-=_]{3,}\s*(?:PAGE|Page|page break)[\s\d\w-]*[-=_]{3,}\s*\r?\n/i)
+    
+    // Split by explicit form feeds or page break text first
+    const explicitParts = text.split(/[\x0C\f]|\r?\n\s*[-=_]{3,}\s*(?:PAGE|Page|page break)[\s\d\w-]*[-=_]{3,}\s*\r?\n/i)
       .map(p => p.trim())
       .filter(p => p.length > 0);
-    return parts.length > 0 ? parts : [text];
+      
+    if (explicitParts.length === 0) explicitParts.push(text);
+    
+    const maxLinesPerPage = 48;
+    const finalPages: string[] = [];
+    
+    for (const part of explicitParts) {
+      const lines = part.split(/\r?\n/);
+      let currentLines: string[] = [];
+      let count = 0;
+      
+      for (const line of lines) {
+        currentLines.push(line);
+        count++;
+        
+        if (count >= maxLinesPerPage) {
+          finalPages.push(currentLines.join('\n'));
+          currentLines = [];
+          count = 0;
+        }
+      }
+      if (currentLines.length > 0) {
+        finalPages.push(currentLines.join('\n'));
+      }
+    }
+    
+    return finalPages.length > 0 ? finalPages : [text];
   }
 
   /**
@@ -478,47 +504,90 @@ export class DocPlugin implements PreviewPlugin {
 
     let html = '';
     let inList = false;
+    let tableLines: string[] = [];
+    
+    const flushTable = () => {
+      if (tableLines.length > 0) {
+        html += '<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">';
+        for (const tLine of tableLines) {
+          html += '<tr>';
+          const cols = tLine.split('\t');
+          for (const col of cols) {
+            html += `<td style="border: 1px solid #cbd5e1; padding: 6px 8px;">${DOMPurify.sanitize(col.trim())}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</table>';
+        tableLines = [];
+      }
+    };
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+    let i = 0;
+    while (i < lines.length) {
+      let line = lines[i];
+      let tabCount = (line.match(/\t/g) || []).length;
+      
+      // Lookahead for table detection (3+ consecutive lines with same tab count > 0)
+      if (tabCount > 0) {
+        let consecutiveTableLines = 1;
+        let j = i + 1;
+        while (j < lines.length) {
+          const nextTabCount = (lines[j].match(/\t/g) || []).length;
+          if (nextTabCount === tabCount) {
+            consecutiveTableLines++;
+            j++;
+          } else {
+            break;
+          }
+        }
+        
+        if (consecutiveTableLines >= 3) {
+          if (inList) { html += '</ul>'; inList = false; }
+          // consume these lines as table
+          tableLines = lines.slice(i, j);
+          flushTable();
+          i = j;
+          continue;
+        }
+      }
+      
+      const rawLine = line;
+      line = line.trim();
+      
       if (!line) {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
+        if (inList) { html += '</ul>'; inList = false; }
+        // Detect blank line as paragraph separator - adding some spacing
+        html += '<div style="height: 1.15em;"></div>';
+        i++;
         continue;
       }
 
-      // Filter out binary noise strings (e.g. font tables, internal IDs)
-      if (/^[\x00-\x1F\x7F-\x9F]+$/.test(line)) continue;
-      if (line.includes('Normal.dot') || line.includes('Microsoft Word') || line.includes('Times New Roman') && line.length < 30) {
-        continue;
+      if (/^[\x00-\x1F\x7F-\x9F]+$/.test(line)) { i++; continue; }
+      if ((line.includes('Normal.dot') || line.includes('Microsoft Word') || line.includes('Times New Roman')) && line.length < 30) {
+        i++; continue;
       }
 
-      // Check if heading (short, all caps or title style)
       if (line.length < 60 && !line.endsWith('.') && (/^[A-Z0-9\s:_-]+$/.test(line) || line.startsWith('#'))) {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<h2 style="font-size: 18px; font-weight: 700; color: #1e3a8a; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line)}</h2>`;
+        if (inList) { html += '</ul>'; inList = false; }
+        html += `<h2 style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line)}</h2>`;
       } else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
         if (!inList) {
           html += '<ul style="margin: 8px 0; padding-left: 24px;">';
           inList = true;
         }
         const bulletText = line.replace(/^[•\-\*]\s*/, '');
-        html += `<li style="margin: 4px 0; line-height: 1.6;">${DOMPurify.sanitize(bulletText)}</li>`;
+        html += `<li style="margin: 4px 0; line-height: 1.15; font-size: 12pt;">${DOMPurify.sanitize(bulletText)}</li>`;
       } else {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<p style="line-height: 1.7; margin: 10px 0; font-size: 14px; text-align: justify;">${DOMPurify.sanitize(line)}</p>`;
+        if (inList) { html += '</ul>'; inList = false; }
+        // Use proper paragraph spacing (1.15× line height, 12pt font by default)
+        html += `<p style="line-height: 1.15; margin: 0; font-size: 12pt; text-align: justify;">${DOMPurify.sanitize(line)}</p>`;
       }
+      
+      i++;
     }
 
     if (inList) html += '</ul>';
+    flushTable();
 
     return html || `<p style="color: #64748b; font-style: italic;">(No readable text found in ${DOMPurify.sanitize(filename)})</p>`;
   }

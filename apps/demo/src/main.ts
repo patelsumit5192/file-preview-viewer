@@ -43,10 +43,20 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.docx',
     data: getSampleUrl('document.docx')
   }),
+  docm: () => ({
+    name: 'document.docm',
+    ext: '.docm',
+    data: getSampleUrl('document.docm')
+  }),
   doc: () => ({
     name: 'document.doc',
     ext: '.doc',
     data: getSampleUrl('document.doc')
+  }),
+  txt: () => ({
+    name: 'document.txt',
+    ext: '.txt',
+    data: getSampleUrl('document.txt')
   }),
   xlsx: () => ({
     name: 'financial-report.xlsx',

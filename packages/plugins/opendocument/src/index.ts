@@ -240,15 +240,111 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       }
     } else {
       // ODT (Text), ODS (Spreadsheet fallback), ODG (Graphics)
-      wrapper.style.maxWidth = '850px';
-      wrapper.style.padding = '48px';
+      wrapper.style.maxWidth = 'none';
+      wrapper.style.padding = '0';
       wrapper.style.minHeight = '100%';
+      wrapper.style.backgroundColor = 'transparent';
+      wrapper.style.boxShadow = 'none';
+      wrapper.style.position = 'relative';
 
+      const dims = this.getPageDimensions(stylesDoc, contentDoc);
       const bodyHtml = this.renderOdfBody(contentDoc, styleMap, imageUrls);
-      wrapper.innerHTML = DOMPurify.sanitize(bodyHtml, {
-        ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub'],
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.style.width = `${dims.width - dims.marginLeft - dims.marginRight}px`;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.visibility = 'hidden';
+      tempDiv.innerHTML = DOMPurify.sanitize(bodyHtml, {
+        ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'hr'],
         ADD_ATTR: ['style', 'colspan', 'rowspan']
       });
+      document.body.appendChild(tempDiv);
+      
+      const contentHeight = dims.height - dims.marginTop - dims.marginBottom;
+      const pageElements: Element[][] = [[]];
+      let currentHeight = 0;
+      let currentPageIdx = 0;
+      
+      Array.from(tempDiv.children).forEach((child) => {
+        const el = child as HTMLElement;
+        const style = el.getAttribute('style') || '';
+        const isBreakBefore = style.includes('page-break-before: always');
+        const isBreakAfter = style.includes('page-break-after: always');
+        const isSoftBreak = el.classList.contains('odf-page-break');
+        
+        if (isBreakBefore) {
+          if (pageElements[currentPageIdx].length > 0) {
+            currentPageIdx++;
+            pageElements.push([]);
+            currentHeight = 0;
+          }
+        }
+        
+        const h = el.offsetHeight || 0;
+        if (currentHeight + h > contentHeight && pageElements[currentPageIdx].length > 0 && !isSoftBreak) {
+          currentPageIdx++;
+          pageElements.push([]);
+          currentHeight = 0;
+        }
+        
+        if (!isSoftBreak) {
+          pageElements[currentPageIdx].push(el.cloneNode(true) as Element);
+          currentHeight += h;
+        }
+        
+        if (isBreakAfter || isSoftBreak) {
+          currentPageIdx++;
+          pageElements.push([]);
+          currentHeight = 0;
+        }
+      });
+      
+      document.body.removeChild(tempDiv);
+      
+      if (pageElements.length > 1 && pageElements[pageElements.length - 1].length === 0) {
+        pageElements.pop();
+      }
+      
+      totalPages = Math.max(1, pageElements.length);
+      
+      pageElements.forEach((elements, idx) => {
+        const page = document.createElement('div');
+        page.className = `fp-odt-page fp-odt-page-${idx + 1}`;
+        page.style.width = `${dims.width}px`;
+        page.style.minHeight = `${dims.height}px`;
+        page.style.padding = `${dims.marginTop}px ${dims.marginRight}px ${dims.marginBottom}px ${dims.marginLeft}px`;
+        page.style.margin = '0 auto';
+        page.style.backgroundColor = '#ffffff';
+        page.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
+        page.style.borderRadius = '4px';
+        page.style.boxSizing = 'border-box';
+        page.style.display = idx === 0 ? 'block' : 'none';
+        page.style.position = 'absolute';
+        page.style.top = '0';
+        page.style.left = '50%';
+        page.style.transform = 'translateX(-50%)';
+        
+        elements.forEach(el => page.appendChild(el));
+        wrapper.appendChild(page);
+        slides.push(page);
+      });
+
+      const pageIndicator = document.createElement('div');
+      pageIndicator.className = 'fp-odt-page-indicator';
+      pageIndicator.style.position = 'sticky';
+      pageIndicator.style.bottom = '16px';
+      pageIndicator.style.left = '50%';
+      pageIndicator.style.transform = 'translateX(-50%)';
+      pageIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+      pageIndicator.style.color = '#fff';
+      pageIndicator.style.padding = '6px 12px';
+      pageIndicator.style.borderRadius = '16px';
+      pageIndicator.style.fontSize = '12px';
+      pageIndicator.style.zIndex = '100';
+      pageIndicator.style.display = 'inline-block';
+      pageIndicator.style.width = 'fit-content';
+      pageIndicator.textContent = `Page 1 of ${totalPages}`;
+      container.appendChild(pageIndicator);
     }
 
     const cleanup = () => {
@@ -260,11 +356,16 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     ctx.signal.addEventListener('abort', cleanup);
 
     const goToPage = (page: number) => {
-      if (!isPresentation || page < 1 || page > totalPages) return;
+      if (page < 1 || page > totalPages) return;
       currentPage = page;
       slides.forEach((s, idx) => {
         s.style.display = idx === page - 1 ? 'block' : 'none';
       });
+      // Update page indicator if it exists
+      const indicator = container.querySelector('.fp-odt-page-indicator') as HTMLElement;
+      if (indicator) {
+        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      }
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
@@ -335,6 +436,48 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     } as any;
   }
 
+  private getPageDimensions(stylesDoc: Document | null, contentDoc: Document) {
+    let width = 850;
+    let height = 1123;
+    let marginTop = 48;
+    let marginBottom = 48;
+    let marginLeft = 48;
+    let marginRight = 48;
+
+    const parseUnit = (val: string | null) => {
+      if (!val) return null;
+      if (val.endsWith('cm')) return parseFloat(val) * 37.8;
+      if (val.endsWith('mm')) return parseFloat(val) * 3.78;
+      if (val.endsWith('in')) return parseFloat(val) * 96;
+      if (val.endsWith('pt')) return parseFloat(val) * 1.33;
+      if (val.endsWith('px')) return parseFloat(val);
+      return parseFloat(val);
+    };
+
+    const docs = [stylesDoc, contentDoc].filter(Boolean) as Document[];
+    for (const doc of docs) {
+      const pageLayout = doc.querySelector('page-layout-properties, [page-width]');
+      if (pageLayout) {
+        const w = parseUnit(pageLayout.getAttribute('fo:page-width') || pageLayout.getAttribute('page-width'));
+        const h = parseUnit(pageLayout.getAttribute('fo:page-height') || pageLayout.getAttribute('page-height'));
+        const mt = parseUnit(pageLayout.getAttribute('fo:margin-top') || pageLayout.getAttribute('margin-top'));
+        const mb = parseUnit(pageLayout.getAttribute('fo:margin-bottom') || pageLayout.getAttribute('margin-bottom'));
+        const ml = parseUnit(pageLayout.getAttribute('fo:margin-left') || pageLayout.getAttribute('margin-left'));
+        const mr = parseUnit(pageLayout.getAttribute('fo:margin-right') || pageLayout.getAttribute('margin-right'));
+
+        if (w !== null) width = w;
+        if (h !== null) height = h;
+        if (mt !== null) marginTop = mt;
+        if (mb !== null) marginBottom = mb;
+        if (ml !== null) marginLeft = ml;
+        if (mr !== null) marginRight = mr;
+        break;
+      }
+    }
+
+    return { width, height, marginTop, marginBottom, marginLeft, marginRight };
+  }
+
   private extractStyles(stylesDoc: Document | null, contentDoc: Document): Map<string, string> {
     const map = new Map<string, string>();
     const styleNodes: Element[] = [];
@@ -362,15 +505,22 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         if (size) css += `font-size: ${size}; `;
       }
 
-      const paraProp = node.querySelector('paragraph-properties, [text-align]');
+      let paraProp = node.querySelector('paragraph-properties, [text-align]');
+      if (!paraProp) {
+        paraProp = Array.from(node.children).find(c => c.tagName.includes('paragraph-properties')) || null;
+      }
       if (paraProp) {
         const align = paraProp.getAttribute('fo:text-align') || paraProp.getAttribute('text-align');
         const mt = paraProp.getAttribute('fo:margin-top') || paraProp.getAttribute('margin-top');
         const mb = paraProp.getAttribute('fo:margin-bottom') || paraProp.getAttribute('margin-bottom');
+        const breakBefore = paraProp.getAttribute('fo:break-before') || paraProp.getAttribute('break-before');
+        const breakAfter = paraProp.getAttribute('fo:break-after') || paraProp.getAttribute('break-after');
 
         if (align) css += `text-align: ${align}; `;
         if (mt) css += `margin-top: ${mt}; `;
         if (mb) css += `margin-bottom: ${mb}; `;
+        if (breakBefore === 'page') css += 'page-break-before: always; ';
+        if (breakAfter === 'page') css += 'page-break-after: always; ';
       }
 
       if (css) map.set(name, css);
@@ -465,6 +615,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
           result += '&emsp;';
         } else if (tag === 'line-break') {
           result += '<br/>';
+        } else if (tag === 'soft-page-break') {
+          result += '<hr class="odf-page-break" style="page-break-after: always; border: none; margin: 0; padding: 0; height: 0;" />';
         } else {
           result += el.textContent || '';
         }

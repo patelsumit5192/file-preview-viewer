@@ -90,6 +90,14 @@ export class RtfPlugin implements PreviewPlugin {
         execute: () => instance.download?.()
       },
       {
+        id: 'copy',
+        icon: 'copy',
+        label: 'Copy Text',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).copy?.()
+      },
+      {
         id: 'print',
         icon: 'print',
         label: 'Print',
@@ -158,14 +166,34 @@ export class RtfPlugin implements PreviewPlugin {
     } catch (err) {
       console.warn('[RtfPlugin] RTF render error, fallback text:', err);
       const text = new TextDecoder('latin1').decode(ctx.buffer);
-      const clean = text.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '');
-      const pre = document.createElement('pre');
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.style.fontFamily = 'serif';
-      pre.style.color = '#333';
-      pre.textContent = clean;
-      wrapper.appendChild(pre);
-      pageElements = [pre];
+      // Split on \page control word for basic pagination
+      const rawPages = text.split(/\\page\b/).map(segment => {
+        return segment.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '').trim();
+      }).filter(p => p.length > 0);
+
+      const pages = rawPages.length > 0 ? rawPages : [text.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '').trim()];
+      
+      for (let i = 0; i < pages.length; i++) {
+        const pageCard = document.createElement('div');
+        pageCard.className = 'fp-rtf-page-card';
+        pageCard.style.backgroundColor = '#ffffff';
+        pageCard.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
+        pageCard.style.borderRadius = '4px';
+        pageCard.style.padding = '72px 56px';
+        pageCard.style.width = '816px';
+        pageCard.style.minHeight = '1056px';
+        pageCard.style.maxWidth = '100%';
+        pageCard.style.boxSizing = 'border-box';
+        pageCard.style.fontFamily = 'serif';
+        pageCard.style.fontSize = '12pt';
+        pageCard.style.lineHeight = '1.6';
+        pageCard.style.color = '#1e293b';
+        pageCard.style.whiteSpace = 'pre-wrap';
+        pageCard.style.display = i === 0 ? 'block' : 'none';
+        pageCard.textContent = pages[i];
+        wrapper.appendChild(pageCard);
+        pageElements.push(pageCard);
+      }
     }
 
     const totalPages = Math.max(1, pageElements.length);
@@ -259,6 +287,10 @@ export class RtfPlugin implements PreviewPlugin {
         a.download = ctx.metadata.name || 'document.rtf';
         a.click();
         URL.revokeObjectURL(url);
+      },
+      copy: () => {
+        const text = wrapper.textContent || '';
+        navigator.clipboard?.writeText(text);
       },
       print: () => {
         window.print();
