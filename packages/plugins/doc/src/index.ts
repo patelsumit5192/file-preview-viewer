@@ -25,7 +25,33 @@ export class DocPlugin implements PreviewPlugin {
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
-    return [
+    const totalPages = instance.getPageCount?.() ?? 1;
+    const actions: ToolbarAction[] = [];
+
+    if (totalPages > 1) {
+      actions.push({
+        id: 'page-nav',
+        icon: '',
+        label: 'Page Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: instance.getCurrentPage?.() ?? 1,
+        max: totalPages,
+        execute: (action: unknown, page?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          }
+        }
+      });
+    }
+
+    actions.push(
       {
         id: 'zoom-out',
         icon: 'zoom-out',
@@ -74,7 +100,9 @@ export class DocPlugin implements PreviewPlugin {
         group: 'actions',
         execute: () => instance.print?.()
       }
-    ];
+    );
+
+    return actions;
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
@@ -105,6 +133,7 @@ export class DocPlugin implements PreviewPlugin {
 
     let scale = 1.0;
     let extractedRawText = '';
+    let isFallback = false;
 
     try {
       const cfbf = new CfbfReader(ctx.buffer);
@@ -123,23 +152,90 @@ export class DocPlugin implements PreviewPlugin {
 
       const text = this.extractDocText(wordDocStream, tableStream);
       extractedRawText = text;
-
-      wrapper.innerHTML = this.formatDocToHtml(text, ctx.metadata.name || 'Document');
     } catch (err) {
       console.warn('[DocPlugin] Binary parsing error, fallback text:', err);
       // Fallback: search for readable strings directly in the buffer
       const fallback = this.heuristicTextExtraction(ctx.buffer);
       extractedRawText = fallback;
-      wrapper.innerHTML = `
-        <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px;">
-          <h2 style="margin: 0 0 6px; font-size: 20px; color: #334155;">${ctx.metadata.name || 'Word Document (.doc)'}</h2>
-          <span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">Legacy Word 97-2003 Binary Preview</span>
-        </div>
-        ${this.formatDocToHtml(fallback, ctx.metadata.name || 'Document')}
-      `;
+      isFallback = true;
+    }
+
+    const rawPages = this.splitIntoPages(extractedRawText);
+    const totalPages = Math.max(1, rawPages.length);
+    let currentPage = 1;
+
+    wrapper.innerHTML = '';
+    const pageCards: HTMLElement[] = [];
+
+    for (let i = 0; i < totalPages; i++) {
+      const pageCard = document.createElement('div');
+      pageCard.className = 'fp-doc-page-card';
+      pageCard.style.backgroundColor = '#ffffff';
+      pageCard.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
+      pageCard.style.borderRadius = '4px';
+      pageCard.style.padding = '56px 48px';
+      pageCard.style.minHeight = '100%';
+      pageCard.style.display = i === 0 ? 'block' : 'none';
+
+      if (isFallback && i === 0) {
+        pageCard.innerHTML = `
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px;">
+            <h2 style="margin: 0 0 6px; font-size: 20px; color: #334155;">${DOMPurify.sanitize(ctx.metadata.name || 'Word Document (.doc)')}</h2>
+            <span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">Legacy Word 97-2003 Binary Preview</span>
+          </div>
+          ${this.formatDocToHtml(rawPages[i], ctx.metadata.name || 'Document')}
+        `;
+      } else {
+        pageCard.innerHTML = this.formatDocToHtml(rawPages[i], ctx.metadata.name || 'Document');
+      }
+
+      wrapper.appendChild(pageCard);
+      pageCards.push(pageCard);
+    }
+
+    let indicator: HTMLElement | null = null;
+    if (totalPages > 1) {
+      indicator = document.createElement('div');
+      indicator.className = 'fp-doc-page-indicator';
+      indicator.style.position = 'sticky';
+      indicator.style.bottom = '16px';
+      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
+      indicator.style.backdropFilter = 'blur(8px)';
+      indicator.style.color = '#f8fafc';
+      indicator.style.fontSize = '12px';
+      indicator.style.fontWeight = '600';
+      indicator.style.padding = '5px 14px';
+      indicator.style.borderRadius = '20px';
+      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+      indicator.style.zIndex = '10';
+      indicator.style.userSelect = 'none';
+      indicator.style.pointerEvents = 'none';
+      indicator.style.textAlign = 'center';
+      indicator.style.width = 'fit-content';
+      indicator.style.margin = '16px auto 0';
+      container.appendChild(indicator);
+    }
+
+    const showPage = (pageNum: number) => {
+      currentPage = Math.max(1, Math.min(totalPages, pageNum));
+      if (totalPages > 1) {
+        pageCards.forEach((card, idx) => {
+          card.style.display = idx + 1 === currentPage ? 'block' : 'none';
+        });
+      }
+      if (indicator) {
+        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      }
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    };
+
+    if (totalPages > 1) {
+      showPage(1);
     }
 
     const cleanup = () => {
+      indicator?.remove();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -148,6 +244,9 @@ export class DocPlugin implements PreviewPlugin {
 
     return {
       destroy: cleanup,
+      getPageCount: () => totalPages,
+      getCurrentPage: () => currentPage,
+      goToPage: (page: number) => showPage(page),
       zoomIn: () => {
         scale += 0.1;
         wrapper.style.transform = `scale(${scale})`;
@@ -320,6 +419,14 @@ export class DocPlugin implements PreviewPlugin {
     return this.extractStringsFromBytes(new Uint8Array(buffer));
   }
 
+  private splitIntoPages(text: string): string[] {
+    if (!text) return [''];
+    const parts = text.split(/[\x0C\f]|\r?\n\s*[-=_]{3,}\s*(?:PAGE|Page|page break)[\s\d\w-]*[-=_]{3,}\s*\r?\n/i)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+    return parts.length > 0 ? parts : [text];
+  }
+
   /**
    * Format cleaned extracted text into attractive HTML paragraphs, headings, and lists
    */
@@ -329,7 +436,6 @@ export class DocPlugin implements PreviewPlugin {
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
       .replace(/\x0B/g, '\n') // Line break
-      .replace(/\x0C/g, '\n\n') // Page break
       .split('\n');
 
     let html = '';

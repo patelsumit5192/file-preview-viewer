@@ -33,42 +33,43 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
     const isPresentation = (instance as any).isPresentation;
+    const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (isPresentation) {
-      actions.push(
-        {
+    if (isPresentation || totalPages > 1) {
+      if (isPresentation) {
+        actions.push({
           id: 'thumbnails',
           icon: 'thumbnails',
           label: 'Slide Thumbnails',
           type: 'button',
           group: 'navigation',
           execute: () => instance.toggleThumbnails?.()
-        },
-        {
-          id: 'page-nav',
-          icon: '',
-          label: 'Slide Navigation',
-          type: 'page-nav',
-          group: 'navigation',
-          value: instance.getCurrentPage?.() ?? 1,
-          max: instance.getPageCount?.() ?? 1,
-          execute: (action: unknown, page?: unknown) => {
-            if (action === 'prev') {
-              const cur = instance.getCurrentPage?.() ?? 1;
-              if (cur > 1) instance.goToPage?.(cur - 1);
-            } else if (action === 'next') {
-              const cur = instance.getCurrentPage?.() ?? 1;
-              const total = instance.getPageCount?.() ?? 1;
-              if (cur < total) instance.goToPage?.(cur + 1);
-            } else if (typeof page === 'number') {
-              instance.goToPage?.(page);
-            } else if (typeof action === 'number') {
-              instance.goToPage?.(action);
-            }
+        });
+      }
+
+      actions.push({
+        id: 'page-nav',
+        icon: '',
+        label: isPresentation ? 'Slide Navigation' : 'Page Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: instance.getCurrentPage?.() ?? 1,
+        max: totalPages,
+        execute: (action: unknown, page?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          } else if (typeof action === 'number') {
+            instance.goToPage?.(action);
           }
         }
-      );
+      });
     }
 
     actions.push(

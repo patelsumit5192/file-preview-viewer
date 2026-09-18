@@ -22,7 +22,33 @@ export class RtfPlugin implements PreviewPlugin {
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
-    return [
+    const totalPages = instance.getPageCount?.() ?? 1;
+    const actions: ToolbarAction[] = [];
+
+    if (totalPages > 1) {
+      actions.push({
+        id: 'page-nav',
+        icon: '',
+        label: 'Page Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: instance.getCurrentPage?.() ?? 1,
+        max: totalPages,
+        execute: (action: unknown, page?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          }
+        }
+      });
+    }
+
+    actions.push(
       {
         id: 'zoom-out',
         icon: 'zoom-out',
@@ -63,7 +89,9 @@ export class RtfPlugin implements PreviewPlugin {
         group: 'actions',
         execute: () => instance.print?.()
       }
-    ];
+    );
+
+    return actions;
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
@@ -85,6 +113,7 @@ export class RtfPlugin implements PreviewPlugin {
     ctx.container.appendChild(wrapper);
 
     let scale = 1.0;
+    let pageElements: HTMLElement[] = [];
 
     try {
       if (typeof (RTFJS as any).loggingEnabled === 'function') {
@@ -92,17 +121,71 @@ export class RtfPlugin implements PreviewPlugin {
       }
       const doc = new (RTFJS as any).Document(ctx.buffer, {});
       const htmlElements = await doc.render();
-      for (const el of htmlElements) {
+      pageElements = htmlElements;
+      for (let i = 0; i < htmlElements.length; i++) {
+        const el = htmlElements[i];
+        el.style.display = i === 0 ? 'block' : 'none';
         wrapper.appendChild(el);
       }
     } catch (err) {
       console.warn('[RtfPlugin] RTF render error, fallback text:', err);
       const text = new TextDecoder('latin1').decode(ctx.buffer);
       const clean = text.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '');
-      wrapper.innerHTML = `<pre style="white-space: pre-wrap; font-family: serif; color: #333;">${clean}</pre>`;
+      const pre = document.createElement('pre');
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.fontFamily = 'serif';
+      pre.style.color = '#333';
+      pre.textContent = clean;
+      wrapper.appendChild(pre);
+      pageElements = [pre];
+    }
+
+    const totalPages = Math.max(1, pageElements.length);
+    let currentPage = 1;
+
+    let indicator: HTMLElement | null = null;
+    if (totalPages > 1) {
+      indicator = document.createElement('div');
+      indicator.className = 'fp-rtf-page-indicator';
+      indicator.style.position = 'sticky';
+      indicator.style.bottom = '16px';
+      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
+      indicator.style.backdropFilter = 'blur(8px)';
+      indicator.style.color = '#f8fafc';
+      indicator.style.fontSize = '12px';
+      indicator.style.fontWeight = '600';
+      indicator.style.padding = '5px 14px';
+      indicator.style.borderRadius = '20px';
+      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+      indicator.style.zIndex = '10';
+      indicator.style.userSelect = 'none';
+      indicator.style.pointerEvents = 'none';
+      indicator.style.textAlign = 'center';
+      indicator.style.width = 'fit-content';
+      indicator.style.margin = '16px auto 0';
+      ctx.container.appendChild(indicator);
+    }
+
+    const showPage = (pageNum: number) => {
+      currentPage = Math.max(1, Math.min(totalPages, pageNum));
+      if (totalPages > 1) {
+        pageElements.forEach((el, idx) => {
+          el.style.display = idx + 1 === currentPage ? 'block' : 'none';
+        });
+      }
+      if (indicator) {
+        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      }
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    };
+
+    if (totalPages > 1) {
+      showPage(1);
     }
 
     const cleanup = () => {
+      indicator?.remove();
       wrapper.remove();
       ctx.container.innerHTML = '';
     };
@@ -111,6 +194,9 @@ export class RtfPlugin implements PreviewPlugin {
 
     return {
       destroy: cleanup,
+      getPageCount: () => totalPages,
+      getCurrentPage: () => currentPage,
+      goToPage: (page: number) => showPage(page),
       zoomIn: () => {
         scale += 0.1;
         wrapper.style.transform = `scale(${scale})`;

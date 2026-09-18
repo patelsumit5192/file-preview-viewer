@@ -35,11 +35,22 @@ export class ToolbarController {
   private el: HTMLElement;
   private toolbarEl: HTMLElement;
   private actions: ToolbarAction[] = [];
+  private pageInputEl: HTMLInputElement | null = null;
+  private pageLabelEl: HTMLElement | null = null;
 
   constructor(container: HTMLElement) {
     this.el = container;
     this.toolbarEl = createElement('div', { className: 'fp-toolbar' });
     this.el.appendChild(this.toolbarEl);
+  }
+
+  setPage(page: number, max?: number): void {
+    if (this.pageInputEl) {
+      this.pageInputEl.value = page.toString();
+    }
+    if (max !== undefined && this.pageLabelEl) {
+      this.pageLabelEl.textContent = ` / ${max}`;
+    }
   }
 
   update(actions: ToolbarAction[]): void {
@@ -99,6 +110,7 @@ export class ToolbarController {
         if (action.type === 'separator') {
           groupEl.appendChild(createElement('div', { className: 'fp-toolbar-separator' }));
         } else if (action.type === 'page-nav') {
+          const max = action.max ?? 1;
           const prevBtn = this.createButton(
             'prev', icons.ICON_PAGE_PREV, 'Previous Page',
             () => {
@@ -113,7 +125,6 @@ export class ToolbarController {
             'next', icons.ICON_PAGE_NEXT, 'Next Page',
             () => {
               const cur = parseInt(input.value, 10) || 1;
-              const max = action.max ?? 1;
               if (cur < max) {
                 input.value = (cur + 1).toString();
                 action.execute('next', cur + 1);
@@ -125,18 +136,22 @@ export class ToolbarController {
             type: 'number',
             value: (action.value ?? 1).toString(),
             min: '1',
-            max: (action.max ?? 1).toString()
+            max: max.toString()
           }) as HTMLInputElement;
           
           input.addEventListener('change', () => {
-            const val = parseInt(input.value, 10);
-            if (!isNaN(val)) {
-              action.execute('go', val);
-            }
+            let val = parseInt(input.value, 10);
+            if (isNaN(val)) val = 1;
+            val = Math.max(1, Math.min(max, val));
+            input.value = val.toString();
+            action.execute('go', val);
           });
           
-          const label = createElement('span', { className: 'fp-toolbar-label' }, ` / ${action.max ?? 1}`);
+          const label = createElement('span', { className: 'fp-toolbar-label' }, ` / ${max}`);
           
+          this.pageInputEl = input;
+          this.pageLabelEl = label;
+
           groupEl.appendChild(prevBtn);
           groupEl.appendChild(input);
           groupEl.appendChild(label);

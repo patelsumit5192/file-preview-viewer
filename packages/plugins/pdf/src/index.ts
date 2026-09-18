@@ -6,10 +6,18 @@ import type {
   PreviewInstance, 
   Thumbnail 
 } from '@patel.sumit51/core';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Ensure PDF.js worker is configured in browser environments
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/build/pdf.worker.min.mjs`;
+  }
+}
 
 export class PdfPlugin implements PreviewPlugin {
   id = 'pdf';
-  name = 'PDF Preview';
+  name = 'PDF Document Preview';
   extensions = ['.pdf'];
   mimeTypes = ['application/pdf'];
   weight = 100;
@@ -17,20 +25,50 @@ export class PdfPlugin implements PreviewPlugin {
   supports(file: FileInfo): boolean {
     const ext = file.metadata.extension?.toLowerCase();
     const mime = file.metadata.mimeType?.toLowerCase();
-    return ext === '.pdf' || mime === 'application/pdf';
+    if (ext) return this.extensions.includes(ext);
+    return this.mimeTypes.includes(mime || '');
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
+    const totalPages = instance.getPageCount?.() ?? 1;
+    const curPage = instance.getCurrentPage?.() ?? 1;
+
     return [
+      {
+        id: 'thumbnails',
+        icon: 'thumbnails',
+        label: 'Page Thumbnails',
+        type: 'button',
+        group: 'navigation',
+        execute: () => instance.toggleThumbnails?.()
+      },
+      {
+        id: 'page-nav',
+        icon: '',
+        label: 'Page Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: curPage,
+        max: totalPages,
+        execute: (action: unknown, page?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          }
+        }
+      },
       {
         id: 'zoom-out',
         icon: 'zoom-out',
         label: 'Zoom Out',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.zoomOut?.();
-        }
+        execute: () => instance.zoomOut?.()
       },
       {
         id: 'zoom-in',
@@ -38,9 +76,7 @@ export class PdfPlugin implements PreviewPlugin {
         label: 'Zoom In',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.zoomIn?.();
-        }
+        execute: () => instance.zoomIn?.()
       },
       {
         id: 'fit-page',
@@ -48,39 +84,23 @@ export class PdfPlugin implements PreviewPlugin {
         label: 'Fit to Page',
         type: 'button',
         group: 'zoom',
-        execute: () => {
-          instance.fitToPage?.();
-        }
+        execute: () => instance.fitToPage?.()
       },
       {
         id: 'rotate-cw',
         icon: 'rotate-cw',
-        label: 'Rotate',
+        label: 'Rotate Clockwise',
         type: 'button',
         group: 'view',
-        execute: () => {
-          instance.rotateCW?.();
-        }
-      },
-      {
-        id: 'page-nav',
-        icon: 'page-nav',
-        label: 'Page Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        execute: (page?: unknown) => {
-          if (typeof page === 'number') instance.goToPage?.(page);
-        }
+        execute: () => instance.rotateCW?.()
       },
       {
         id: 'download',
         icon: 'download',
-        label: 'Download',
+        label: 'Download PDF',
         type: 'button',
         group: 'actions',
-        execute: () => {
-          instance.download?.();
-        }
+        execute: () => instance.download?.()
       },
       {
         id: 'print',
@@ -88,108 +108,233 @@ export class PdfPlugin implements PreviewPlugin {
         label: 'Print',
         type: 'button',
         group: 'actions',
-        execute: () => {
-          instance.print?.();
-        }
+        execute: () => instance.print?.()
       }
     ];
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
-    const blob = new Blob([ctx.buffer], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    
-    const wrapper = document.createElement('div');
-    wrapper.style.width = '100%';
-    wrapper.style.height = '100%';
-    wrapper.style.overflow = 'hidden';
-    wrapper.style.display = 'flex';
-    wrapper.style.justifyContent = 'center';
-    wrapper.style.alignItems = 'center';
+    const container = document.createElement('div');
+    container.className = 'fp-pdf-container';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.overflow = 'auto';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.padding = '24px 16px';
+    container.style.backgroundColor = '#0f172a';
+    container.style.boxSizing = 'border-box';
+    container.style.position = 'relative';
 
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    
-    wrapper.appendChild(iframe);
-    ctx.container.appendChild(wrapper);
-    
+    const pageCard = document.createElement('div');
+    pageCard.className = 'fp-pdf-page-card';
+    pageCard.style.boxShadow = '0 10px 35px rgba(0, 0, 0, 0.5)';
+    pageCard.style.backgroundColor = '#ffffff';
+    pageCard.style.borderRadius = '4px';
+    pageCard.style.overflow = 'hidden';
+    pageCard.style.lineHeight = '0';
+    pageCard.style.transition = 'transform 0.15s ease';
+    pageCard.style.position = 'relative';
+
+    const canvas = document.createElement('canvas');
+    pageCard.appendChild(canvas);
+    container.appendChild(pageCard);
+
+    const indicator = document.createElement('div');
+    indicator.className = 'fp-pdf-page-indicator';
+    indicator.style.position = 'sticky';
+    indicator.style.bottom = '16px';
+    indicator.style.marginTop = '16px';
+    indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
+    indicator.style.backdropFilter = 'blur(8px)';
+    indicator.style.color = '#f8fafc';
+    indicator.style.fontSize = '12px';
+    indicator.style.fontWeight = '600';
+    indicator.style.padding = '5px 14px';
+    indicator.style.borderRadius = '20px';
+    indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+    indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+    indicator.style.zIndex = '10';
+    indicator.style.userSelect = 'none';
+    indicator.style.pointerEvents = 'none';
+    container.appendChild(indicator);
+
+    ctx.container.appendChild(container);
+
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(ctx.buffer),
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/standard_fonts/`,
+    });
+
+    const pdfDoc = await loadingTask.promise;
+    const totalPages = Math.max(1, pdfDoc.numPages);
+
     let currentPage = 1;
-    let currentZoom = 1.0;
+    let zoomScale = 1.0;
     let rotation = 0;
+    let currentRenderTask: any = null;
+
+    const renderPage = async (pageNum: number) => {
+      if (currentRenderTask) {
+        try {
+          currentRenderTask.cancel();
+        } catch {}
+        currentRenderTask = null;
+      }
+
+      currentPage = Math.max(1, Math.min(totalPages, pageNum));
+      indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+
+      const page = await pdfDoc.getPage(currentPage);
+
+      const containerWidth = container.clientWidth || 900;
+      const unscaledVp = page.getViewport({ scale: 1.0, rotation });
+      const baseScale = Math.min((containerWidth - 64) / unscaledVp.width, 1.6);
+      const effectiveScale = (baseScale > 0 ? baseScale : 1.0) * zoomScale;
+
+      const pixelRatio = window.devicePixelRatio || 1;
+      const viewport = page.getViewport({ scale: effectiveScale, rotation });
+
+      canvas.width = Math.floor(viewport.width * pixelRatio);
+      canvas.height = Math.floor(viewport.height * pixelRatio);
+      canvas.style.width = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+      const canvasCtx = canvas.getContext('2d');
+      if (!canvasCtx) return;
+
+      canvasCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+      currentRenderTask = page.render({
+        canvasContext: canvasCtx,
+        viewport,
+      });
+
+      try {
+        await currentRenderTask.promise;
+      } catch (err: any) {
+        if (err?.name !== 'RenderingCancelledException') {
+          console.warn('[PdfPlugin] Page render warning:', err);
+        }
+      } finally {
+        currentRenderTask = null;
+      }
+    };
+
+    await renderPage(1);
 
     const cleanup = () => {
-      URL.revokeObjectURL(url);
-      wrapper.remove();
+      if (currentRenderTask) {
+        try { currentRenderTask.cancel(); } catch {}
+      }
+      try {
+        pdfDoc.destroy();
+      } catch {}
+      container.remove();
       ctx.container.innerHTML = '';
     };
 
     ctx.signal.addEventListener('abort', cleanup);
 
-    return {
+    const instance: PreviewInstance = {
       destroy: cleanup,
       zoomIn: () => {
-        currentZoom += 0.1;
-        iframe.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        zoomScale = Math.min(3.5, zoomScale + 0.2);
+        renderPage(currentPage);
       },
       zoomOut: () => {
-        currentZoom = Math.max(0.2, currentZoom - 0.1);
-        iframe.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        zoomScale = Math.max(0.3, zoomScale - 0.2);
+        renderPage(currentPage);
       },
-      getZoom: () => currentZoom,
+      getZoom: () => zoomScale,
       setZoom: (level: number) => {
-        currentZoom = level;
-        iframe.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        zoomScale = Math.max(0.3, Math.min(3.5, level));
+        renderPage(currentPage);
       },
       fitToPage: () => {
-        currentZoom = 1.0;
-        iframe.style.transform = `scale(1) rotate(${rotation}deg)`;
+        zoomScale = 1.0;
+        renderPage(currentPage);
       },
       rotateCW: () => {
         rotation = (rotation + 90) % 360;
-        iframe.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        renderPage(currentPage);
       },
       rotateCCW: () => {
         rotation = (rotation - 90 + 360) % 360;
-        iframe.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        renderPage(currentPage);
       },
       getRotation: () => rotation,
-      goToPage: (page: number) => {
-        currentPage = page;
-        // In iframe viewer, appending #page=N to the hash navigates in native PDF viewer
-        iframe.src = `${url}#page=${page}`;
-      },
+      getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
+      goToPage: (page: number) => {
+        renderPage(page);
+      },
       download: () => {
+        const blob = new Blob([ctx.buffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = ctx.metadata.name || 'document.pdf';
         a.click();
+        URL.revokeObjectURL(url);
       },
       print: () => {
-        iframe.contentWindow?.print();
+        const blob = new Blob([ctx.buffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const hiddenIframe = document.createElement('iframe');
+        hiddenIframe.style.position = 'fixed';
+        hiddenIframe.style.right = '0';
+        hiddenIframe.style.bottom = '0';
+        hiddenIframe.style.width = '0';
+        hiddenIframe.style.height = '0';
+        hiddenIframe.style.border = '0';
+        document.body.appendChild(hiddenIframe);
+        hiddenIframe.src = url;
+        hiddenIframe.onload = () => {
+          setTimeout(() => {
+            hiddenIframe.contentWindow?.print();
+            setTimeout(() => {
+              hiddenIframe.remove();
+              URL.revokeObjectURL(url);
+            }, 1000);
+          }, 300);
+        };
       },
       getThumbnails: async (): Promise<Thumbnail[]> => {
-        return [
-          {
-            index: 1,
-            label: 'Page 1',
-            render: async (canvas: HTMLCanvasElement) => {
-              const context = canvas.getContext('2d');
-              if (context) {
-                context.fillStyle = '#fff';
-                context.fillRect(0, 0, canvas.width, canvas.height);
-                context.fillStyle = '#333';
-                context.font = '12px sans-serif';
-                context.fillText('PDF Preview', 10, 20);
+        const thumbnails: Thumbnail[] = [];
+        const count = Math.min(totalPages, 50);
+
+        for (let i = 1; i <= count; i++) {
+          thumbnails.push({
+            index: i,
+            label: `Page ${i}`,
+            render: async (thumbCanvas: HTMLCanvasElement) => {
+              try {
+                const p = await pdfDoc.getPage(i);
+                const baseVp = p.getViewport({ scale: 1.0 });
+                const thumbScale = (thumbCanvas.width || 120) / baseVp.width;
+                const thumbVp = p.getViewport({ scale: thumbScale });
+                thumbCanvas.height = Math.floor(thumbVp.height);
+
+                const tCtx = thumbCanvas.getContext('2d');
+                if (tCtx) {
+                  await p.render({ canvasContext: tCtx, viewport: thumbVp }).promise;
+                }
+              } catch (e) {
+                console.warn(`[PdfPlugin] Error generating thumbnail for page ${i}:`, e);
               }
             }
-          }
-        ];
+          });
+        }
+        return thumbnails;
       }
     };
+
+    return instance;
   }
 }
 

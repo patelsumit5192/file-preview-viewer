@@ -32,7 +32,33 @@ export class ExcelPlugin implements PreviewPlugin {
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
-    return [
+    const totalSheets = instance.getPageCount?.() ?? 1;
+    const actions: ToolbarAction[] = [];
+
+    if (totalSheets > 1) {
+      actions.push({
+        id: 'page-nav',
+        icon: '',
+        label: 'Sheet Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: instance.getCurrentPage?.() ?? 1,
+        max: totalSheets,
+        execute: (action: unknown, sheet?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof sheet === 'number') {
+            instance.goToPage?.(sheet);
+          }
+        }
+      });
+    }
+
+    actions.push(
       {
         id: 'zoom-out',
         icon: 'zoom-out',
@@ -51,16 +77,6 @@ export class ExcelPlugin implements PreviewPlugin {
         group: 'zoom',
         execute: () => {
           instance.zoomIn?.();
-        }
-      },
-      {
-        id: 'page-nav',
-        icon: 'page-nav',
-        label: 'Sheet Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        execute: (sheet?: unknown) => {
-          if (typeof sheet === 'number') instance.goToPage?.(sheet);
         }
       },
       {
@@ -83,7 +99,9 @@ export class ExcelPlugin implements PreviewPlugin {
           instance.print?.();
         }
       }
-    ];
+    );
+
+    return actions;
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
@@ -184,6 +202,8 @@ export class ExcelPlugin implements PreviewPlugin {
           b.style.fontWeight = 'normal';
         }
       });
+
+      ctx.emit('page-change', { page: currentSheetIndex, total: sheetNames.length });
     };
 
     if (sheetNames.length > 0) {

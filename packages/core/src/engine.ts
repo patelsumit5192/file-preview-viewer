@@ -107,7 +107,13 @@ export class FilePreviewViewer {
         buffer,
         options,
         signal,
-        emit: (event, payload) => this.eventEmitter.emit(event, payload),
+        emit: (event, payload) => {
+          if (event === 'page-change' && payload && typeof (payload as any).page === 'number') {
+            const total = (payload as any).total ?? (payload as any).totalPages;
+            this.toolbar?.setPage((payload as any).page, total);
+          }
+          this.eventEmitter.emit(event, payload);
+        },
       });
 
       this.activeInstance = instance;
@@ -148,6 +154,7 @@ export class FilePreviewViewer {
             if (thumbnails && thumbnails.length > 0 && this.thumbnailPanel) {
               this.thumbnailPanel.update(thumbnails, (index) => {
                 instance.goToPage?.(index + 1);
+                this.toolbar?.setPage(index + 1);
               });
               if (options.showThumbnails) {
                 this.thumbnailPanel.show();
@@ -313,9 +320,13 @@ export class FilePreviewViewer {
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         const cur = this.activeInstance.getCurrentPage?.() ?? 1;
         this.activeInstance.goToPage?.(cur + 1);
+        const nextCur = this.activeInstance.getCurrentPage?.() ?? (cur + 1);
+        this.toolbar?.setPage(nextCur);
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         const cur = this.activeInstance.getCurrentPage?.() ?? 1;
         this.activeInstance.goToPage?.(Math.max(1, cur - 1));
+        const prevCur = this.activeInstance.getCurrentPage?.() ?? Math.max(1, cur - 1);
+        this.toolbar?.setPage(prevCur);
       } else if (e.key === '+' || e.key === '=') {
         this.activeInstance.zoomIn?.();
       } else if (e.key === '-' || e.key === '_') {
