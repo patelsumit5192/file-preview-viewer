@@ -144,7 +144,7 @@ export class PdfPlugin implements PreviewPlugin {
     container.style.flexDirection = 'column';
     container.style.alignItems = 'center';
     container.style.justifyContent = 'flex-start';
-    container.style.padding = '20px 16px';
+    container.style.padding = '16px 8px';
     container.style.backgroundColor = '#0f172a';
     container.style.boxSizing = 'border-box';
     container.style.position = 'relative';
@@ -202,7 +202,7 @@ export class PdfPlugin implements PreviewPlugin {
     let currentPage = 1;
     let zoomScale = 1.0;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = 'page';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let currentRenderTask: any = null;
 
     const renderPage = async (pageNum: number) => {
@@ -228,18 +228,19 @@ export class PdfPlugin implements PreviewPlugin {
       const containerHeight = container.clientHeight || 700;
       const unscaledVp = page.getViewport({ scale: 1.0, rotation });
 
-      const availWidth = Math.max(320, containerWidth - 48);
-      const availHeight = Math.max(550, containerHeight - 88);
+      // Minimal side margins (12px on each side)
+      const availWidth = Math.max(280, containerWidth - 24);
+      const availHeight = Math.max(280, containerHeight - 32);
       const scaleW = availWidth / unscaledVp.width;
       const scaleH = availHeight / unscaledVp.height;
 
       // In 'page' mode: fit page height & width so full document fits comfortably
-      // In 'width' mode: fit page width comfortably for reading
+      // In 'width' mode: fit page width comfortably for reading with minimal side margins
       let fitScale: number;
       if (fitMode === 'page') {
-        fitScale = Math.max(0.4, Math.min(scaleW, scaleH));
+        fitScale = Math.max(0.35, Math.min(3.5, Math.min(scaleW, scaleH)));
       } else {
-        fitScale = Math.max(0.65, Math.min(1.25, scaleW));
+        fitScale = Math.max(0.4, Math.min(3.5, scaleW));
       }
       const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 
@@ -318,7 +319,7 @@ export class PdfPlugin implements PreviewPlugin {
         renderPage(currentPage);
       },
       fitToPage: () => {
-        fitMode = fitMode === 'page' ? 'width' : 'page';
+        fitMode = 'width';
         zoomScale = 1.0;
         rotation = 0;
         renderPage(currentPage);

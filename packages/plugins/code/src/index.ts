@@ -217,7 +217,7 @@ export class CodePlugin implements PreviewPlugin {
 
     if (isTxt) {
       container.style.backgroundColor = '#f1f5f9';
-      container.style.padding = '32px';
+      container.style.padding = '16px 8px';
       container.style.boxSizing = 'border-box';
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
@@ -326,22 +326,48 @@ export class CodePlugin implements PreviewPlugin {
 
     ctx.container.appendChild(container);
 
+    const calculateTxtFit = () => {
+      // Minimal side margins (12px on each side)
+      const availW = Math.max(280, container.clientWidth - 24);
+      return Math.max(0.4, Math.min(3.5, availW / 816));
+    };
+
+    const updateTransform = () => {
+      if (isTxt) {
+        pre.style.transform = `scale(${zoomLevel}) rotate(${rotation}deg)`;
+        const scaledH = 1056 * zoomLevel;
+        const extraH = Math.max(0, scaledH - 1056);
+        pre.style.marginBottom = `${extraH + 32}px`;
+      } else {
+        pre.style.transform = `rotate(${rotation}deg)`;
+        pre.style.fontSize = `${fontSize}px`;
+      }
+    };
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (isTxt) {
+      setTimeout(() => {
+        zoomLevel = calculateTxtFit();
+        updateTransform();
+      }, 60);
+
+      resizeObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            zoomLevel = calculateTxtFit();
+            updateTransform();
+          })
+        : null;
+      resizeObserver?.observe(container);
+    }
+
     const cleanup = () => {
+      resizeObserver?.disconnect();
       indicator?.remove();
       container.remove();
       ctx.container.innerHTML = '';
     };
 
     ctx.signal.addEventListener('abort', cleanup);
-    
-    const updateTransform = () => {
-      if (isTxt) {
-        pre.style.transform = `scale(${zoomLevel}) rotate(${rotation}deg)`;
-      } else {
-        pre.style.transform = `rotate(${rotation}deg)`;
-        pre.style.fontSize = `${fontSize}px`;
-      }
-    };
 
     return {
       destroy: cleanup,
@@ -350,7 +376,7 @@ export class CodePlugin implements PreviewPlugin {
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
         if (isTxt) {
-          zoomLevel = Math.min(3, zoomLevel + 0.1);
+          zoomLevel = Math.min(3.5, zoomLevel + 0.15);
         } else {
           fontSize = Math.min(32, fontSize + 2);
         }
@@ -358,7 +384,7 @@ export class CodePlugin implements PreviewPlugin {
       },
       zoomOut: () => {
         if (isTxt) {
-          zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+          zoomLevel = Math.max(0.1, zoomLevel - 0.15);
         } else {
           fontSize = Math.max(8, fontSize - 2);
         }
@@ -376,7 +402,7 @@ export class CodePlugin implements PreviewPlugin {
       fitToPage: () => {
         fontSize = 13;
         rotation = 0;
-        zoomLevel = isTxt ? Math.max(0.65, Math.min(1.05, (container.clientWidth - 48) / 816)) : 1;
+        zoomLevel = isTxt ? calculateTxtFit() : 1;
         updateTransform();
       },
       rotateCW: () => {

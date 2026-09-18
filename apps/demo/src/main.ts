@@ -3,6 +3,8 @@ import '@files-preview-app/preview-file/styles.css';
 
 // Initialize the universal viewer
 const viewer = new FilePreviewViewer();
+(window as any).viewer = viewer;
+(window as any).FilePreviewViewer = FilePreviewViewer;
 const viewport = document.getElementById('preview-viewport') as HTMLElement;
 const fileNameEl = document.getElementById('file-name') as HTMLElement;
 const fileMetaEl = document.getElementById('file-meta') as HTMLElement;

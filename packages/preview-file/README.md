@@ -490,6 +490,13 @@ Use directly with any build tool (Vite, Webpack, Rollup) or via `<script type="m
 |---|---|---|---|
 | `preview()` | `container: HTMLElement`, `source: FileSource`, `options?: PreviewViewerOptions` | `Promise<PreviewInstance>` | Renders any supported file into the target DOM element. Cleans up previous renders automatically. |
 | `getInstance()` | None | `PreviewInstance \| null` | Returns the active preview instance, exposing zoom, navigation, export, and rotation methods. |
+| `setToolbarConfig()` | `config: ToolbarConfig` | `void` | Dynamically reconfigures which toolbar buttons/actions are shown. |
+| `getToolbarConfig()` | None | `ToolbarConfig` | Returns the active toolbar configuration. |
+| `hideToolbarAction()` | `actionId: string` | `void` | Hides a specific toolbar action by ID or alias (e.g. `'zoomIn'`, `'print'`, `'download'`). |
+| `showToolbarAction()` | `actionId: string` | `void` | Shows a previously hidden toolbar action. |
+| `enableToolbarAction()` | `actionId: string` | `void` | Enables a disabled toolbar action button. |
+| `disableToolbarAction()` | `actionId: string` | `void` | Disables a toolbar action button. |
+| `fitToPage()` | None | `void` | Scales document page so it fills the frame width with minimal side margins. |
 | `on()` | `event: string`, `handler: (data: any) => void` | `Unsubscribe: () => void` | Subscribes to lifecycle events. Returns an unsubscribe cleanup function. |
 | `registerPlugin()` | `plugin: PreviewPlugin` | `this` | Registers a custom renderer plugin. |
 | `registerPlugins()` | `plugins: PreviewPlugin[]` | `this` | Registers multiple renderer plugins at once. |
@@ -522,6 +529,68 @@ Retrieved via `viewer.getInstance()` or `previewRef.current.getInstance()`.
 | **Export** | `download()` | `void` | Downloads original file with proper name & MIME | `instance.download()` |
 | **Export** | `print()` | `void` | Opens browser print dialog formatted for clean output | `instance.print()` |
 | **Lifecycle** | `destroy()` | `void` | Releases memory, cancels rendering, revokes blob URLs | `instance.destroy()` |
+---
+
+## 🛠️ Toolbar Configuration & Feature Toggles
+
+All toolbar features and buttons are completely configurable through options and instance methods.
+If an action is set to `false`, its button will not appear in the toolbar.
+
+### Via Initialization Options:
+```typescript
+// Flat options:
+await viewer.preview(container, file, {
+  zoomIn: false,     // Hide zoom in button
+  print: false,      // Hide print button
+  openWindow: false, // Hide "Open in Separate Full Window" button
+  download: true     // Keep download enabled
+});
+
+// Or nested toolbar object:
+await viewer.preview(container, file, {
+  toolbar: {
+    zoomIn: false,
+    print: false,
+    copy: false
+  }
+});
+```
+
+### Via Runtime Instance Methods:
+```typescript
+// Hide an action dynamically
+viewer.hideToolbarAction('zoomIn');
+viewer.hideToolbarAction('print');
+
+// Show a hidden action
+viewer.showToolbarAction('zoomIn');
+
+// Disable/enable an action button without removing it
+viewer.disableToolbarAction('fitPage');
+viewer.enableToolbarAction('fitPage');
+
+// Reconfigure the entire toolbar at runtime
+viewer.setToolbarConfig({
+  zoomIn: false,
+  zoomOut: false,
+  download: true
+});
+```
+
+### Available Toolbar Toggle Keys:
+| Option Key | Corresponding Action | Description |
+|---|---|---|
+| `zoomIn` | Zoom In | Zoom in button |
+| `zoomOut` | Zoom Out | Zoom out button |
+| `fitPage` / `fitToPage` | Fit to Page | Scales document to fill frame width with minimal side margins |
+| `rotate` / `rotateCW` | Rotate | 90° Clockwise rotation |
+| `fullscreen` | Fullscreen | Fullscreen frame toggle |
+| `thumbnails` | Thumbnails | Sidebar thumbnail toggle |
+| `download` | Download | File download button |
+| `print` | Print | Browser clean print button |
+| `openWindow` / `openSeparateWindow` | Open in Separate Window | Opens preview in a standalone window |
+| `copy` | Copy Text | Copy document text to clipboard |
+| `pageNav` / `pagination` | Pagination | Previous, next, and jump-to-page input |
 
 ---
 

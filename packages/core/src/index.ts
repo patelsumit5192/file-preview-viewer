@@ -40,6 +40,7 @@ export type {
   ToolbarAction,
   ToolbarActionType,
   ToolbarGroup,
+  ToolbarConfig,
   Thumbnail,
   PreviewInstance,
   RenderContext,

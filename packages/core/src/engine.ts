@@ -12,6 +12,7 @@ import type {
   FileInfo,
   EventHandler,
   Unsubscribe,
+  ToolbarConfig,
 } from './types';
 
 /**
@@ -132,7 +133,10 @@ export class FilePreviewViewer {
       this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
 
       // 8. Setup toolbar with plugin's actions + auto fullscreen and open-window buttons
-      if (options.showToolbar !== false && this.toolbar) {
+      const isToolbarVisible = options.showToolbar !== false && options.toolbar !== false;
+      if (isToolbarVisible && this.toolbar) {
+        const toolbarConfig = this.extractToolbarConfig(options);
+        this.toolbar.setConfig(toolbarConfig);
         const actions = matchedPlugin.getToolbarActions(instance);
         const hasFullscreen = actions.some(a => a.id === 'fullscreen');
         if (!hasFullscreen && this.wrapperEl) {
@@ -385,7 +389,196 @@ export class FilePreviewViewer {
     return this.activeInstance;
   }
 
+  // --- Toolbar Configuration & Feature Toggles ---
+
+  /**
+   * Configure toolbar features dynamically through options or methods.
+   * e.g. viewer.setToolbarConfig({ zoomIn: false, print: false })
+   */
+  setToolbarConfig(config: ToolbarConfig): void {
+    this.toolbar?.setConfig(config);
+  }
+
+  /**
+   * Get current toolbar configuration.
+   */
+  getToolbarConfig(): ToolbarConfig {
+    return this.toolbar?.getConfig() ?? {};
+  }
+
+  /**
+   * Hide a specific toolbar action by ID or alias (e.g. 'zoom-in', 'print', 'download').
+   */
+  hideToolbarAction(actionId: string): void {
+    this.toolbar?.hideAction(actionId);
+  }
+
+  /**
+   * Show a specific toolbar action by ID or alias.
+   */
+  showToolbarAction(actionId: string): void {
+    this.toolbar?.showAction(actionId);
+  }
+
+  /**
+   * Enable a specific toolbar action button.
+   */
+  enableToolbarAction(actionId: string): void {
+    this.toolbar?.enableAction(actionId);
+  }
+
+  /**
+   * Disable a specific toolbar action button.
+   */
+  disableToolbarAction(actionId: string): void {
+    this.toolbar?.disableAction(actionId);
+  }
+
+  // --- Programmatic Toolbar Action Methods ---
+
+  /**
+   * Fit document to page so it fills the frame width with minimal margins.
+   */
+  fitToPage(): void {
+    this.activeInstance?.fitToPage?.();
+  }
+
+  /**
+   * Zoom in.
+   */
+  zoomIn(): void {
+    this.activeInstance?.zoomIn?.();
+  }
+
+  /**
+   * Zoom out.
+   */
+  zoomOut(): void {
+    this.activeInstance?.zoomOut?.();
+  }
+
+  /**
+   * Set specific zoom level.
+   */
+  setZoom(level: number): void {
+    this.activeInstance?.setZoom?.(level);
+  }
+
+  /**
+   * Get current zoom level.
+   */
+  getZoom(): number {
+    return this.activeInstance?.getZoom?.() ?? 1.0;
+  }
+
+  /**
+   * Rotate 90 degrees clockwise.
+   */
+  rotateCW(): void {
+    this.activeInstance?.rotateCW?.();
+  }
+
+  /**
+   * Rotate 90 degrees counter-clockwise.
+   */
+  rotateCCW(): void {
+    this.activeInstance?.rotateCCW?.();
+  }
+
+  /**
+   * Navigate to a specific page number.
+   */
+  goToPage(page: number): void {
+    this.activeInstance?.goToPage?.(page);
+    this.toolbar?.setPage(page);
+  }
+
+  /**
+   * Navigate to next page.
+   */
+  nextPage(): void {
+    const cur = this.getCurrentPage();
+    const max = this.getPageCount();
+    if (cur < max) {
+      this.goToPage(cur + 1);
+    }
+  }
+
+  /**
+   * Navigate to previous page.
+   */
+  prevPage(): void {
+    const cur = this.getCurrentPage();
+    if (cur > 1) {
+      this.goToPage(cur - 1);
+    }
+  }
+
+  /**
+   * Get total page count.
+   */
+  getPageCount(): number {
+    return this.activeInstance?.getPageCount?.() ?? 1;
+  }
+
+  /**
+   * Get current page number.
+   */
+  getCurrentPage(): number {
+    return this.activeInstance?.getCurrentPage?.() ?? 1;
+  }
+
+  /**
+   * Download the current document.
+   */
+  download(): void {
+    this.activeInstance?.download?.();
+  }
+
+  /**
+   * Print the current document.
+   */
+  print(): void {
+    this.activeInstance?.print?.();
+  }
+
+  /**
+   * Toggle fullscreen mode.
+   */
+  toggleFullscreen(): void {
+    try {
+      if (!document.fullscreenElement) {
+        this.wrapperEl?.requestFullscreen?.();
+        this.wrapperEl?.classList.add('fp-fullscreen-active');
+      } else {
+        document.exitFullscreen?.();
+        this.wrapperEl?.classList.remove('fp-fullscreen-active');
+      }
+    } catch {
+      this.wrapperEl?.classList.toggle('fp-fullscreen-active');
+    }
+    setTimeout(() => {
+      this.activeInstance?.fitToPage?.();
+    }, 120);
+  }
+
+  /**
+   * Toggle thumbnails sidebar panel.
+   */
+  toggleThumbnails(): void {
+    this.thumbnailPanel?.toggle();
+  }
+
   // --- Private methods ---
+
+  private extractToolbarConfig(options?: PreviewViewerOptions): ToolbarConfig {
+    if (!options) return {};
+    const nested = typeof options.toolbar === 'object' ? options.toolbar : {};
+    return {
+      ...options,
+      ...nested
+    };
+  }
 
   private abort(): void {
     if (this.abortController) {
@@ -460,7 +653,8 @@ export class FilePreviewViewer {
     container.appendChild(this.wrapperEl);
 
     // Initialize toolbar and thumbnail controllers
-    this.toolbar = new ToolbarController(toolbarEl);
+    const initialToolbarConfig = this.extractToolbarConfig(options);
+    this.toolbar = new ToolbarController(toolbarEl, initialToolbarConfig);
     this.thumbnailPanel = new ThumbnailPanel(thumbnailEl);
 
     // Enable keyboard shortcuts & drag/drop

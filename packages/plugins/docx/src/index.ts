@@ -125,8 +125,12 @@ export class DocxPlugin implements PreviewPlugin {
     wrapper.className = 'fp-docx-wrapper';
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
-    wrapper.style.padding = '24px 16px';
-    wrapper.style.maxWidth = '950px';
+    wrapper.style.padding = '16px 8px';
+    wrapper.style.maxWidth = 'none';
+    wrapper.style.width = '100%';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'center';
     wrapper.style.margin = '0 auto';
     wrapper.style.boxSizing = 'border-box';
     
@@ -389,42 +393,52 @@ export class DocxPlugin implements PreviewPlugin {
 
     scale = 1.0;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = 'width';
+    let fitMode: 'width' | 'page' = 'page';
 
-    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
-      const activeEl = pageElements[currentPage - 1] || wrapper.firstElementChild as HTMLElement || wrapper;
+    const calculateFitScale = (_mode: 'width' | 'page' = fitMode) => {
+      const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
       const elW = activeEl.offsetWidth || 816;
-      // Single page height: clamp so multi-page continuous content doesn't break height
-      const singlePageH = Math.min(activeEl.offsetHeight || 1056, Math.round(elW * 1.32));
-      const availW = Math.max(280, ctx.container.clientWidth - 48);
-      const availH = Math.max(280, ctx.container.clientHeight - 80);
-
+      
+      // Minimal side margins: 12px left + 12px right = 24px
+      const availW = Math.max(280, ctx.container.clientWidth - 24);
       const sW = availW / elW;
-      const sH = availH / singlePageH;
 
-      if (mode === 'page') {
-        // Fits entire page in the viewport (both width and height fit)
-        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
-      }
-
-      // Default: Fit to Width (comfortable reading width for user interaction)
-      // On desktop: caps at 1.05 so it's ~850px wide, centered and crisp
-      // On narrow screens: scales down to fit available width perfectly
-      return Math.max(0.65, Math.min(1.05, sW));
+      // Fit to Page fills the frame horizontally with only minimal side margins
+      return Math.max(0.25, Math.min(3.5, sW));
     };
 
     const applyTransform = () => {
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
       wrapper.style.transformOrigin = 'top center';
+      const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
+      const elH = activeEl.offsetHeight || 1056;
+      if (scale > 1.0) {
+        wrapper.style.marginBottom = `${Math.round((elH * scale) - elH + 32)}px`;
+      } else {
+        wrapper.style.marginBottom = '32px';
+      }
     };
 
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        const newFit = calculateFitScale('page');
+        if (Math.abs(scale - newFit) > 0.015) {
+          scale = newFit;
+          applyTransform();
+        }
+      });
+      resizeObserver.observe(ctx.container);
+    }
+
     setTimeout(() => {
-      fitMode = 'width';
-      scale = calculateFitScale('width');
+      scale = calculateFitScale('page');
       applyTransform();
-    }, 60);
+    }, 40);
 
     const cleanup = () => {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
       indicator?.remove();
       for (const url of createdBlobUrls) {
         URL.revokeObjectURL(url);
@@ -444,7 +458,7 @@ export class DocxPlugin implements PreviewPlugin {
         showPage(page);
       },
       zoomIn: () => {
-        scale += 0.15;
+        scale = Math.min(3.5, scale + 0.15);
         applyTransform();
       },
       zoomOut: () => {
@@ -457,8 +471,7 @@ export class DocxPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        fitMode = fitMode === 'width' ? 'page' : 'width';
-        scale = calculateFitScale(fitMode);
+        scale = calculateFitScale('page');
         rotation = 0;
         applyTransform();
       },

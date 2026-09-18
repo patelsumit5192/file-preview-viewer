@@ -145,8 +145,42 @@ export interface PreviewPlugin {
   render(ctx: RenderContext): Promise<PreviewInstance>;
 }
 
+/** Configuration to selectively enable or disable individual toolbar functions/buttons */
+export interface ToolbarConfig {
+  /** Page navigation (< [1] / N >) */
+  pageNav?: boolean;
+  pagination?: boolean;
+  prevPage?: boolean;
+  nextPage?: boolean;
+  /** Zoom controls */
+  zoomIn?: boolean;
+  zoomOut?: boolean;
+  fitPage?: boolean;
+  fitToPage?: boolean;
+  fitWidth?: boolean;
+  zoomReset?: boolean;
+  /** View controls */
+  rotate?: boolean;
+  rotateCW?: boolean;
+  rotateCCW?: boolean;
+  fullscreen?: boolean;
+  thumbnails?: boolean;
+  /** Action controls */
+  download?: boolean;
+  print?: boolean;
+  openWindow?: boolean;
+  openSeparateWindow?: boolean;
+  copy?: boolean;
+  /** Media controls */
+  play?: boolean;
+  pause?: boolean;
+  fastForward?: boolean;
+  rewind?: boolean;
+  speed?: boolean;
+}
+
 /** Viewer configuration options */
-export interface PreviewViewerOptions {
+export interface PreviewViewerOptions extends ToolbarConfig {
   /** Color theme */
   theme?: 'light' | 'dark' | 'auto';
   /** Locale for UI labels */
@@ -157,8 +191,12 @@ export interface PreviewViewerOptions {
   page?: number;
   /** Show the toolbar */
   showToolbar?: boolean;
+  /** Detailed toolbar configuration (or boolean to show/hide entire toolbar) */
+  toolbar?: boolean | (ToolbarConfig & Record<string, boolean | undefined>);
   /** Toolbar position */
   toolbarPosition?: 'top' | 'bottom';
+  /** Fit mode: 'page' (fill frame width with minimal margins) or 'width' */
+  fitMode?: 'page' | 'width';
   /** Show thumbnail sidebar initially */
   showThumbnails?: boolean;
   /** Custom CSS class for the container */
@@ -173,6 +211,8 @@ export interface PreviewViewerOptions {
   onOpenSeparateWindow?: (payload: { buffer: ArrayBuffer; metadata: FileMetadata; options: PreviewViewerOptions }) => Window | null;
   /** Internal flag: true when viewer is rendered inside separate full window */
   _isSeparateWindow?: boolean;
+  /** Allow custom/plugin-specific options */
+  [key: string]: unknown;
 }
 
 /** Events emitted by the viewer */

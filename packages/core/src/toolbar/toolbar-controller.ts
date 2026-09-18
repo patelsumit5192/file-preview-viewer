@@ -1,6 +1,6 @@
 import './toolbar.css';
 import { createElement, sanitizeSVG } from '../utils';
-import type { ToolbarAction, ToolbarGroup } from '../types';
+import type { ToolbarAction, ToolbarGroup, ToolbarConfig } from '../types';
 import * as icons from './icons';
 
 const ICON_MAP: Record<string, string> = {
@@ -38,13 +38,172 @@ export class ToolbarController {
   private el: HTMLElement;
   private toolbarEl: HTMLElement;
   private actions: ToolbarAction[] = [];
+  private config: ToolbarConfig = {};
   private pageInputEl: HTMLInputElement | null = null;
   private pageLabelEl: HTMLElement | null = null;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, config?: ToolbarConfig) {
     this.el = container;
+    if (config) this.config = { ...config };
     this.toolbarEl = createElement('div', { className: 'fp-toolbar' });
     this.el.appendChild(this.toolbarEl);
+  }
+
+  setConfig(config: ToolbarConfig): void {
+    this.config = { ...config };
+    this.render();
+  }
+
+  getConfig(): ToolbarConfig {
+    return { ...this.config };
+  }
+
+  hideAction(actionId: string): void {
+    (this.config as Record<string, any>)[actionId] = false;
+    if (actionId === 'zoom-in' || actionId === 'zoomIn') this.config.zoomIn = false;
+    if (actionId === 'zoom-out' || actionId === 'zoomOut') this.config.zoomOut = false;
+    if (actionId === 'fit-page' || actionId === 'fitPage' || actionId === 'fitToPage' || actionId === 'fit-width') {
+      this.config.fitPage = false;
+      this.config.fitToPage = false;
+      this.config.fitWidth = false;
+    }
+    if (actionId === 'rotate-cw' || actionId === 'rotate' || actionId === 'rotateCW') this.config.rotate = false;
+    if (actionId === 'fullscreen') this.config.fullscreen = false;
+    if (actionId === 'download') this.config.download = false;
+    if (actionId === 'print') this.config.print = false;
+    if (actionId === 'open-window' || actionId === 'openWindow' || actionId === 'openSeparateWindow') {
+      this.config.openWindow = false;
+      this.config.openSeparateWindow = false;
+    }
+    if (actionId === 'copy') this.config.copy = false;
+    if (actionId === 'page-nav' || actionId === 'pageNav' || actionId === 'pagination') {
+      this.config.pageNav = false;
+      this.config.pagination = false;
+    }
+    this.render();
+  }
+
+  showAction(actionId: string): void {
+    (this.config as Record<string, any>)[actionId] = true;
+    if (actionId === 'zoom-in' || actionId === 'zoomIn') this.config.zoomIn = true;
+    if (actionId === 'zoom-out' || actionId === 'zoomOut') this.config.zoomOut = true;
+    if (actionId === 'fit-page' || actionId === 'fitPage' || actionId === 'fitToPage' || actionId === 'fit-width') {
+      this.config.fitPage = true;
+      this.config.fitToPage = true;
+      this.config.fitWidth = true;
+    }
+    if (actionId === 'rotate-cw' || actionId === 'rotate' || actionId === 'rotateCW') this.config.rotate = true;
+    if (actionId === 'fullscreen') this.config.fullscreen = true;
+    if (actionId === 'download') this.config.download = true;
+    if (actionId === 'print') this.config.print = true;
+    if (actionId === 'open-window' || actionId === 'openWindow' || actionId === 'openSeparateWindow') {
+      this.config.openWindow = true;
+      this.config.openSeparateWindow = true;
+    }
+    if (actionId === 'copy') this.config.copy = true;
+    if (actionId === 'page-nav' || actionId === 'pageNav' || actionId === 'pagination') {
+      this.config.pageNav = true;
+      this.config.pagination = true;
+    }
+    this.render();
+  }
+
+  private normalizeActionId(actionId: string): string {
+    if (actionId === 'zoomIn') return 'zoom-in';
+    if (actionId === 'zoomOut') return 'zoom-out';
+    if (actionId === 'fitPage' || actionId === 'fitToPage' || actionId === 'fitWidth') return 'fit-page';
+    if (actionId === 'rotateCW') return 'rotate-cw';
+    if (actionId === 'rotateCCW') return 'rotate-ccw';
+    if (actionId === 'openWindow' || actionId === 'openSeparateWindow') return 'open-window';
+    if (actionId === 'pageNav') return 'page-nav';
+    return actionId;
+  }
+
+  enableAction(actionId: string): void {
+    const norm = this.normalizeActionId(actionId);
+    const btn = this.toolbarEl.querySelector(`button[data-action-id="${actionId}"], button[data-action-id="${norm}"]`) as HTMLButtonElement | null;
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('disabled');
+    }
+  }
+
+  disableAction(actionId: string): void {
+    const norm = this.normalizeActionId(actionId);
+    const btn = this.toolbarEl.querySelector(`button[data-action-id="${actionId}"], button[data-action-id="${norm}"]`) as HTMLButtonElement | null;
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('disabled');
+    }
+  }
+
+  isActionEnabled(action: ToolbarAction): boolean {
+    const c: Record<string, any> = this.config;
+    const id = action.id;
+
+    // Check direct ID or camelCase override
+    if (c[id] === false) return false;
+
+    if (id === 'zoom-in' && (c.zoomIn === false || c['zoom-in'] === false)) return false;
+    if (id === 'zoom-out' && (c.zoomOut === false || c['zoom-out'] === false)) return false;
+    if (
+      (id === 'fit-page' || id === 'fit-width' || id === 'fit-slide') &&
+      (c.fitPage === false || c.fitToPage === false || c.fitWidth === false || c['fit-page'] === false || c['fit-width'] === false)
+    ) {
+      return false;
+    }
+    if (
+      (id === 'rotate-cw' || id === 'rotate-ccw' || id === 'rotate') &&
+      (c.rotate === false || c.rotateCW === false || c.rotateCCW === false || c['rotate-cw'] === false)
+    ) {
+      return false;
+    }
+    if (id === 'fullscreen' && c.fullscreen === false) return false;
+    if (id === 'download' && c.download === false) return false;
+    if (id === 'print' && c.print === false) return false;
+    if (
+      (id === 'open-window' || id === 'external-window') &&
+      (c.openWindow === false || c.openSeparateWindow === false || c['open-window'] === false)
+    ) {
+      return false;
+    }
+    if (id === 'copy' && c.copy === false) return false;
+    if (id === 'thumbnails' && c.thumbnails === false) return false;
+    if (
+      id === 'page-nav' &&
+      (c.pageNav === false || c.pagination === false || c['page-nav'] === false)
+    ) {
+      return false;
+    }
+    if (
+      (id === 'prev' || id === 'page-prev') &&
+      (c.prevPage === false || c.prev === false || c['prev'] === false || c.pageNav === false || c.pagination === false)
+    ) {
+      return false;
+    }
+    if (
+      (id === 'next' || id === 'page-next') &&
+      (c.nextPage === false || c.next === false || c['next'] === false || c.pageNav === false || c.pagination === false)
+    ) {
+      return false;
+    }
+    if (id === 'play' && c.play === false) return false;
+    if (id === 'pause' && c.pause === false) return false;
+    if (
+      (id === 'fast-forward' || id === 'forward-10') &&
+      (c.fastForward === false || c['fast-forward'] === false)
+    ) {
+      return false;
+    }
+    if (
+      (id === 'rewind' || id === 'replay-10') &&
+      (c.rewind === false || c['rewind'] === false)
+    ) {
+      return false;
+    }
+    if (id === 'speed' && c.speed === false) return false;
+
+    return true;
   }
 
   setPage(page: number, max?: number): void {
@@ -83,11 +242,14 @@ export class ToolbarController {
       actions: []
     };
 
+    // Filter actions through config
+    const enabledActions = this.actions.filter(a => this.isActionEnabled(a));
+
     // If a page-nav component is present, deduplicate standalone prev/next buttons
-    const hasPageNav = this.actions.some(a => a.type === 'page-nav');
+    const hasPageNav = enabledActions.some(a => a.type === 'page-nav');
     const effectiveActions = hasPageNav
-      ? this.actions.filter(a => a.id !== 'page-prev' && a.id !== 'page-next' && a.id !== 'prev' && a.id !== 'next')
-      : this.actions;
+      ? enabledActions.filter(a => a.id !== 'page-prev' && a.id !== 'page-next' && a.id !== 'prev' && a.id !== 'next')
+      : enabledActions;
 
     for (const action of effectiveActions) {
       if (groups[action.group]) {

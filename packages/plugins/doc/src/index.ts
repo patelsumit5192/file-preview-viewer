@@ -128,7 +128,7 @@ export class DocPlugin implements PreviewPlugin {
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.overflow = 'auto';
-    container.style.padding = '32px 16px';
+    container.style.padding = '16px 8px';
     container.style.backgroundColor = '#f1f5f9';
     container.style.display = 'flex';
     container.style.justifyContent = 'center';
@@ -246,6 +246,9 @@ export class DocPlugin implements PreviewPlugin {
       const activeCard = pageCards[currentPage - 1];
       if (activeCard) {
         activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        const scaledH = 1056 * scale;
+        const extraH = Math.max(0, scaledH - 1056);
+        activeCard.style.marginBottom = `${extraH + 32}px`;
       }
     };
 
@@ -270,30 +273,39 @@ export class DocPlugin implements PreviewPlugin {
       showPage(1);
     }
 
-    let fitMode: 'width' | 'page' = 'width';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const elW = 816;
       const elH = 1056;
-      const availW = Math.max(280, ctx.container.clientWidth - 48);
-      const availH = Math.max(280, ctx.container.clientHeight - 80);
+      // Minimal side margins (12px on each side)
+      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
       const sH = availH / elH;
 
       if (mode === 'page') {
-        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
       }
-      return Math.max(0.65, Math.min(1.05, sW));
+      return Math.max(0.4, Math.min(3.5, sW));
     };
 
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          scale = calculateFitScale(fitMode);
+          applyTransform();
+        })
+      : null;
+    resizeObserver?.observe(ctx.container);
+
     setTimeout(() => {
-      fitMode = 'width';
-      scale = calculateFitScale('width');
+      scale = calculateFitScale(fitMode);
       applyTransform();
     }, 60);
 
     const cleanup = () => {
+      resizeObserver?.disconnect();
       indicator?.remove();
       container.remove();
       ctx.container.innerHTML = '';
@@ -320,8 +332,8 @@ export class DocPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        fitMode = fitMode === 'width' ? 'page' : 'width';
-        scale = calculateFitScale(fitMode);
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },

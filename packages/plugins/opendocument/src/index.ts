@@ -175,7 +175,7 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.overflow = 'auto';
-    container.style.padding = '24px';
+    container.style.padding = '16px 8px';
     container.style.backgroundColor = '#f1f5f9';
 
     const wrapper = document.createElement('div');
@@ -192,40 +192,54 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
     let scale = 1.0;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = 'width';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let currentPage = 1;
+    let totalPages = 1;
+    let slides: HTMLElement[] = [];
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
-      const elW = wrapper.offsetWidth || 850;
-      const singlePageH = Math.min(wrapper.offsetHeight || 1056, Math.round(elW * 1.32));
-      const availW = Math.max(280, ctx.container.clientWidth - 48);
-      const availH = Math.max(280, ctx.container.clientHeight - 80);
+      const activeSlide = slides[currentPage - 1];
+      const elW = (activeSlide && activeSlide.offsetWidth > 0) ? activeSlide.offsetWidth : (wrapper.offsetWidth || 816);
+      const singlePageH = Math.min(activeSlide?.offsetHeight || wrapper.offsetHeight || 1056, Math.round(elW * 1.32));
+      // Minimal side margins (12px on each side)
+      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
       const sH = availH / (isPresentation ? 540 : singlePageH);
 
       if (isPresentation) {
-        return Math.min(1.0, Math.min(sW, sH));
+        return Math.min(2.5, Math.min(sW, sH));
       }
 
       if (mode === 'page') {
-        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
       }
-      return Math.max(0.65, Math.min(1.05, sW));
+      return Math.max(0.4, Math.min(3.5, sW));
     };
 
     const applyTransform = () => {
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
       wrapper.style.transformOrigin = 'top center';
+      const activeSlide = slides[currentPage - 1];
+      const baseH = activeSlide?.offsetHeight || wrapper.offsetHeight || 1056;
+      const scaledH = baseH * scale;
+      const extraH = Math.max(0, scaledH - baseH);
+      wrapper.style.marginBottom = `${extraH + 32}px`;
     };
 
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          scale = calculateFitScale(fitMode);
+          applyTransform();
+        })
+      : null;
+    resizeObserver?.observe(ctx.container);
+
     setTimeout(() => {
-      fitMode = 'width';
-      scale = calculateFitScale('width');
+      scale = calculateFitScale(fitMode);
       applyTransform();
     }, 60);
-    let currentPage = 1;
-    let totalPages = 1;
-    let slides: HTMLElement[] = [];
 
     if (isPresentation) {
       // ODP (Presentation): render slides
@@ -366,6 +380,7 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     }
 
     const cleanup = () => {
+      resizeObserver?.disconnect();
       imageUrls.forEach(url => URL.revokeObjectURL(url));
       container.remove();
       ctx.container.innerHTML = '';
@@ -405,8 +420,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        fitMode = fitMode === 'width' ? 'page' : 'width';
-        scale = calculateFitScale(fitMode);
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },

@@ -121,18 +121,19 @@ export class RtfPlugin implements PreviewPlugin {
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-rtf-wrapper';
-    wrapper.style.padding = '32px';
-    wrapper.style.maxWidth = '850px';
-    wrapper.style.margin = '0 auto';
-    wrapper.style.backgroundColor = '#fff';
-    wrapper.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-    wrapper.style.borderRadius = '4px';
+    wrapper.style.padding = '0';
+    wrapper.style.maxWidth = 'none';
+    wrapper.style.width = '100%';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.backgroundColor = 'transparent';
     wrapper.style.minHeight = '100%';
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
 
     ctx.container.style.overflow = 'auto';
-    ctx.container.style.padding = '24px';
+    ctx.container.style.padding = '16px 8px';
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(wrapper);
 
@@ -140,32 +141,45 @@ export class RtfPlugin implements PreviewPlugin {
     let rotation = 0;
     let pageElements: HTMLElement[] = [];
 
-    let fitMode: 'width' | 'page' = 'width';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const activeEl = pageElements[currentPage - 1] || wrapper;
-      const elW = activeEl.offsetWidth || 850;
-      const singlePageH = Math.min(activeEl.offsetHeight || 1056, Math.round(elW * 1.32));
-      const availW = Math.max(280, ctx.container.clientWidth - 48);
-      const availH = Math.max(280, ctx.container.clientHeight - 80);
+      const elW = (activeEl && activeEl.offsetWidth > 0) ? activeEl.offsetWidth : 816;
+      const singlePageH = Math.min(activeEl?.offsetHeight || 1056, Math.round(elW * 1.32));
+      // Minimal side margins (12px on each side)
+      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
       const sH = availH / singlePageH;
 
       if (mode === 'page') {
-        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
       }
-      return Math.max(0.65, Math.min(1.05, sW));
+      return Math.max(0.4, Math.min(3.5, sW));
     };
 
     const applyTransform = () => {
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
       wrapper.style.transformOrigin = 'top center';
+      const activeEl = pageElements[currentPage - 1];
+      const baseH = activeEl?.offsetHeight || 1056;
+      const scaledH = baseH * scale;
+      const extraH = Math.max(0, scaledH - baseH);
+      wrapper.style.marginBottom = `${extraH + 32}px`;
     };
 
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          scale = calculateFitScale(fitMode);
+          applyTransform();
+        })
+      : null;
+    resizeObserver?.observe(ctx.container);
+
     setTimeout(() => {
-      fitMode = 'width';
-      scale = calculateFitScale('width');
+      scale = calculateFitScale(fitMode);
       applyTransform();
     }, 60);
 
@@ -314,6 +328,7 @@ export class RtfPlugin implements PreviewPlugin {
     }
 
     const cleanup = () => {
+      resizeObserver?.disconnect();
       indicator?.remove();
       wrapper.remove();
       ctx.container.innerHTML = '';
@@ -340,8 +355,8 @@ export class RtfPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        fitMode = fitMode === 'width' ? 'page' : 'width';
-        scale = calculateFitScale(fitMode);
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },
