@@ -1,6 +1,7 @@
 import { EventEmitter } from './events';
 import { sourceToArrayBuffer } from './detect';
 import { downloadFile } from './utils';
+import { saveTransferPayload } from './transfer';
 import { ToolbarController } from './toolbar/toolbar-controller';
 import { ThumbnailPanel } from './thumbnail/thumbnail-panel';
 import type {
@@ -62,6 +63,8 @@ export class FilePreviewViewer {
     source: FileSource,
     options: PreviewViewerOptions = {}
   ): Promise<PreviewInstance> {
+    this.currentOptions = options;
+
     // 1. Abort any in-flight operation
     this.abort();
     this.abortController = new AbortController();
@@ -80,7 +83,10 @@ export class FilePreviewViewer {
     try {
       // 5. Normalize source to ArrayBuffer + metadata
       const { buffer, metadata } = await sourceToArrayBuffer(source, signal);
-      this.currentBuffer = buffer;
+      if (options.metadata) {
+        Object.assign(metadata, options.metadata);
+      }
+      this.currentBuffer = buffer.slice(0);
       this.currentMetadata = metadata;
 
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -119,12 +125,13 @@ export class FilePreviewViewer {
       });
 
       this.activeInstance = instance;
+      (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();
 
       // FAST STARTUP: Hide loading immediately once the instance is mounted!
       this.hideLoading();
       this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
 
-      // 8. Setup toolbar with plugin's actions + auto fullscreen button
+      // 8. Setup toolbar with plugin's actions + auto fullscreen and open-window buttons
       if (options.showToolbar !== false && this.toolbar) {
         const actions = matchedPlugin.getToolbarActions(instance);
         const hasFullscreen = actions.some(a => a.id === 'fullscreen');
@@ -132,25 +139,16 @@ export class FilePreviewViewer {
           actions.push({
             id: 'fullscreen',
             icon: 'fullscreen',
-            label: 'Toggle Fullscreen',
+            label: 'Fullscreen',
             type: 'button',
             group: 'view',
-            execute: async () => {
+            execute: () => {
               try {
-                const isNativeFs = !!document.fullscreenElement;
-                const isCssFs = this.wrapperEl?.classList.contains('fp-fullscreen-active');
-                if (!isNativeFs && !isCssFs) {
-                  if (this.wrapperEl?.requestFullscreen) {
-                    await this.wrapperEl.requestFullscreen().catch(() => {
-                      this.wrapperEl?.classList.add('fp-fullscreen-active');
-                    });
-                  } else {
-                    this.wrapperEl?.classList.add('fp-fullscreen-active');
-                  }
+                if (!document.fullscreenElement) {
+                  this.wrapperEl?.requestFullscreen?.();
+                  this.wrapperEl?.classList.add('fp-fullscreen-active');
                 } else {
-                  if (document.fullscreenElement) {
-                    await document.exitFullscreen().catch(() => {});
-                  }
+                  document.exitFullscreen?.();
                   this.wrapperEl?.classList.remove('fp-fullscreen-active');
                 }
               } catch {
@@ -162,6 +160,30 @@ export class FilePreviewViewer {
             }
           });
         }
+
+        const openWinAction = actions.find(a => a.id === 'open-window');
+        if (openWinAction) {
+          if ((options as any)?._isSeparateWindow) {
+            const idx = actions.indexOf(openWinAction);
+            if (idx !== -1) actions.splice(idx, 1);
+          } else {
+            openWinAction.execute = () => {
+              this.openInSeparateWindow();
+            };
+          }
+        } else if (!(options as any)?._isSeparateWindow) {
+          actions.push({
+            id: 'open-window',
+            icon: 'open-window',
+            label: 'Open in Separate Full Window',
+            type: 'button',
+            group: 'actions',
+            execute: () => {
+              this.openInSeparateWindow();
+            }
+          });
+        }
+
         this.toolbar.update(actions);
         this.toolbar.show();
       }
@@ -196,6 +218,121 @@ export class FilePreviewViewer {
       this.eventEmitter.emit('error', error);
       throw error;
     }
+  }
+
+  /**
+   * Opens the current file preview in a separate full browser window.
+   */
+  openInSeparateWindow(): Window | null {
+    if (!this.currentBuffer) {
+      console.warn('[FilePreviewViewer] No active file buffer to open in separate window');
+      return null;
+    }
+
+    if (this.currentOptions.onOpenSeparateWindow) {
+      return this.currentOptions.onOpenSeparateWindow({
+        buffer: this.currentBuffer,
+        metadata: this.currentMetadata || { name: 'Document' },
+        options: this.currentOptions
+      });
+    }
+
+    const transferId = 'fp_win_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    let clonedBuffer: ArrayBuffer;
+    try {
+      clonedBuffer = this.currentBuffer.slice(0);
+    } catch {
+      clonedBuffer = this.currentBuffer;
+    }
+    const payload = {
+      buffer: clonedBuffer,
+      metadata: this.currentMetadata ? { ...this.currentMetadata } : undefined,
+      options: { ...this.currentOptions, _isSeparateWindow: true }
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        (window as any)[transferId] = payload;
+        (window as any).__lastTransfer = payload;
+      } catch {}
+    }
+
+    // Persist asynchronously in IndexedDB for cross-window / process-isolated communication
+    saveTransferPayload(transferId, payload).catch(err => {
+      console.warn('[FilePreviewViewer] Transfer payload save warning:', err);
+    });
+
+    let targetUrl: string | null = null;
+    if (this.currentOptions.standaloneViewerUrl) {
+      const u = new URL(this.currentOptions.standaloneViewerUrl, window.location.href);
+      u.searchParams.set('mode', 'fullscreen');
+      u.searchParams.set('transferId', transferId);
+      targetUrl = u.toString();
+    } else if (typeof window !== 'undefined' && window.location?.href && !window.location.href.startsWith('about:')) {
+      const u = new URL(window.location.href);
+      u.searchParams.set('mode', 'fullscreen');
+      u.searchParams.set('transferId', transferId);
+      targetUrl = u.toString();
+    }
+
+    if (targetUrl) {
+      const newWin = window.open(targetUrl, '_blank');
+      if (!newWin) {
+        alert('Popup blocker prevented opening the preview in a separate window. Please allow popups for this site.');
+        return null;
+      }
+      return newWin;
+    }
+
+    // Fallback for about:blank / test environments without origin
+    const title = (this.currentMetadata?.name || 'Document Preview') + ' - Full Preview';
+    const newWin = window.open('', '_blank');
+    if (!newWin) {
+      alert('Popup blocker prevented opening the preview in a separate window. Please allow popups for this site.');
+      return null;
+    }
+
+    newWin.document.title = title;
+    newWin.document.body.style.margin = '0';
+    newWin.document.body.style.padding = '0';
+    newWin.document.body.style.width = '100vw';
+    newWin.document.body.style.height = '100vh';
+    newWin.document.body.style.overflow = 'hidden';
+    newWin.document.body.style.backgroundColor = '#f8fafc';
+
+    // Clone parent stylesheets and style tags
+    const headNodes = document.querySelectorAll('link[rel="stylesheet"], style');
+    headNodes.forEach(node => {
+      newWin.document.head.appendChild(node.cloneNode(true));
+    });
+
+    const root = newWin.document.createElement('div');
+    root.id = 'full-window-preview-root';
+    root.style.width = '100%';
+    root.style.height = '100%';
+    root.style.overflow = 'hidden';
+    newWin.document.body.appendChild(root);
+
+    const separateViewer = new FilePreviewViewer();
+    for (const plugin of this.plugins) {
+      separateViewer.registerPlugin(plugin);
+    }
+
+    separateViewer.preview(root, this.currentBuffer.slice(0), {
+      ...this.currentOptions,
+      showToolbar: true,
+      toolbarPosition: 'top',
+      metadata: this.currentMetadata || undefined,
+      _isSeparateWindow: true
+    } as any).catch(err => {
+      console.error('[FilePreviewViewer] Error rendering in separate window:', err);
+    });
+
+    newWin.addEventListener('beforeunload', () => {
+      separateViewer.destroy();
+    });
+
+    return newWin;
   }
 
   /**

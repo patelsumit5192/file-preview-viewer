@@ -8,12 +8,25 @@ import type {
 } from '@patel.sumit51/core';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Ensure PDF.js worker is configured in browser environments
+// Configure PDF.js worker: 100% local, zero external network dependencies
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/build/pdf.worker.min.mjs`;
+  if (!pdfjsLib.GlobalWorkerOptions.workerPort && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    const customWorker = (window as any).__PDF_WORKER_SRC__;
+    if (customWorker) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = customWorker;
+    } else {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
+          new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url),
+          { type: 'module' }
+        );
+      } catch {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+      }
+    }
   }
 }
+
 
 export class PdfPlugin implements PreviewPlugin {
   id = 'pdf';
@@ -109,6 +122,14 @@ export class PdfPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     ];
   }
@@ -164,11 +185,15 @@ export class PdfPlugin implements PreviewPlugin {
 
     ctx.container.appendChild(container);
 
+    const standardFontsUrl = (typeof window !== 'undefined' && (window as any).__PDF_STANDARD_FONTS_URL__) || './standard_fonts/';
+    const cmapsUrl = (typeof window !== 'undefined' && (window as any).__PDF_CMAPS_URL__) || './cmaps/';
+
     const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(ctx.buffer),
-      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/cmaps/`,
+      data: new Uint8Array(ctx.buffer.slice(0)),
+      cMapUrl: cmapsUrl,
       cMapPacked: true,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/standard_fonts/`,
+      standardFontDataUrl: standardFontsUrl,
+      verbosity: 0,
     });
 
     const pdfDoc = await loadingTask.promise;
@@ -177,7 +202,7 @@ export class PdfPlugin implements PreviewPlugin {
     let currentPage = 1;
     let zoomScale = 1.0;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = 'width';
+    let fitMode: 'width' | 'page' = 'page';
     let currentRenderTask: any = null;
 
     const renderPage = async (pageNum: number) => {
@@ -203,18 +228,18 @@ export class PdfPlugin implements PreviewPlugin {
       const containerHeight = container.clientHeight || 700;
       const unscaledVp = page.getViewport({ scale: 1.0, rotation });
 
-      const availWidth = Math.max(280, containerWidth - 48);
-      const availHeight = Math.max(280, containerHeight - 88);
+      const availWidth = Math.max(320, containerWidth - 48);
+      const availHeight = Math.max(550, containerHeight - 88);
       const scaleW = availWidth / unscaledVp.width;
       const scaleH = availHeight / unscaledVp.height;
 
-      // In 'width' mode (default): fit page width comfortably so text is crisp and readable
-      // In 'page' mode: fit entire page (both width and height) in viewport
+      // In 'page' mode: fit page height & width so full document fits comfortably
+      // In 'width' mode: fit page width comfortably for reading
       let fitScale: number;
       if (fitMode === 'page') {
-        fitScale = Math.max(0.5, Math.min(scaleW, scaleH));
+        fitScale = Math.max(0.4, Math.min(scaleW, scaleH));
       } else {
-        fitScale = Math.max(0.65, Math.min(1.15, scaleW));
+        fitScale = Math.max(0.65, Math.min(1.25, scaleW));
       }
       const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 
@@ -247,7 +272,7 @@ export class PdfPlugin implements PreviewPlugin {
       }
     };
 
-    await renderPage(1);
+    renderPage(1);
 
     // Auto-refit on container resize (window resize, panel toggle, fullscreen)
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -293,7 +318,7 @@ export class PdfPlugin implements PreviewPlugin {
         renderPage(currentPage);
       },
       fitToPage: () => {
-        fitMode = fitMode === 'width' ? 'page' : 'width';
+        fitMode = fitMode === 'page' ? 'width' : 'page';
         zoomScale = 1.0;
         rotation = 0;
         renderPage(currentPage);

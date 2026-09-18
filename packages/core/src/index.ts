@@ -29,6 +29,9 @@ export {
 export { ToolbarController } from './toolbar/toolbar-controller';
 export { ThumbnailPanel } from './thumbnail/thumbnail-panel';
 
+// Cross-window document transfer
+export { saveTransferPayload, getTransferPayload, type TransferPayload } from './transfer';
+
 // Types — re-export all
 export type {
   FileSource,

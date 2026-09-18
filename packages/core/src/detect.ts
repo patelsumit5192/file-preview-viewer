@@ -295,16 +295,25 @@ export async function sourceToArrayBuffer(
     metadata.mimeType = source.type || undefined;
     metadata.extension = extractExtension(source.name);
     buffer = await source.arrayBuffer();
-  } else if (source instanceof Blob) {
-    metadata.size = source.size;
-    metadata.mimeType = source.type || undefined;
-    buffer = await source.arrayBuffer();
-  } else if (source instanceof ArrayBuffer) {
-    buffer = source;
-  } else if (source instanceof Uint8Array) {
-    buffer = source.buffer.slice(
-      source.byteOffset,
-      source.byteOffset + source.byteLength
+  } else if (source instanceof Blob || (source && typeof (source as any).arrayBuffer === 'function' && typeof (source as any).size === 'number')) {
+    metadata.size = (source as any).size;
+    metadata.mimeType = (source as any).type || undefined;
+    if ((source as any).name) {
+      metadata.name = (source as any).name;
+      metadata.extension = extractExtension((source as any).name);
+    }
+    buffer = await (source as any).arrayBuffer();
+  } else if (
+    source instanceof ArrayBuffer ||
+    Object.prototype.toString.call(source) === '[object ArrayBuffer]' ||
+    (source && typeof (source as any).byteLength === 'number' && typeof (source as any).slice === 'function')
+  ) {
+    buffer = source as ArrayBuffer;
+  } else if (source instanceof Uint8Array || ArrayBuffer.isView(source)) {
+    const view = source as ArrayBufferView;
+    buffer = view.buffer.slice(
+      view.byteOffset,
+      view.byteOffset + view.byteLength
     ) as ArrayBuffer;
   } else {
     throw new Error('Unsupported file source type');

@@ -30,6 +30,8 @@ const ICON_MAP: Record<string, string> = {
   'rewind': icons.ICON_REWIND,
   'replay-10': icons.ICON_REWIND,
   'speed': icons.ICON_SPEED,
+  'open-window': icons.ICON_EXTERNAL_WINDOW,
+  'external-window': icons.ICON_EXTERNAL_WINDOW,
 };
 
 export class ToolbarController {

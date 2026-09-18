@@ -104,6 +104,14 @@ export class RtfPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     );
 
@@ -168,65 +176,63 @@ export class RtfPlugin implements PreviewPlugin {
       const doc = new (RTFJS as any).Document(ctx.buffer, {});
       const htmlElements = await doc.render();
       
-      // If RTFJS returned 1 continuous element with large content, split into discrete A4 page cards
-      if (htmlElements.length === 1) {
-        const singleEl = htmlElements[0];
-        wrapper.appendChild(singleEl);
-        const children = Array.from(singleEl.children) as HTMLElement[];
-        const secH = singleEl.offsetHeight || singleEl.scrollHeight;
-
-        if (secH > 1300 && children.length > 1) {
-          const childHeights = children.map(c => {
-            const rectH = c.getBoundingClientRect().height;
-            const offH = c.offsetHeight;
-            const textLen = c.textContent?.trim().length || 0;
-            const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
-            return Math.max(rectH, offH, estH);
-          });
-
-          wrapper.innerHTML = '';
-          const createRtfCard = () => {
-            const card = document.createElement('div');
-            card.className = 'fp-rtf-page-card';
-            card.style.backgroundColor = '#ffffff';
-            card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
-            card.style.borderRadius = '4px';
-            card.style.padding = '72px 56px';
-            card.style.width = '816px';
-            card.style.minHeight = '1056px';
-            card.style.boxSizing = 'border-box';
-            card.style.marginBottom = '24px';
-            return card;
-          };
-
-          let curCard = createRtfCard();
-          wrapper.appendChild(curCard);
-          pageElements = [curCard];
-          let curH = 0;
-          const maxH = 920; // A4/Letter printable height
-
-          for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            const chH = childHeights[i];
-            curCard.appendChild(child);
-            curH += chH;
-
-            if (curH >= maxH && i < children.length - 1) {
-              curCard = createRtfCard();
-              wrapper.appendChild(curCard);
-              pageElements.push(curCard);
-              curH = 0;
-            }
-          }
+      // Flatten and collect all child content elements
+      const contentNodes: HTMLElement[] = [];
+      for (const item of htmlElements) {
+        if (item.children && item.children.length > 0 && !item.tagName.toLowerCase().startsWith('table')) {
+          contentNodes.push(...Array.from(item.children as HTMLCollectionOf<HTMLElement>));
         } else {
-          pageElements = [singleEl];
+          contentNodes.push(item as HTMLElement);
         }
-      } else {
-        pageElements = htmlElements;
-        for (let i = 0; i < htmlElements.length; i++) {
-          const el = htmlElements[i];
-          el.style.display = i === 0 ? 'block' : 'none';
-          wrapper.appendChild(el);
+      }
+
+      // Temporarily mount to wrapper to measure real layout heights
+      wrapper.innerHTML = '';
+      contentNodes.forEach(node => wrapper.appendChild(node));
+
+      const childHeights = contentNodes.map(c => {
+        const rectH = c.getBoundingClientRect ? c.getBoundingClientRect().height : 0;
+        const offH = c.offsetHeight || 0;
+        const textLen = c.textContent?.trim().length || 0;
+        const estH = Math.max(24, Math.ceil(textLen / 75) * 22 + 14);
+        return Math.max(rectH, offH, estH);
+      });
+
+      wrapper.innerHTML = '';
+
+      const createRtfCard = () => {
+        const card = document.createElement('div');
+        card.className = 'fp-rtf-page-card';
+        card.style.backgroundColor = '#ffffff';
+        card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+        card.style.borderRadius = '4px';
+        card.style.padding = '72px 56px';
+        card.style.width = '816px';
+        card.style.minHeight = '1056px';
+        card.style.boxSizing = 'border-box';
+        card.style.marginBottom = '24px';
+        card.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
+        card.style.lineHeight = '1.6';
+        return card;
+      };
+
+      let curCard = createRtfCard();
+      wrapper.appendChild(curCard);
+      pageElements = [curCard];
+      let curH = 0;
+      const maxH = 912; // 1056px - 144px margins
+
+      for (let i = 0; i < contentNodes.length; i++) {
+        const child = contentNodes[i];
+        const chH = childHeights[i];
+        curCard.appendChild(child);
+        curH += chH;
+
+        if (curH >= maxH && i < contentNodes.length - 1) {
+          curCard = createRtfCard();
+          wrapper.appendChild(curCard);
+          pageElements.push(curCard);
+          curH = 0;
         }
       }
     } catch (err) {

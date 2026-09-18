@@ -165,6 +165,14 @@ export interface PreviewViewerOptions {
   className?: string;
   /** Plugin-specific options */
   pluginOptions?: Record<string, unknown>;
+  /** Optional file metadata overrides (name, extension, mimeType, etc.) */
+  metadata?: FileMetadata;
+  /** Custom URL to navigate when "Open in Separate Full Window" is clicked */
+  standaloneViewerUrl?: string;
+  /** Custom handler for opening preview in a separate window */
+  onOpenSeparateWindow?: (payload: { buffer: ArrayBuffer; metadata: FileMetadata; options: PreviewViewerOptions }) => Window | null;
+  /** Internal flag: true when viewer is rendered inside separate full window */
+  _isSeparateWindow?: boolean;
 }
 
 /** Events emitted by the viewer */

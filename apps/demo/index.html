@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>@files-preview-app/preview-file — Live Interactive Demo</title>
+  <script>
+    window.__consoleLogs = [];
+    const origLog = console.log, origWarn = console.warn, origErr = console.error;
+    console.log = function(...args) { window.__consoleLogs.push({ t: 'log', m: args.join(' ') }); origLog.apply(console, args); };
+    console.warn = function(...args) { window.__consoleLogs.push({ t: 'warn', m: args.join(' ') }); origWarn.apply(console, args); };
+    console.error = function(...args) { window.__consoleLogs.push({ t: 'error', m: args.join(' ') }); origErr.apply(console, args); };
+    window.addEventListener('error', function(e) { window.__consoleLogs.push({ t: 'window.error', m: e.message + ' at ' + e.filename + ':' + e.lineno }); });
+    window.addEventListener('unhandledrejection', function(e) { window.__consoleLogs.push({ t: 'unhandledrejection', m: (e.reason && e.reason.message) || String(e.reason) }); });
+  </script>
   <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body class="theme-light">
@@ -36,6 +45,42 @@
             <span class="drop-text">Drag & drop any file here</span>
             <span class="drop-subtext">or click to browse your computer</span>
           </div>
+        </div>
+
+        <div class="section-title">UPLOADED DOCUMENTS</div>
+        <div class="sample-grid" style="margin-bottom: 20px;">
+          <button class="sample-btn" data-sample="up-ts-docx">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">TS Doc (4 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-1mb-docx">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">1MB Docx (5 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-1mb-doc">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">1MB Doc (5 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-500kb-rtf">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">500kB RTF (6 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-long-txt">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">Long Doc (TXT)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-1mb-odt">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">1MB ODT (5 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-pdf-3p">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">Extracted (3 pgs)</span>
+          </button>
+          <button class="sample-btn" data-sample="up-pdf-16p">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">Stories (16 pgs)</span>
+          </button>
         </div>
 
         <div class="section-title">TEST WITH INSTANT SAMPLES</div>

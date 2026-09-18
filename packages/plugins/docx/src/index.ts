@@ -106,6 +106,14 @@ export class DocxPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     );
 
@@ -177,6 +185,37 @@ export class DocxPlugin implements PreviewPlugin {
       // Check if visible content was actually produced
       if (wrapper.children.length > 0 && (wrapper.textContent?.trim().length ?? 0) > 0) {
         renderedSuccessfully = true;
+
+        // Inject DrawingML charts that docx-preview drops
+        try {
+          const unzipped = unzipSync(new Uint8Array(ctx.buffer));
+          const chartKeys = Object.keys(unzipped)
+            .filter(k => k.replace(/^[./\\]+/, '').toLowerCase().startsWith('word/charts/chart') && k.endsWith('.xml'))
+            .sort();
+
+          if (chartKeys.length > 0) {
+            const allDivs = Array.from(wrapper.querySelectorAll<HTMLElement>('div'));
+            const emptyContainers = allDivs.filter(div => {
+              const st = div.getAttribute('style') || '';
+              return st.includes('width:') && st.includes('height:') && div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
+            });
+
+            chartKeys.forEach((cKey, idx) => {
+              const target = emptyContainers[idx];
+              if (target) {
+                const xmlStr = strFromU8(unzipped[cKey]);
+                const svg = this.parseAndRenderChartSvg(xmlStr);
+                if (svg) {
+                  target.innerHTML = svg;
+                  target.style.display = 'block';
+                  target.style.margin = '12px auto';
+                }
+              }
+            });
+          }
+        } catch (chartErr) {
+          console.warn('[DocxPlugin] Non-critical error rendering DrawingML charts:', chartErr);
+        }
       }
     } catch (err) {
       console.warn('[DocxPlugin] docx-preview failed, triggering native fallback:', err);
@@ -214,83 +253,92 @@ export class DocxPlugin implements PreviewPlugin {
     let sections = Array.from(wrapper.querySelectorAll<HTMLElement>('section.docx'));
     const cards = Array.from(wrapper.querySelectorAll<HTMLElement>('.fp-docx-page-card'));
 
-    // If docx-preview produced only 1 section, but that section contains multiple pages of content:
-    if (sections.length === 1 && cards.length === 0) {
-      const singleSec = sections[0];
-      const contentContainer = (singleSec.querySelector('article') as HTMLElement) || singleSec;
-      const children = Array.from(contentContainer.children) as HTMLElement[];
+    // Check EVERY section and split any section containing multi-page content
+    if (sections.length > 0 && cards.length === 0) {
+      const finalSections: HTMLElement[] = [];
 
-      // Measure page height (A4 is ~1122px, US Letter is ~1056px)
-      const pageH = singleSec.offsetHeight > 1300 ? 1122 : Math.max(1056, singleSec.offsetHeight);
-      const secH = singleSec.offsetHeight || singleSec.scrollHeight;
+      for (const singleSec of sections) {
+        const contentContainer = (singleSec.querySelector('article') as HTMLElement) || singleSec;
+        const children = Array.from(contentContainer.children) as HTMLElement[];
 
-      if (secH > pageH * 1.25 && children.length > 1) {
-        // First record heights while all elements are still in the DOM
-        const childHeights = children.map(c => {
-          const rectH = c.getBoundingClientRect().height;
-          const offH = c.offsetHeight;
-          const textLen = c.textContent?.trim().length || 0;
-          const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
-          return Math.max(rectH, offH, estH);
-        });
+        // Measure page height (A4 is ~1122px, US Letter is ~1056px)
+        const pageH = singleSec.offsetHeight > 1300 ? 1122 : Math.max(1056, singleSec.offsetHeight);
+        const secH = singleSec.scrollHeight || singleSec.offsetHeight;
 
-        const parent = singleSec.parentElement || wrapper;
-        const newSections: HTMLElement[] = [singleSec];
+        if (secH > pageH * 1.25 && children.length > 1) {
+          // Record heights while elements are in DOM
+          const childHeights = children.map(c => {
+            const rectH = c.getBoundingClientRect().height;
+            const offH = c.offsetHeight;
+            const textLen = c.textContent?.trim().length || 0;
+            const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
+            return Math.max(rectH, offH, estH);
+          });
 
-        // Header / Footer preservation
-        const headerEl = singleSec.querySelector('header');
-        const footerEl = singleSec.querySelector('footer');
+          const parent = singleSec.parentElement || wrapper;
+          const headerEl = singleSec.querySelector('header');
+          const footerEl = singleSec.querySelector('footer');
 
-        contentContainer.innerHTML = '';
-        singleSec.style.minHeight = `${pageH}px`;
-        singleSec.style.boxSizing = 'border-box';
+          contentContainer.innerHTML = '';
+          singleSec.style.minHeight = `${pageH}px`;
+          singleSec.style.boxSizing = 'border-box';
 
-        let curContent = contentContainer;
-        let curSec = singleSec;
-        let curH = 0;
-        const maxH = pageH - 140; // Printable area between margins/padding
+          let curContent = contentContainer;
+          let curSec = singleSec;
+          let curH = 0;
+          const maxH = pageH - 140; // Printable area between margins/padding
 
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          const chH = childHeights[i];
+          finalSections.push(singleSec);
 
-          curContent.appendChild(child);
-          curH += chH;
+          for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const chH = childHeights[i];
 
-          if (curH >= maxH && i < children.length - 1) {
-            const nextSec = document.createElement('section');
-            nextSec.className = singleSec.className;
-            nextSec.style.cssText = singleSec.style.cssText;
-            nextSec.style.minHeight = `${pageH}px`;
-            nextSec.style.boxSizing = 'border-box';
-            nextSec.style.backgroundColor = '#ffffff';
-            nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
-            nextSec.style.borderRadius = '4px';
-            nextSec.style.marginBottom = '24px';
+            curContent.appendChild(child);
+            curH += chH;
 
-            if (headerEl) {
-              nextSec.appendChild(headerEl.cloneNode(true));
+            if (curH >= maxH && i < children.length - 1) {
+              const nextSec = document.createElement('section');
+              nextSec.className = singleSec.className;
+              nextSec.style.cssText = singleSec.style.cssText;
+              nextSec.style.minHeight = `${pageH}px`;
+              nextSec.style.boxSizing = 'border-box';
+              nextSec.style.backgroundColor = '#ffffff';
+              nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
+              nextSec.style.borderRadius = '4px';
+              nextSec.style.marginBottom = '24px';
+
+              if (headerEl) {
+                nextSec.appendChild(headerEl.cloneNode(true));
+              }
+
+              const nextArticle = document.createElement('article');
+              if (contentContainer.tagName.toLowerCase() === 'article') {
+                nextArticle.style.cssText = contentContainer.style.cssText;
+              }
+              nextSec.appendChild(nextArticle);
+
+              if (footerEl) {
+                nextSec.appendChild(footerEl.cloneNode(true));
+              }
+
+              if (curSec.nextSibling) {
+                parent.insertBefore(nextSec, curSec.nextSibling);
+              } else {
+                parent.appendChild(nextSec);
+              }
+
+              finalSections.push(nextSec);
+              curSec = nextSec;
+              curContent = nextArticle;
+              curH = 0;
             }
-
-            const nextArticle = document.createElement('article');
-            if (contentContainer.tagName.toLowerCase() === 'article') {
-              nextArticle.style.cssText = contentContainer.style.cssText;
-            }
-            nextSec.appendChild(nextArticle);
-
-            if (footerEl) {
-              nextSec.appendChild(footerEl.cloneNode(true));
-            }
-
-            parent.appendChild(nextSec);
-            newSections.push(nextSec);
-            curSec = nextSec;
-            curContent = nextArticle;
-            curH = 0;
           }
+        } else {
+          finalSections.push(singleSec);
         }
-        sections = newSections;
       }
+      sections = finalSections;
     }
 
     const pageElements: HTMLElement[] = sections.length > 0 ? sections : cards;
@@ -745,6 +793,105 @@ export class DocxPlugin implements PreviewPlugin {
       result += current.trim();
     }
     return result;
+  }
+
+  private parseAndRenderChartSvg(xmlStr: string, width = 500, height = 260): string {
+    // Extract categories
+    const catMatches = [...xmlStr.matchAll(/<c:cat>[\s\S]*?<c:strCache>([\s\S]*?)<\/c:strCache>/g)];
+    let categories: string[] = [];
+    if (catMatches.length > 0) {
+      categories = [...catMatches[0][1].matchAll(/<c:v>([^<]+)<\/c:v>/g)].map(m => m[1]);
+    }
+    if (categories.length === 0) {
+      categories = ['Category 1', 'Category 2', 'Category 3', 'Category 4'];
+    }
+
+    // Extract series
+    const defaultColors = ['#004586', '#ff420e', '#ffd320', '#579d1c', '#7e0021', '#83caff'];
+    const sers = [...xmlStr.matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)];
+    const series: { title: string; color: string; values: number[] }[] = [];
+
+    sers.forEach((s, sIdx) => {
+      const titleMatch = s[1].match(/<c:tx>[\s\S]*?<c:v>([^<]+)<\/c:v>/);
+      const title = titleMatch ? titleMatch[1] : `Series ${sIdx + 1}`;
+
+      const clrMatch = s[1].match(/<a:srgbClr\s+val="([^"]+)"/);
+      const color = clrMatch ? '#' + clrMatch[1] : defaultColors[sIdx % defaultColors.length];
+
+      const valMatch = s[1].match(/<c:val>[\s\S]*?<c:numCache>([\s\S]*?)<\/c:numCache>/);
+      let values: number[] = [];
+      if (valMatch) {
+        values = [...valMatch[1].matchAll(/<c:pt\s+idx="(\d+)">\s*<c:v>([^<]+)<\/c:v>/g)]
+          .sort((a, b) => parseInt(a[1], 10) - parseInt(b[1], 10))
+          .map(m => parseFloat(m[2]) || 0);
+      }
+      series.push({ title, color, values });
+    });
+
+    if (series.length === 0) return '';
+
+    let maxVal = 10;
+    series.forEach(s => s.values.forEach(v => { if (v > maxVal) maxVal = v; }));
+    maxVal = Math.ceil(maxVal * 1.15);
+    if (maxVal % 2 !== 0) maxVal++;
+
+    const padLeft = 45;
+    const padBottom = 55;
+    const padTop = 20;
+    const padRight = 20;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+
+    const yTicks = 5;
+    let gridLines = '';
+    for (let i = 0; i <= yTicks; i++) {
+      const val = (maxVal / yTicks) * i;
+      const y = padTop + plotH - (val / maxVal) * plotH;
+      gridLines += `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e2e8f0" stroke-width="1" />`;
+      gridLines += `<text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#64748b" font-family="Calibri, sans-serif">${Math.round(val)}</text>`;
+    }
+
+    const numCats = categories.length;
+    const numSers = series.length;
+    const groupW = plotW / numCats;
+    const barW = Math.max(8, Math.min(28, (groupW * 0.7) / numSers));
+    const groupPad = (groupW - barW * numSers) / 2;
+
+    let bars = '';
+    let catLabels = '';
+
+    for (let c = 0; c < numCats; c++) {
+      const catX = padLeft + c * groupW;
+      catLabels += `<text x="${catX + groupW / 2}" y="${padTop + plotH + 18}" text-anchor="middle" font-size="11" fill="#334155" font-family="Calibri, sans-serif">${categories[c]}</text>`;
+
+      for (let s = 0; s < numSers; s++) {
+        const val = series[s].values[c] ?? 0;
+        const bH = Math.max(0, (val / maxVal) * plotH);
+        const bX = catX + groupPad + s * barW;
+        const bY = padTop + plotH - bH;
+        bars += `<rect x="${bX}" y="${bY}" width="${barW - 2}" height="${bH}" fill="${series[s].color}" rx="1" />`;
+      }
+    }
+
+    let legend = '';
+    const legY = height - 12;
+    let legX = padLeft + (plotW - numSers * 100) / 2;
+    series.forEach(s => {
+      legend += `<rect x="${legX}" y="${legY - 9}" width="10" height="10" fill="${s.color}" rx="2" />`;
+      legend += `<text x="${legX + 15}" y="${legY}" font-size="11" fill="#475569" font-family="Calibri, sans-serif">${s.title}</text>`;
+      legX += 95;
+    });
+
+    return `
+      <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" style="background:#ffffff; border-radius:4px; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+        ${gridLines}
+        <line x1="${padLeft}" y1="${padTop + plotH}" x2="${padLeft + plotW}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+        <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+        ${bars}
+        ${catLabels}
+        ${legend}
+      </svg>
+    `.trim();
   }
 }
 

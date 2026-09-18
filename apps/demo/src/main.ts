@@ -1,4 +1,4 @@
-import { FilePreviewViewer } from '@files-preview-app/preview-file';
+import { FilePreviewViewer, getTransferPayload } from '@files-preview-app/preview-file';
 import '@files-preview-app/preview-file/styles.css';
 
 // Initialize the universal viewer
@@ -29,6 +29,17 @@ function getSampleUrl(filename: string): string {
     path += '/';
   }
   return `${window.location.origin}${path}samples/${filename}`;
+}
+
+function getUploadedUrl(filename: string): string {
+  let path = window.location.pathname;
+  if (path.endsWith('index.html')) {
+    path = path.slice(0, -'index.html'.length);
+  }
+  if (!path.endsWith('/')) {
+    path += '/';
+  }
+  return `${window.location.origin}${path}uploaded-samples/${filename}`;
 }
 
 // Samples generator — zero external third-party URL dependencies to avoid CORS blocks
@@ -261,22 +272,67 @@ export async function initViewer(containerId: string, url: string) {
     name: 'video.mp4',
     ext: '.mp4',
     data: getSampleUrl('video.mp4')
+  }),
+  'up-ts-docx': () => ({
+    name: 'TS-FL00009494-v3.docx',
+    ext: '.docx',
+    data: getUploadedUrl('TS-FL00009494-v3.docx')
+  }),
+  'up-1mb-docx': () => ({
+    name: 'file-sample_1MB-FL00009489-v4.docx',
+    ext: '.docx',
+    data: getUploadedUrl('file-sample_1MB-FL00009489-v4.docx')
+  }),
+  'up-1mb-doc': () => ({
+    name: 'file-sample_1MB-FL00009488-v5.doc',
+    ext: '.doc',
+    data: getUploadedUrl('file-sample_1MB-FL00009488-v5.doc')
+  }),
+  'up-500kb-rtf': () => ({
+    name: 'file-sample_500kB-FL00009482-v4.rtf',
+    ext: '.rtf',
+    data: getUploadedUrl('file-sample_500kB-FL00009482-v4.rtf')
+  }),
+  'up-long-txt': () => ({
+    name: 'long-doc-FL00001679-v1.txt',
+    ext: '.txt',
+    data: getUploadedUrl('long-doc-FL00001679-v1.txt')
+  }),
+  'up-1mb-odt': () => ({
+    name: 'file-sample_1MB-FL00009487-v4.odt',
+    ext: '.odt',
+    data: getUploadedUrl('file-sample_1MB-FL00009487-v4.odt')
+  }),
+  'up-pdf-3p': () => ({
+    name: 'ExtractedPages_2222-FL00009508-v6.pdf',
+    ext: '.pdf',
+    data: getUploadedUrl('ExtractedPages_2222-FL00009508-v6.pdf')
+  }),
+  'up-pdf-16p': () => ({
+    name: 'short-stories-for-children-FL00009511-v4.pdf',
+    ext: '.pdf',
+    data: getUploadedUrl('short-stories-for-children-ingles-primaria-continuemos-estudiando-FL00009511-v4.pdf')
   })
 };
 
 // Render file in viewer
-async function loadFile(source: string | File | Blob, name: string, ext?: string) {
-  lastLoadedSource = source;
+async function loadFile(source: string | File | Blob | ArrayBuffer, name: string, ext?: string) {
+  lastLoadedSource = source as any;
   activeFileName = name;
   activeFileExt = ext || name.slice(name.lastIndexOf('.')).toLowerCase();
   fileNameEl.textContent = name;
   fileMetaEl.textContent = 'Rendering...';
 
   try {
-    await viewer.preview(viewport, source, {
+    await viewer.preview(viewport, source as any, {
       theme: currentTheme,
       showToolbar: true,
-      toolbarPosition: 'top'
+      toolbarPosition: 'top',
+      _isSeparateWindow: isFullscreen,
+      metadata: {
+        name,
+        extension: activeFileExt
+      }
     });
     fileMetaEl.textContent = `Ready · ${activeFileExt.toUpperCase()} format`;
     updateSnippet();
@@ -387,8 +443,64 @@ themeToggle.addEventListener('click', () => {
   }
 });
 
-// Initial load with Markdown sample
-const initialBtn = document.querySelector('[data-sample="markdown"]') as HTMLElement;
-if (initialBtn) initialBtn.classList.add('active');
-const initial = samples.markdown();
-loadFile(initial.data, initial.name, initial.ext);
+// Expose on window for automated verification and debugging
+(window as any).__viewer = viewer;
+(window as any).__loadFile = loadFile;
+(window as any).__samples = samples;
+
+setInterval(() => {
+  let el = document.getElementById('browser-logs');
+  if (!el) {
+    el = document.createElement('pre');
+    el.id = 'browser-logs';
+    document.body.appendChild(el);
+  }
+  el.textContent = JSON.stringify((window as any).__consoleLogs || [], null, 2);
+}, 300);
+
+// URL parameter routing & fullscreen standalone window handling
+const urlParams = new URLSearchParams(window.location.search);
+const isFullscreen = urlParams.get('mode') === 'fullscreen';
+const transferId = urlParams.get('transferId');
+const sampleParam = urlParams.get('sample');
+const fileParam = urlParams.get('file');
+
+if (isFullscreen) {
+  document.body.classList.add('fullscreen-mode');
+}
+
+async function initDemo() {
+  if (transferId) {
+    fileMetaEl.textContent = 'Loading transferred document...';
+    let transferred = await getTransferPayload(transferId);
+    if (!transferred && (window as any).__lastTransfer) {
+      transferred = (window as any).__lastTransfer;
+    }
+    if (transferred && transferred.buffer) {
+      const meta = (transferred as any).metadata || {};
+      const name = meta.name || 'document';
+      const ext = meta.extension || (name.includes('.') ? name.slice(name.lastIndexOf('.')).toLowerCase() : '');
+      document.title = `${name} - Full Preview`;
+      await loadFile(transferred.buffer, name, ext);
+      return;
+    }
+  }
+
+  if (sampleParam && samples[sampleParam]) {
+    const btn = document.querySelector(`[data-sample="${sampleParam}"]`) as HTMLElement;
+    if (btn) btn.classList.add('active');
+    const s = samples[sampleParam]();
+    await loadFile(s.data, s.name, s.ext);
+  } else if (fileParam) {
+    const fileName = urlParams.get('name') || fileParam.split('/').pop() || 'document';
+    await loadFile(fileParam, fileName);
+  } else {
+    // Initial load with Markdown sample
+    const initialBtn = document.querySelector('[data-sample="markdown"]') as HTMLElement;
+    if (initialBtn) initialBtn.classList.add('active');
+    const initial = samples.markdown();
+    await loadFile(initial.data, initial.name, initial.ext);
+  }
+}
+
+initDemo();

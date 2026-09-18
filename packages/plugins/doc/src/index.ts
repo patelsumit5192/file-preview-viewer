@@ -107,6 +107,14 @@ export class DocPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     );
 
@@ -467,11 +475,34 @@ export class DocPlugin implements PreviewPlugin {
     return this.extractStringsFromBytes(new Uint8Array(buffer));
   }
 
+  private cleanWordDocFields(text: string): string {
+    if (!text) return '';
+    // Convert hyperlink fields: \x13 HYPERLINK "url" \x14 display text \x15
+    let cleaned = text.replace(
+      /\x13\s*HYPERLINK\s*"?([^"\x14]+)"?\s*\x14([\s\S]*?)\x15/gi,
+      (_match, url, label) => {
+        const cleanUrl = url.trim();
+        const cleanLabel = label.trim() || cleanUrl;
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">${cleanLabel}</a>`;
+      }
+    );
+
+    // For other field codes (PAGE, NUMPAGES, DATE, etc.): keep the display result between \x14 and \x15 if present
+    cleaned = cleaned.replace(/\x13[^\x14\x15]*\x14([^\x15]*)\x15/g, '$1');
+    // Remove any remaining raw field instructions
+    cleaned = cleaned.replace(/\x13[^\x15]*\x15/g, '');
+    cleaned = cleaned.replace(/[\x13\x14\x15]/g, '');
+
+    return cleaned;
+  }
+
   private splitIntoPages(text: string): string[] {
     if (!text) return [''];
     
+    const cleanedText = this.cleanWordDocFields(text);
+
     // Normalize \r\n, \r, and Word 97 table marks (\x07)
-    const normalized = text
+    const normalized = cleanedText
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
       .replace(/\x0B/g, '\n')
@@ -495,7 +526,9 @@ export class DocPlugin implements PreviewPlugin {
       let count = 0;
       
       for (const line of lines) {
-        const vLines = Math.max(1, Math.ceil((line.length || 1) / charsPerLine));
+        // Strip tags for length calculation
+        const plainLine = line.replace(/<[^>]+>/g, '');
+        const vLines = Math.max(1, Math.ceil((plainLine.length || 1) / charsPerLine));
         if (count + vLines > maxLinesPerPage && currentLines.length > 0) {
           finalPages.push(currentLines.join('\n'));
           currentLines = [];
@@ -579,20 +612,22 @@ export class DocPlugin implements PreviewPlugin {
         i++; continue;
       }
 
+      const sanitizeOptions = { ADD_TAGS: ['a'], ADD_ATTR: ['href', 'target', 'rel', 'style'] };
+
       if (line.length < 60 && !line.endsWith('.') && (/^[A-Z0-9\s:_-]+$/.test(line) || line.startsWith('#'))) {
         if (inList) { html += '</ul>'; inList = false; }
-        html += `<h2 style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line)}</h2>`;
+        html += `<h2 style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line, sanitizeOptions)}</h2>`;
       } else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
         if (!inList) {
           html += '<ul style="margin: 8px 0; padding-left: 24px;">';
           inList = true;
         }
         const bulletText = line.replace(/^[•\-\*]\s*/, '');
-        html += `<li style="margin: 4px 0; line-height: 1.15; font-size: 12pt;">${DOMPurify.sanitize(bulletText)}</li>`;
+        html += `<li style="margin: 4px 0; line-height: 1.15; font-size: 12pt;">${DOMPurify.sanitize(bulletText, sanitizeOptions)}</li>`;
       } else {
         if (inList) { html += '</ul>'; inList = false; }
         // Use proper paragraph spacing (1.15× line height, 12pt font by default)
-        html += `<p style="line-height: 1.15; margin: 0; font-size: 12pt; text-align: justify;">${DOMPurify.sanitize(line)}</p>`;
+        html += `<p style="line-height: 1.15; margin: 0; font-size: 12pt; text-align: justify;">${DOMPurify.sanitize(line, sanitizeOptions)}</p>`;
       }
       
       i++;
