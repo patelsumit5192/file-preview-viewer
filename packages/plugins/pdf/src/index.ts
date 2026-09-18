@@ -177,6 +177,7 @@ export class PdfPlugin implements PreviewPlugin {
     let currentPage = 1;
     let zoomScale = 1.0;
     let rotation = 0;
+    let fitMode: 'width' | 'page' = 'width';
     let currentRenderTask: any = null;
 
     const renderPage = async (pageNum: number) => {
@@ -202,12 +203,19 @@ export class PdfPlugin implements PreviewPlugin {
       const containerHeight = container.clientHeight || 700;
       const unscaledVp = page.getViewport({ scale: 1.0, rotation });
 
-      // Dual-axis fit: fit BOTH width and height so entire page is visible without clipping
-      const availWidth = Math.max(100, containerWidth - 48);
-      const availHeight = Math.max(100, containerHeight - 88);
+      const availWidth = Math.max(280, containerWidth - 48);
+      const availHeight = Math.max(280, containerHeight - 88);
       const scaleW = availWidth / unscaledVp.width;
       const scaleH = availHeight / unscaledVp.height;
-      const fitScale = Math.min(scaleW, scaleH);
+
+      // In 'width' mode (default): fit page width comfortably so text is crisp and readable
+      // In 'page' mode: fit entire page (both width and height) in viewport
+      let fitScale: number;
+      if (fitMode === 'page') {
+        fitScale = Math.max(0.5, Math.min(scaleW, scaleH));
+      } else {
+        fitScale = Math.max(0.65, Math.min(1.15, scaleW));
+      }
       const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 
       const pixelRatio = window.devicePixelRatio || 1;
@@ -285,6 +293,7 @@ export class PdfPlugin implements PreviewPlugin {
         renderPage(currentPage);
       },
       fitToPage: () => {
+        fitMode = fitMode === 'width' ? 'page' : 'width';
         zoomScale = 1.0;
         rotation = 0;
         renderPage(currentPage);

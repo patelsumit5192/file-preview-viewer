@@ -168,11 +168,10 @@ export class ExcelPlugin implements PreviewPlugin {
     const calculateFitScale = () => {
       const table = contentArea.querySelector('table');
       if (!table) return 1.0;
-      const availW = Math.max(200, container.clientWidth - 48);
-      const availH = Math.max(200, container.clientHeight - 80);
+      const availW = Math.max(280, container.clientWidth - 48);
       const tW = table.offsetWidth || 800;
-      const tH = table.offsetHeight || 600;
-      return Math.min(1.0, Math.min(availW / tW, availH / tH));
+      // Tables scroll vertically; scale to fit visible width comfortably without crushing rows
+      return Math.max(0.65, Math.min(1.0, availW / tW));
     };
 
     try {

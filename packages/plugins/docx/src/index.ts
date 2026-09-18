@@ -200,9 +200,62 @@ export class DocxPlugin implements PreviewPlugin {
       }
     }
 
-    const sections = wrapper.querySelectorAll<HTMLElement>('section.docx');
-    const cards = wrapper.querySelectorAll<HTMLElement>('.fp-docx-page-card');
-    const pageElements = sections.length > 0 ? sections : cards;
+    let sections = Array.from(wrapper.querySelectorAll<HTMLElement>('section.docx'));
+    const cards = Array.from(wrapper.querySelectorAll<HTMLElement>('.fp-docx-page-card'));
+
+    // If docx-preview produced only 1 section, but that section contains multiple pages of content:
+    if (sections.length === 1 && cards.length === 0) {
+      const singleSec = sections[0];
+      const pageH = 1056; // Standard US Letter page height at 96 DPI
+      const secH = singleSec.offsetHeight || singleSec.scrollHeight;
+
+      if (secH > pageH * 1.25) {
+        const children = Array.from(singleSec.children) as HTMLElement[];
+        if (children.length > 1) {
+          const parent = singleSec.parentElement || wrapper;
+          const newSections: HTMLElement[] = [singleSec];
+
+          singleSec.innerHTML = '';
+          singleSec.style.minHeight = `${pageH}px`;
+          singleSec.style.maxHeight = `${pageH}px`;
+          singleSec.style.overflow = 'hidden';
+          singleSec.style.boxSizing = 'border-box';
+
+          let curSec = singleSec;
+          let curH = 0;
+          const maxH = pageH - 96;
+
+          for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            curSec.appendChild(child);
+            const chH = child.offsetHeight || 28;
+            curH += chH;
+
+            if (curH >= maxH && i < children.length - 1) {
+              const nextSec = document.createElement('section');
+              nextSec.className = singleSec.className;
+              nextSec.style.cssText = singleSec.style.cssText;
+              nextSec.style.width = singleSec.style.width || '816px';
+              nextSec.style.minHeight = `${pageH}px`;
+              nextSec.style.maxHeight = `${pageH}px`;
+              nextSec.style.overflow = 'hidden';
+              nextSec.style.boxSizing = 'border-box';
+              nextSec.style.backgroundColor = '#ffffff';
+              nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
+              nextSec.style.borderRadius = '4px';
+              nextSec.style.marginBottom = '24px';
+              parent.appendChild(nextSec);
+              newSections.push(nextSec);
+              curSec = nextSec;
+              curH = 0;
+            }
+          }
+          sections = newSections;
+        }
+      }
+    }
+
+    const pageElements: HTMLElement[] = sections.length > 0 ? sections : cards;
     const totalPages = Math.max(1, pageElements.length);
     let currentPage = 1;
 
@@ -249,16 +302,28 @@ export class DocxPlugin implements PreviewPlugin {
 
     scale = 1.0;
     let rotation = 0;
+    let fitMode: 'width' | 'page' = 'width';
 
-    const calculateFitScale = () => {
-      const activeEl = (pageElements[currentPage - 1] as HTMLElement) || wrapper.firstElementChild || wrapper;
-      const elW = (activeEl as HTMLElement).offsetWidth || 816;
-      const elH = (activeEl as HTMLElement).offsetHeight || 1056;
-      const availW = Math.max(200, ctx.container.clientWidth - 48);
-      const availH = Math.max(200, ctx.container.clientHeight - 80);
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
+      const activeEl = pageElements[currentPage - 1] || wrapper.firstElementChild as HTMLElement || wrapper;
+      const elW = activeEl.offsetWidth || 816;
+      // Single page height: clamp so multi-page continuous content doesn't break height
+      const singlePageH = Math.min(activeEl.offsetHeight || 1056, Math.round(elW * 1.32));
+      const availW = Math.max(280, ctx.container.clientWidth - 48);
+      const availH = Math.max(280, ctx.container.clientHeight - 80);
+
       const sW = availW / elW;
-      const sH = availH / elH;
-      return Math.min(1.1, Math.min(sW, sH));
+      const sH = availH / singlePageH;
+
+      if (mode === 'page') {
+        // Fits entire page in the viewport (both width and height fit)
+        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+      }
+
+      // Default: Fit to Width (comfortable reading width for user interaction)
+      // On desktop: caps at 1.05 so it's ~850px wide, centered and crisp
+      // On narrow screens: scales down to fit available width perfectly
+      return Math.max(0.65, Math.min(1.05, sW));
     };
 
     const applyTransform = () => {
@@ -267,7 +332,8 @@ export class DocxPlugin implements PreviewPlugin {
     };
 
     setTimeout(() => {
-      scale = calculateFitScale();
+      fitMode = 'width';
+      scale = calculateFitScale('width');
       applyTransform();
     }, 60);
 
@@ -304,7 +370,8 @@ export class DocxPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        scale = calculateFitScale();
+        fitMode = fitMode === 'width' ? 'page' : 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         applyTransform();
       },

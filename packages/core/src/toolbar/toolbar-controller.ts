@@ -7,6 +7,7 @@ const ICON_MAP: Record<string, string> = {
   'zoom-in': icons.ICON_ZOOM_IN,
   'zoom-out': icons.ICON_ZOOM_OUT,
   'fit-page': icons.ICON_FIT_PAGE,
+  'fit-width': icons.ICON_FIT_WIDTH,
   'fit-slide': icons.ICON_FIT_PAGE,
   'rotate-cw': icons.ICON_ROTATE_CW,
   'rotate-ccw': icons.ICON_ROTATE_CCW,

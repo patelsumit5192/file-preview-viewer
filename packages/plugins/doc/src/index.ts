@@ -248,16 +248,26 @@ export class DocPlugin implements PreviewPlugin {
       showPage(1);
     }
 
-    const calculateFitScale = () => {
+    let fitMode: 'width' | 'page' = 'width';
+
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const elW = 816;
       const elH = 1056;
-      const availW = Math.max(200, ctx.container.clientWidth - 48);
-      const availH = Math.max(200, ctx.container.clientHeight - 80);
-      return Math.min(1.1, Math.min(availW / elW, availH / elH));
+      const availW = Math.max(280, ctx.container.clientWidth - 48);
+      const availH = Math.max(280, ctx.container.clientHeight - 80);
+
+      const sW = availW / elW;
+      const sH = availH / elH;
+
+      if (mode === 'page') {
+        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+      }
+      return Math.max(0.65, Math.min(1.05, sW));
     };
 
     setTimeout(() => {
-      scale = calculateFitScale();
+      fitMode = 'width';
+      scale = calculateFitScale('width');
       applyTransform();
     }, 60);
 
@@ -288,7 +298,8 @@ export class DocPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        scale = calculateFitScale();
+        fitMode = fitMode === 'width' ? 'page' : 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         applyTransform();
       },

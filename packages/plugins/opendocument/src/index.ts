@@ -184,13 +184,25 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
     let scale = 1.0;
     let rotation = 0;
+    let fitMode: 'width' | 'page' = 'width';
 
-    const calculateFitScale = () => {
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const elW = wrapper.offsetWidth || 850;
-      const elH = wrapper.offsetHeight || (isPresentation ? 540 : 1000);
-      const availW = Math.max(200, ctx.container.clientWidth - 48);
-      const availH = Math.max(200, ctx.container.clientHeight - 80);
-      return Math.min(1.0, Math.min(availW / elW, availH / elH));
+      const singlePageH = Math.min(wrapper.offsetHeight || 1056, Math.round(elW * 1.32));
+      const availW = Math.max(280, ctx.container.clientWidth - 48);
+      const availH = Math.max(280, ctx.container.clientHeight - 80);
+
+      const sW = availW / elW;
+      const sH = availH / (isPresentation ? 540 : singlePageH);
+
+      if (isPresentation) {
+        return Math.min(1.0, Math.min(sW, sH));
+      }
+
+      if (mode === 'page') {
+        return Math.max(0.55, Math.min(1.15, Math.min(sW, sH)));
+      }
+      return Math.max(0.65, Math.min(1.05, sW));
     };
 
     const applyTransform = () => {
@@ -199,7 +211,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     };
 
     setTimeout(() => {
-      scale = calculateFitScale();
+      fitMode = 'width';
+      scale = calculateFitScale('width');
       applyTransform();
     }, 60);
     let currentPage = 1;
@@ -386,7 +399,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
-        scale = calculateFitScale();
+        fitMode = fitMode === 'width' ? 'page' : 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         applyTransform();
       },

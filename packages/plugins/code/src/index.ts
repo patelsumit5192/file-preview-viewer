@@ -338,7 +338,7 @@ export class CodePlugin implements PreviewPlugin {
       fitToPage: () => {
         fontSize = 13;
         rotation = 0;
-        zoomLevel = 1;
+        zoomLevel = isTxt ? Math.max(0.65, Math.min(1.05, (container.clientWidth - 48) / 816)) : 1;
         updateTransform();
       },
       rotateCW: () => {
