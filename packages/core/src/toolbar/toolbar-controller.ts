@@ -194,9 +194,11 @@ export class ToolbarController {
       'data-action-id': id
     }) as HTMLButtonElement;
     
-    const svg = ICON_MAP[iconHtml] || ICON_MAP[id] || (iconHtml && iconHtml.startsWith('<svg') ? iconHtml : null);
-    if (svg) {
-      btn.innerHTML = sanitizeSVG(svg);
+    const internalSvg = ICON_MAP[iconHtml] || ICON_MAP[id];
+    if (internalSvg) {
+      btn.innerHTML = internalSvg;
+    } else if (iconHtml && iconHtml.startsWith('<svg')) {
+      btn.innerHTML = sanitizeSVG(iconHtml);
     } else {
       btn.textContent = title || id; 
     }

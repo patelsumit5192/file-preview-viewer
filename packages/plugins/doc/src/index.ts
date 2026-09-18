@@ -7,6 +7,7 @@ import type {
 } from '@patel.sumit51/core';
 import { CfbfReader } from '@patel.sumit51/core';
 import DOMPurify from 'dompurify';
+import * as fflate from 'fflate';
 
 export class DocPlugin implements PreviewPlugin {
   id = 'doc';
@@ -138,9 +139,21 @@ export class DocPlugin implements PreviewPlugin {
     let scale = 1.0;
     let extractedRawText = '';
     let isFallback = false;
+    let chartSvg = '';
 
     try {
       const cfbf = new CfbfReader(ctx.buffer);
+      
+      // Check for embedded OLE OpenDocument chart package
+      try {
+        const pkg = cfbf.readStream('package_stream');
+        if (pkg && pkg.length > 100) {
+          chartSvg = this.parseOdfChartToSvg(pkg);
+        }
+      } catch (chartErr) {
+        console.warn('[DocPlugin] Chart stream parsing info:', chartErr);
+      }
+
       const wordDocStream = cfbf.readStream('WordDocument');
 
       if (!wordDocStream || wordDocStream.length < 512) {
@@ -164,7 +177,7 @@ export class DocPlugin implements PreviewPlugin {
       isFallback = true;
     }
 
-    const rawPages = this.splitIntoPages(extractedRawText);
+    const rawPages = this.splitIntoPages(extractedRawText, chartSvg);
     const totalPages = Math.max(1, rawPages.length);
     let currentPage = 1;
 
@@ -460,6 +473,8 @@ export class DocPlugin implements PreviewPlugin {
           !trimmed.includes('Microsoft Word') &&
           !trimmed.includes('Times New Roman') &&
           !trimmed.startsWith('ÐÏà¡±á') &&
+          !/^EMBED\b/i.test(trimmed) &&
+          !trimmed.includes('ChartDocument') &&
           !/^[\W_0-9]+$/.test(trimmed)
         ) {
           seen.add(trimmed);
@@ -475,10 +490,142 @@ export class DocPlugin implements PreviewPlugin {
     return this.extractStringsFromBytes(new Uint8Array(buffer));
   }
 
-  private cleanWordDocFields(text: string): string {
+  /**
+   * Parses an embedded OpenDocument Chart package into a vector SVG bar/column chart
+   */
+  private parseOdfChartToSvg(zipBytes: Uint8Array): string {
+    try {
+      const unzipped = fflate.unzipSync(zipBytes);
+      const contentXml = unzipped['content.xml'] ? new TextDecoder('utf-8').decode(unzipped['content.xml']) : '';
+      if (!contentXml) return '';
+
+      // Extract categories and series data from local-table
+      const rowsMatch = contentXml.match(/<table:table-row[\s\S]*?<\/table:table-row>/g) || [];
+      if (rowsMatch.length < 2) return '';
+
+      // Header row has series names
+      const headers: string[] = [];
+      const firstRow = rowsMatch[0];
+      const headerCells = firstRow ? (firstRow.match(/<text:p>([^<]+)<\/text:p>/g) || []) : [];
+      for (const h of headerCells) {
+        headers.push(h.replace(/<\/?text:p>/g, '').trim());
+      }
+
+      // Data rows
+      const categories: string[] = [];
+      const seriesValues: number[][] = headers.map(() => []);
+
+      for (let r = 1; r < rowsMatch.length; r++) {
+        const rowStr = rowsMatch[r];
+        if (!rowStr) continue;
+        const cells = rowStr.match(/<table:table-cell[\s\S]*?<\/table:table-cell>/g) || [];
+        if (cells.length > 0 && cells[0]) {
+          const catMatch = cells[0].match(/<text:p>([^<]+)<\/text:p>/);
+          categories.push(catMatch ? catMatch[1] : 'Row ' + r);
+
+          for (let c = 1; c < cells.length && (c - 1) < headers.length; c++) {
+            const cellStr = cells[c];
+            if (!cellStr) continue;
+            const valMatch = cellStr.match(/office:value="([0-9.]+)"/) || cellStr.match(/<text:p>([0-9.]+)<\/text:p>/);
+            const series = seriesValues[c - 1];
+            if (series) {
+              series.push(valMatch ? parseFloat(valMatch[1]) : 0);
+            }
+          }
+        }
+      }
+
+      // Extract colors from styles or use standard palette
+      const colors = ['#004586', '#ff420e', '#ffd320', '#579d1c', '#7e0021'];
+      const colorMatches = contentXml.matchAll(/draw:fill-color="(#[0-9a-fA-F]{6})"/g);
+      let cIdx = 0;
+      for (const cm of colorMatches) {
+        if (cIdx < colors.length) colors[cIdx] = cm[1];
+        cIdx++;
+      }
+
+      // Find max value
+      let maxVal = 10;
+      for (const s of seriesValues) {
+        for (const v of s) {
+          if (v > maxVal) maxVal = v;
+        }
+      }
+      maxVal = Math.ceil(maxVal * 1.15);
+
+      // Build SVG
+      const width = 560;
+      const height = 280;
+      const padLeft = 45;
+      const padRight = 100;
+      const padTop = 20;
+      const padBottom = 40;
+      const chartW = width - padLeft - padRight;
+      const chartH = height - padTop - padBottom;
+
+      let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" height="auto" style="max-width: 560px; height: 280px; margin: 16px auto; display: block; font-family: Calibri, sans-serif; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">`;
+
+      // Grid lines & Y axis labels (4 steps)
+      for (let step = 0; step <= 4; step++) {
+        const yVal = ((maxVal / 4) * step).toFixed(1);
+        const yPos = padTop + chartH - (step / 4) * chartH;
+        svg += `<line x1="${padLeft}" y1="${yPos}" x2="${padLeft + chartW}" y2="${yPos}" stroke="#e2e8f0" stroke-dasharray="2,2" />`;
+        svg += `<text x="${padLeft - 8}" y="${yPos + 4}" font-size="11" fill="#64748b" text-anchor="end">${yVal}</text>`;
+      }
+
+      // Bars
+      const numCats = categories.length;
+      const numSeries = headers.length;
+      const groupW = chartW / numCats;
+      const barW = Math.max(8, (groupW * 0.7) / numSeries);
+      const groupPad = (groupW - (barW * numSeries)) / 2;
+
+      for (let catIdx = 0; catIdx < numCats; catIdx++) {
+        const groupX = padLeft + catIdx * groupW + groupPad;
+
+        for (let sIdx = 0; sIdx < numSeries; sIdx++) {
+          const val = seriesValues[sIdx][catIdx] || 0;
+          const barH = (val / maxVal) * chartH;
+          const barX = groupX + sIdx * barW;
+          const barY = padTop + chartH - barH;
+          const col = colors[sIdx % colors.length];
+
+          svg += `<rect x="${barX}" y="${barY}" width="${barW - 2}" height="${barH}" fill="${col}" rx="2"><title>${headers[sIdx]}: ${val}</title></rect>`;
+        }
+
+        // X axis category label
+        const catX = padLeft + catIdx * groupW + (groupW / 2);
+        svg += `<text x="${catX}" y="${padTop + chartH + 18}" font-size="11" fill="#475569" text-anchor="middle">${categories[catIdx]}</text>`;
+      }
+
+      // Legend on the right
+      let legendY = padTop + 20;
+      for (let sIdx = 0; sIdx < numSeries; sIdx++) {
+        const col = colors[sIdx % colors.length];
+        svg += `<rect x="${padLeft + chartW + 15}" y="${legendY}" width="12" height="12" fill="${col}" rx="2" />`;
+        svg += `<text x="${padLeft + chartW + 32}" y="${legendY + 10}" font-size="11" fill="#334155">${headers[sIdx]}</text>`;
+        legendY += 20;
+      }
+
+      svg += '</svg>';
+      return svg;
+    } catch (e) {
+      console.warn('[DocPlugin] Error generating chart SVG:', e);
+      return '';
+    }
+  }
+
+  private cleanWordDocFields(text: string, chartSvg: string = ''): string {
     if (!text) return '';
-    // Convert hyperlink fields: \x13 HYPERLINK "url" \x14 display text \x15
+
+    // 1. Replace EMBED fields with vector SVG chart or remove
     let cleaned = text.replace(
+      /\x13\s*EMBED\b[\s\S]*?\x15/gi,
+      () => chartSvg ? `\n\n${chartSvg}\n\n` : ''
+    );
+
+    // 2. Convert hyperlinks: \x13 HYPERLINK "url" \x14 display text \x15
+    cleaned = cleaned.replace(
       /\x13\s*HYPERLINK\s*"?([^"\x14]+)"?\s*\x14([\s\S]*?)\x15/gi,
       (_match, url, label) => {
         const cleanUrl = url.trim();
@@ -487,19 +634,29 @@ export class DocPlugin implements PreviewPlugin {
       }
     );
 
-    // For other field codes (PAGE, NUMPAGES, DATE, etc.): keep the display result between \x14 and \x15 if present
-    cleaned = cleaned.replace(/\x13[^\x14\x15]*\x14([^\x15]*)\x15/g, '$1');
-    // Remove any remaining raw field instructions
+    // 3. For other fields (PAGE, NUMPAGES, DATE, etc.): keep result only if printable
+    cleaned = cleaned.replace(/\x13[^\x14\x15]*\x14([^\x15]*)\x15/g, (_m, res) => {
+      if (/[\x00-\x1F]/.test(res)) return '';
+      return res.trim();
+    });
+
+    // 4. Remove any remaining raw field instructions
     cleaned = cleaned.replace(/\x13[^\x15]*\x15/g, '');
     cleaned = cleaned.replace(/[\x13\x14\x15]/g, '');
+
+    // 5. Remove any unprintable control characters except \t, \n, \r
+    cleaned = cleaned.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+    // 6. Clean any raw leftover "EMBED LibreOffice.ChartDocument..."
+    cleaned = cleaned.replace(/EMBED\s+LibreOffice\.ChartDocument\.[0-9]+/gi, chartSvg || '');
 
     return cleaned;
   }
 
-  private splitIntoPages(text: string): string[] {
+  private splitIntoPages(text: string, chartSvg: string = ''): string[] {
     if (!text) return [''];
     
-    const cleanedText = this.cleanWordDocFields(text);
+    const cleanedText = this.cleanWordDocFields(text, chartSvg);
 
     // Normalize \r\n, \r, and Word 97 table marks (\x07)
     const normalized = cleanedText
@@ -516,7 +673,7 @@ export class DocPlugin implements PreviewPlugin {
       
     if (explicitParts.length === 0) explicitParts.push(normalized);
     
-    const maxLinesPerPage = 32;
+    const maxLinesPerPage = 34;
     const charsPerLine = 80;
     const finalPages: string[] = [];
     
@@ -526,9 +683,9 @@ export class DocPlugin implements PreviewPlugin {
       let count = 0;
       
       for (const line of lines) {
-        // Strip tags for length calculation
-        const plainLine = line.replace(/<[^>]+>/g, '');
-        const vLines = Math.max(1, Math.ceil((plainLine.length || 1) / charsPerLine));
+        // If this line contains the SVG chart, account for its height
+        const isSvg = line.includes('<svg');
+        const vLines = isSvg ? 12 : Math.max(1, Math.ceil((line.replace(/<[^>]+>/g, '').length || 1) / charsPerLine));
         if (count + vLines > maxLinesPerPage && currentLines.length > 0) {
           finalPages.push(currentLines.join('\n'));
           currentLines = [];
@@ -580,9 +737,28 @@ export class DocPlugin implements PreviewPlugin {
       }
     };
 
+    const sanitizeOptions = {
+      ADD_TAGS: ['a', 'svg', 'g', 'path', 'line', 'rect', 'circle', 'text', 'title'],
+      ADD_ATTR: [
+        'href', 'target', 'rel', 'style', 'viewBox', 'width', 'height', 'x', 'y',
+        'x1', 'y1', 'x2', 'y2', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray',
+        'rx', 'font-size', 'text-anchor'
+      ]
+    };
+
     let i = 0;
     while (i < lines.length) {
       let line = lines[i];
+
+      // If line contains embedded SVG chart, insert it directly
+      if (line.includes('<svg')) {
+        if (inList) { html += '</ul>'; inList = false; }
+        flushTable();
+        html += line;
+        i++;
+        continue;
+      }
+
       let tabCount = (line.match(/\t/g) || []).length;
       
       // Table detection: line contains tabs
@@ -611,8 +787,6 @@ export class DocPlugin implements PreviewPlugin {
       if ((line.includes('Normal.dot') || line.includes('Microsoft Word') || line.includes('Times New Roman')) && line.length < 30) {
         i++; continue;
       }
-
-      const sanitizeOptions = { ADD_TAGS: ['a'], ADD_ATTR: ['href', 'target', 'rel', 'style'] };
 
       if (line.length < 60 && !line.endsWith('.') && (/^[A-Z0-9\s:_-]+$/.test(line) || line.startsWith('#'))) {
         if (inList) { html += '</ul>'; inList = false; }
