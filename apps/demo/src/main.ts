@@ -13,6 +13,17 @@ const dropzone = document.getElementById('dropzone') as HTMLElement;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
 
+// URL parameter routing & fullscreen standalone window handling (defined early to prevent TDZ)
+const urlParams = new URLSearchParams(window.location.search);
+const isFullscreen = urlParams.get('mode') === 'fullscreen';
+const transferId = urlParams.get('transferId');
+const sampleParam = urlParams.get('sample');
+const fileParam = urlParams.get('file');
+
+if (isFullscreen) {
+  document.body.classList.add('fullscreen-mode');
+}
+
 let currentTheme: 'light' | 'dark' = 'light';
 let activeFileExt = '.docx';
 let activeFileName = 'document.docx';
@@ -33,16 +44,6 @@ function getSampleUrl(filename: string): string {
   return `${window.location.origin}${path}samples/${filename}`;
 }
 
-function getUploadedUrl(filename: string): string {
-  let path = window.location.pathname;
-  if (path.endsWith('index.html')) {
-    path = path.slice(0, -'index.html'.length);
-  }
-  if (!path.endsWith('/')) {
-    path += '/';
-  }
-  return `${window.location.origin}${path}uploaded-samples/${filename}`;
-}
 
 // Samples generator — zero external third-party URL dependencies to avoid CORS blocks
 const samples: Record<string, () => { name: string; ext: string; data: string | Blob }> = {
@@ -460,6 +461,18 @@ themeToggle.addEventListener('click', () => {
   }
 });
 
+// Wire up "Open in Separate Full Window" button in preview header
+const openWindowHeaderBtn = document.getElementById('open-window-btn');
+if (openWindowHeaderBtn) {
+  if (isFullscreen) {
+    openWindowHeaderBtn.style.display = 'none';
+  } else {
+    openWindowHeaderBtn.addEventListener('click', () => {
+      viewer.openInSeparateWindow();
+    });
+  }
+}
+
 // Expose on window for automated verification and debugging
 (window as any).__viewer = viewer;
 (window as any).__loadFile = loadFile;
@@ -475,16 +488,6 @@ setInterval(() => {
   el.textContent = JSON.stringify((window as any).__consoleLogs || [], null, 2);
 }, 300);
 
-// URL parameter routing & fullscreen standalone window handling
-const urlParams = new URLSearchParams(window.location.search);
-const isFullscreen = urlParams.get('mode') === 'fullscreen';
-const transferId = urlParams.get('transferId');
-const sampleParam = urlParams.get('sample');
-const fileParam = urlParams.get('file');
-
-if (isFullscreen) {
-  document.body.classList.add('fullscreen-mode');
-}
 
 async function initDemo() {
   if (transferId) {
@@ -492,6 +495,9 @@ async function initDemo() {
     let transferred = await getTransferPayload(transferId);
     if (!transferred && (window as any).__lastTransfer) {
       transferred = (window as any).__lastTransfer;
+    }
+    if (!transferred && (window.opener as any)?.__lastTransfer) {
+      transferred = (window.opener as any).__lastTransfer;
     }
     if (transferred && transferred.buffer) {
       const meta = (transferred as any).metadata || {};

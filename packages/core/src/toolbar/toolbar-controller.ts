@@ -29,9 +29,10 @@ const ICON_MAP: Record<string, string> = {
   'forward-10': icons.ICON_FAST_FORWARD,
   'rewind': icons.ICON_REWIND,
   'replay-10': icons.ICON_REWIND,
-  'speed': icons.ICON_SPEED,
   'open-window': icons.ICON_EXTERNAL_WINDOW,
   'external-window': icons.ICON_EXTERNAL_WINDOW,
+  'openWindow': icons.ICON_EXTERNAL_WINDOW,
+  'openSeparateWindow': icons.ICON_EXTERNAL_WINDOW,
 };
 
 export class ToolbarController {
@@ -41,6 +42,8 @@ export class ToolbarController {
   private config: ToolbarConfig = {};
   private pageInputEl: HTMLInputElement | null = null;
   private pageLabelEl: HTMLElement | null = null;
+  private prevPageBtn: HTMLButtonElement | null = null;
+  private nextPageBtn: HTMLButtonElement | null = null;
 
   constructor(container: HTMLElement, config?: ToolbarConfig) {
     this.el = container;
@@ -209,9 +212,21 @@ export class ToolbarController {
   setPage(page: number, max?: number): void {
     if (this.pageInputEl) {
       this.pageInputEl.value = page.toString();
+      if (max !== undefined) {
+        this.pageInputEl.max = max.toString();
+      }
     }
     if (max !== undefined && this.pageLabelEl) {
       this.pageLabelEl.textContent = ` / ${max}`;
+    }
+    const currentMax = max !== undefined ? max : (parseInt(this.pageInputEl?.max || '1', 10) || 1);
+    if (this.prevPageBtn) {
+      this.prevPageBtn.disabled = page <= 1;
+      this.prevPageBtn.style.opacity = page <= 1 ? '0.4' : '1';
+    }
+    if (this.nextPageBtn) {
+      this.nextPageBtn.disabled = page >= currentMax;
+      this.nextPageBtn.style.opacity = page >= currentMax ? '0.4' : '1';
     }
   }
 
@@ -314,6 +329,14 @@ export class ToolbarController {
           
           const label = createElement('span', { className: 'fp-toolbar-label' }, ` / ${max}`);
           
+          const curVal = action.value ?? 1;
+          prevBtn.disabled = curVal <= 1;
+          prevBtn.style.opacity = curVal <= 1 ? '0.4' : '1';
+          nextBtn.disabled = curVal >= max;
+          nextBtn.style.opacity = curVal >= max ? '0.4' : '1';
+
+          this.prevPageBtn = prevBtn;
+          this.nextPageBtn = nextBtn;
           this.pageInputEl = input;
           this.pageLabelEl = label;
 

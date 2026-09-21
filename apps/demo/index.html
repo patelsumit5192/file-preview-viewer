@@ -47,41 +47,6 @@
           </div>
         </div>
 
-        <div class="section-title">UPLOADED DOCUMENTS</div>
-        <div class="sample-grid" style="margin-bottom: 20px;">
-          <button class="sample-btn" data-sample="up-ts-docx">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">TS Doc (4 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-1mb-docx">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">1MB Docx (5 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-1mb-doc">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">1MB Doc (5 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-500kb-rtf">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">500kB RTF (6 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-long-txt">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Long Doc (TXT)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-1mb-odt">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">1MB ODT (5 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-pdf-3p">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Extracted (3 pgs)</span>
-          </button>
-          <button class="sample-btn" data-sample="up-pdf-16p">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Stories (16 pgs)</span>
-          </button>
-        </div>
 
         <div class="section-title">TEST WITH INSTANT SAMPLES</div>
         <div class="sample-grid">
@@ -200,6 +165,12 @@
             <div class="active-file-info">
               <span id="file-name" class="active-file-name">sample.pdf</span>
               <span id="file-meta" class="active-file-meta">Loading preview...</span>
+            </div>
+            <div class="preview-header-actions">
+              <button id="open-window-btn" class="header-action-btn" title="Open in Separate Full Window">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="8" x2="21" y2="8"></line><circle cx="6" cy="5.5" r="0.75" fill="currentColor"></circle><circle cx="8.5" cy="5.5" r="0.75" fill="currentColor"></circle><polyline points="14 13 18 13 18 17"></polyline><line x1="11" y1="20" x2="18" y2="13"></line></svg>
+                <span>Open in Separate Full Window</span>
+              </button>
             </div>
           </div>
           <div id="preview-viewport" class="preview-viewport"></div>

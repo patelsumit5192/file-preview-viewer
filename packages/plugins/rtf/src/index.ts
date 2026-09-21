@@ -25,28 +25,26 @@ export class RtfPlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (totalPages > 1) {
-      actions.push({
-        id: 'page-nav',
-        icon: '',
-        label: 'Page Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        value: instance.getCurrentPage?.() ?? 1,
-        max: totalPages,
-        execute: (action: unknown, page?: unknown) => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const max = instance.getPageCount?.() ?? 1;
-          if (action === 'prev') {
-            if (cur > 1) instance.goToPage?.(cur - 1);
-          } else if (action === 'next') {
-            if (cur < max) instance.goToPage?.(cur + 1);
-          } else if (typeof page === 'number') {
-            instance.goToPage?.(page);
-          }
+    actions.push({
+      id: 'page-nav',
+      icon: '',
+      label: 'Page Navigation',
+      type: 'page-nav',
+      group: 'navigation',
+      value: instance.getCurrentPage?.() ?? 1,
+      max: totalPages,
+      execute: (action: unknown, page?: unknown) => {
+        const cur = instance.getCurrentPage?.() ?? 1;
+        const max = instance.getPageCount?.() ?? 1;
+        if (action === 'prev') {
+          if (cur > 1) instance.goToPage?.(cur - 1);
+        } else if (action === 'next') {
+          if (cur < max) instance.goToPage?.(cur + 1);
+        } else if (typeof page === 'number') {
+          instance.goToPage?.(page);
         }
-      });
-    }
+      }
+    });
 
     actions.push(
       {
@@ -122,17 +120,18 @@ export class RtfPlugin implements PreviewPlugin {
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-rtf-wrapper';
     wrapper.style.padding = '0';
-    wrapper.style.maxWidth = 'none';
-    wrapper.style.width = '100%';
+    wrapper.style.width = '816px';
+    wrapper.style.margin = '0 auto';
+    wrapper.style.boxSizing = 'border-box';
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
     wrapper.style.backgroundColor = 'transparent';
-    wrapper.style.minHeight = '100%';
     wrapper.style.transformOrigin = 'top center';
-    wrapper.style.transition = 'transform 0.2s ease';
+    wrapper.style.transition = 'transform 0.15s ease';
 
-    ctx.container.style.overflow = 'auto';
+    ctx.container.style.overflowX = 'hidden';
+    ctx.container.style.overflowY = 'auto';
     ctx.container.style.padding = '16px 8px';
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(wrapper);
@@ -140,24 +139,25 @@ export class RtfPlugin implements PreviewPlugin {
     let scale = 1.0;
     let rotation = 0;
     let pageElements: HTMLElement[] = [];
+    let isUserZoomed = false;
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const activeEl = pageElements[currentPage - 1] || wrapper;
-      const elW = (activeEl && activeEl.offsetWidth > 0) ? activeEl.offsetWidth : 816;
-      const singlePageH = Math.min(activeEl?.offsetHeight || 1056, Math.round(elW * 1.32));
-      // Minimal side margins (12px on each side)
-      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      const elW = 816;
+      const singlePageH = activeEl?.offsetHeight || 1056;
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availW = Math.max(280, ctx.container.clientWidth - 32);
       const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
       const sH = availH / singlePageH;
 
       if (mode === 'page') {
-        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.0, Math.min(sW, sH)));
       }
-      return Math.max(0.4, Math.min(3.5, sW));
+      return Math.max(0.4, Math.min(3.0, sW));
     };
 
     const applyTransform = () => {
@@ -172,8 +172,10 @@ export class RtfPlugin implements PreviewPlugin {
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
-          scale = calculateFitScale(fitMode);
-          applyTransform();
+          if (!isUserZoomed) {
+            scale = calculateFitScale(fitMode);
+            applyTransform();
+          }
         })
       : null;
     resizeObserver?.observe(ctx.container);
@@ -190,15 +192,34 @@ export class RtfPlugin implements PreviewPlugin {
       const doc = new (RTFJS as any).Document(ctx.buffer, {});
       const htmlElements = await doc.render();
       
-      // Flatten and collect all child content elements
+      // Collect block-level elements without flattening paragraphs into raw inline spans
       const contentNodes: HTMLElement[] = [];
-      for (const item of htmlElements) {
-        if (item.children && item.children.length > 0 && !item.tagName.toLowerCase().startsWith('table')) {
-          contentNodes.push(...Array.from(item.children as HTMLCollectionOf<HTMLElement>));
-        } else {
-          contentNodes.push(item as HTMLElement);
+      const extractBlocks = (nodes: any[]) => {
+        for (const item of nodes) {
+          if (!item || !(item instanceof HTMLElement)) continue;
+          const tag = item.tagName.toLowerCase();
+          
+          // Check if item contains child block elements (sections/outer wrappers)
+          const hasChildBlocks = Array.from(item.children).some(c => {
+            const ct = c.tagName.toLowerCase();
+            return ['p', 'div', 'table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'ul', 'ol'].includes(ct);
+          });
+
+          if (hasChildBlocks && !['table', 'tr', 'td', 'th', 'ul', 'ol', 'li'].includes(tag)) {
+            extractBlocks(Array.from(item.children));
+          } else {
+            // Ensure paragraph block display and bottom margin so headings and text never run together
+            if (tag === 'p' || tag === 'div') {
+              item.style.display = 'block';
+              item.style.marginBottom = '12px';
+              item.style.lineHeight = '1.6';
+            }
+            contentNodes.push(item);
+          }
         }
-      }
+      };
+
+      extractBlocks(htmlElements);
 
       // Temporarily mount to wrapper to measure real layout heights
       wrapper.innerHTML = '';
@@ -208,7 +229,7 @@ export class RtfPlugin implements PreviewPlugin {
         const rectH = c.getBoundingClientRect ? c.getBoundingClientRect().height : 0;
         const offH = c.offsetHeight || 0;
         const textLen = c.textContent?.trim().length || 0;
-        const estH = Math.max(24, Math.ceil(textLen / 75) * 22 + 14);
+        const estH = Math.max(28, Math.ceil(textLen / 75) * 24 + 16);
         return Math.max(rectH, offH, estH);
       });
 
@@ -227,6 +248,7 @@ export class RtfPlugin implements PreviewPlugin {
         card.style.marginBottom = '24px';
         card.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
         card.style.lineHeight = '1.6';
+        card.style.color = '#1e293b';
         return card;
       };
 
@@ -268,9 +290,8 @@ export class RtfPlugin implements PreviewPlugin {
         pageCard.style.padding = '72px 56px';
         pageCard.style.width = '816px';
         pageCard.style.minHeight = '1056px';
-        pageCard.style.maxWidth = '100%';
         pageCard.style.boxSizing = 'border-box';
-        pageCard.style.fontFamily = 'serif';
+        pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
         pageCard.style.fontSize = '12pt';
         pageCard.style.lineHeight = '1.6';
         pageCard.style.color = '#1e293b';
@@ -285,39 +306,12 @@ export class RtfPlugin implements PreviewPlugin {
     const totalPages = Math.max(1, pageElements.length);
     let currentPage = 1;
 
-    let indicator: HTMLElement | null = null;
-    if (totalPages > 1) {
-      indicator = document.createElement('div');
-      indicator.className = 'fp-rtf-page-indicator';
-      indicator.style.position = 'sticky';
-      indicator.style.bottom = '16px';
-      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-      indicator.style.backdropFilter = 'blur(8px)';
-      indicator.style.color = '#f8fafc';
-      indicator.style.fontSize = '12px';
-      indicator.style.fontWeight = '600';
-      indicator.style.padding = '5px 14px';
-      indicator.style.borderRadius = '20px';
-      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-      indicator.style.zIndex = '10';
-      indicator.style.userSelect = 'none';
-      indicator.style.pointerEvents = 'none';
-      indicator.style.textAlign = 'center';
-      indicator.style.width = 'fit-content';
-      indicator.style.margin = '16px auto 0';
-      ctx.container.appendChild(indicator);
-    }
-
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       if (totalPages > 1) {
         pageElements.forEach((el, idx) => {
           el.style.display = idx + 1 === currentPage ? 'block' : 'none';
         });
-      }
-      if (indicator) {
-        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
       ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
@@ -329,7 +323,6 @@ export class RtfPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       resizeObserver?.disconnect();
-      indicator?.remove();
       wrapper.remove();
       ctx.container.innerHTML = '';
     };
@@ -342,19 +335,23 @@ export class RtfPlugin implements PreviewPlugin {
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;

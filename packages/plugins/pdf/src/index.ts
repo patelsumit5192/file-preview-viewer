@@ -139,7 +139,8 @@ export class PdfPlugin implements PreviewPlugin {
     container.className = 'fp-pdf-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflow = 'auto';
+    container.style.overflowX = 'hidden';
+    container.style.overflowY = 'auto';
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     container.style.alignItems = 'center';
@@ -163,25 +164,6 @@ export class PdfPlugin implements PreviewPlugin {
     let canvas = document.createElement('canvas');
     pageCard.appendChild(canvas);
     container.appendChild(pageCard);
-
-    const indicator = document.createElement('div');
-    indicator.className = 'fp-pdf-page-indicator';
-    indicator.style.position = 'sticky';
-    indicator.style.bottom = '16px';
-    indicator.style.marginTop = '16px';
-    indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-    indicator.style.backdropFilter = 'blur(8px)';
-    indicator.style.color = '#f8fafc';
-    indicator.style.fontSize = '12px';
-    indicator.style.fontWeight = '600';
-    indicator.style.padding = '5px 14px';
-    indicator.style.borderRadius = '20px';
-    indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-    indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-    indicator.style.zIndex = '10';
-    indicator.style.userSelect = 'none';
-    indicator.style.pointerEvents = 'none';
-    container.appendChild(indicator);
 
     ctx.container.appendChild(container);
 
@@ -219,7 +201,6 @@ export class PdfPlugin implements PreviewPlugin {
       canvas = newCanvas;
 
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
 
       const page = await pdfDoc.getPage(currentPage);
@@ -228,8 +209,8 @@ export class PdfPlugin implements PreviewPlugin {
       const containerHeight = container.clientHeight || 700;
       const unscaledVp = page.getViewport({ scale: 1.0, rotation });
 
-      // Minimal side margins (12px on each side)
-      const availWidth = Math.max(280, containerWidth - 24);
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availWidth = Math.max(280, containerWidth - 36);
       const availHeight = Math.max(280, containerHeight - 32);
       const scaleW = availWidth / unscaledVp.width;
       const scaleH = availHeight / unscaledVp.height;
@@ -238,9 +219,9 @@ export class PdfPlugin implements PreviewPlugin {
       // In 'width' mode: fit page width comfortably for reading with minimal side margins
       let fitScale: number;
       if (fitMode === 'page') {
-        fitScale = Math.max(0.35, Math.min(3.5, Math.min(scaleW, scaleH)));
+        fitScale = Math.max(0.35, Math.min(3.0, Math.min(scaleW, scaleH)));
       } else {
-        fitScale = Math.max(0.4, Math.min(3.5, scaleW));
+        fitScale = Math.max(0.4, Math.min(3.0, scaleW));
       }
       const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 

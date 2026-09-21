@@ -36,41 +36,39 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (isPresentation || totalPages > 1) {
-      if (isPresentation) {
-        actions.push({
-          id: 'thumbnails',
-          icon: 'thumbnails',
-          label: 'Slide Thumbnails',
-          type: 'button',
-          group: 'navigation',
-          execute: () => instance.toggleThumbnails?.()
-        });
-      }
-
+    if (isPresentation) {
       actions.push({
-        id: 'page-nav',
-        icon: '',
-        label: isPresentation ? 'Slide Navigation' : 'Page Navigation',
-        type: 'page-nav',
+        id: 'thumbnails',
+        icon: 'thumbnails',
+        label: 'Slide Thumbnails',
+        type: 'button',
         group: 'navigation',
-        value: instance.getCurrentPage?.() ?? 1,
-        max: totalPages,
-        execute: (action: unknown, page?: unknown) => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const max = instance.getPageCount?.() ?? 1;
-          if (action === 'prev') {
-            if (cur > 1) instance.goToPage?.(cur - 1);
-          } else if (action === 'next') {
-            if (cur < max) instance.goToPage?.(cur + 1);
-          } else if (typeof page === 'number') {
-            instance.goToPage?.(page);
-          } else if (typeof action === 'number') {
-            instance.goToPage?.(action);
-          }
-        }
+        execute: () => instance.toggleThumbnails?.()
       });
     }
+
+    actions.push({
+      id: 'page-nav',
+      icon: '',
+      label: isPresentation ? 'Slide Navigation' : 'Page Navigation',
+      type: 'page-nav',
+      group: 'navigation',
+      value: instance.getCurrentPage?.() ?? 1,
+      max: totalPages,
+      execute: (action: unknown, page?: unknown) => {
+        const cur = instance.getCurrentPage?.() ?? 1;
+        const max = instance.getPageCount?.() ?? 1;
+        if (action === 'prev') {
+          if (cur > 1) instance.goToPage?.(cur - 1);
+        } else if (action === 'next') {
+          if (cur < max) instance.goToPage?.(cur + 1);
+        } else if (typeof page === 'number') {
+          instance.goToPage?.(page);
+        } else if (typeof action === 'number') {
+          instance.goToPage?.(action);
+        }
+      }
+    });
 
     actions.push(
       {
@@ -174,24 +172,28 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     container.className = 'fp-odf-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflow = 'auto';
+    container.style.overflowX = 'hidden';
+    container.style.overflowY = 'auto';
     container.style.padding = '16px 8px';
     container.style.backgroundColor = '#f1f5f9';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-odf-wrapper';
     wrapper.style.margin = '0 auto';
+    wrapper.style.width = isPresentation ? '960px' : '816px';
+    wrapper.style.boxSizing = 'border-box';
     wrapper.style.backgroundColor = '#ffffff';
     wrapper.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
     wrapper.style.borderRadius = '4px';
     wrapper.style.transformOrigin = 'top center';
-    wrapper.style.transition = 'transform 0.2s ease';
+    wrapper.style.transition = 'transform 0.15s ease';
 
     container.appendChild(wrapper);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
     let rotation = 0;
+    let isUserZoomed = false;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let currentPage = 1;
     let totalPages = 1;
@@ -199,10 +201,10 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const activeSlide = slides[currentPage - 1];
-      const elW = (activeSlide && activeSlide.offsetWidth > 0) ? activeSlide.offsetWidth : (wrapper.offsetWidth || 816);
+      const elW = isPresentation ? 960 : 816;
       const singlePageH = Math.min(activeSlide?.offsetHeight || wrapper.offsetHeight || 1056, Math.round(elW * 1.32));
-      // Minimal side margins (12px on each side)
-      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availW = Math.max(280, ctx.container.clientWidth - 32);
       const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
@@ -213,9 +215,9 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       }
 
       if (mode === 'page') {
-        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.0, Math.min(sW, sH)));
       }
-      return Math.max(0.4, Math.min(3.5, sW));
+      return Math.max(0.4, Math.min(3.0, sW));
     };
 
     const applyTransform = () => {
@@ -230,8 +232,10 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
-          scale = calculateFitScale(fitMode);
-          applyTransform();
+          if (!isUserZoomed) {
+            scale = calculateFitScale(fitMode);
+            applyTransform();
+          }
         })
       : null;
     resizeObserver?.observe(ctx.container);
@@ -360,23 +364,6 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         wrapper.appendChild(page);
         slides.push(page);
       });
-
-      const pageIndicator = document.createElement('div');
-      pageIndicator.className = 'fp-odt-page-indicator';
-      pageIndicator.style.position = 'sticky';
-      pageIndicator.style.bottom = '16px';
-      pageIndicator.style.left = '50%';
-      pageIndicator.style.transform = 'translateX(-50%)';
-      pageIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-      pageIndicator.style.color = '#fff';
-      pageIndicator.style.padding = '6px 12px';
-      pageIndicator.style.borderRadius = '16px';
-      pageIndicator.style.fontSize = '12px';
-      pageIndicator.style.zIndex = '100';
-      pageIndicator.style.display = 'inline-block';
-      pageIndicator.style.width = 'fit-content';
-      pageIndicator.textContent = `Page 1 of ${totalPages}`;
-      container.appendChild(pageIndicator);
     }
 
     const cleanup = () => {
@@ -394,11 +381,6 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       slides.forEach((s, idx) => {
         s.style.display = idx === page - 1 ? 'block' : 'none';
       });
-      // Update page indicator if it exists
-      const indicator = container.querySelector('.fp-odt-page-indicator') as HTMLElement;
-      if (indicator) {
-        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
-      }
       container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
@@ -407,19 +389,23 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       destroy: cleanup,
       isPresentation,
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
@@ -575,23 +561,24 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         case 'h': {
           const level = Math.min(6, Math.max(1, Number(node.getAttribute('text:outline-level') || 1)));
           const style = styles.get(node.getAttribute('text:style-name') || '') || '';
-          html += `<h${level} style="${style}; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">${node.textContent || ''}</h${level}>`;
+          html += `<h${level} style="${style}; margin: 18px 0 8px; color: #1e3a8a; font-family: Calibri, 'Segoe UI', Arial, sans-serif;">${node.textContent || ''}</h${level}>`;
           break;
         }
         case 'p': {
           const style = styles.get(node.getAttribute('text:style-name') || '') || '';
           const inner = this.renderSpans(node, styles, images);
-          html += `<p style="${style}; line-height: 1.6; margin: 8px 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">${inner}</p>`;
+          const isInsideLi = node.parentElement?.localName === 'list-item' || node.parentElement?.tagName?.toLowerCase() === 'list-item';
+          html += `<p style="${style}; line-height: 1.5; margin: ${isInsideLi ? '0' : '8px 0 12px'}; font-family: Calibri, 'Segoe UI', Arial, sans-serif;">${inner}</p>`;
           break;
         }
         case 'list': {
-          html += '<ul style="margin: 8px 0; padding-left: 24px;">';
+          html += '<ul style="margin: 8px 0 12px; padding-left: 24px;">';
           Array.from(node.children).forEach(c => walk(c));
           html += '</ul>';
           break;
         }
         case 'list-item': {
-          html += '<li>';
+          html += '<li style="margin: 4px 0; font-size: 11pt; line-height: 1.5; color: #1e293b;">';
           Array.from(node.children).forEach(c => walk(c));
           html += '</li>';
           break;

@@ -35,28 +35,26 @@ export class DocxPlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (totalPages > 1) {
-      actions.push({
-        id: 'page-nav',
-        icon: '',
-        label: 'Page Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        value: instance.getCurrentPage?.() ?? 1,
-        max: totalPages,
-        execute: (action: unknown, page?: unknown) => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const max = instance.getPageCount?.() ?? 1;
-          if (action === 'prev') {
-            if (cur > 1) instance.goToPage?.(cur - 1);
-          } else if (action === 'next') {
-            if (cur < max) instance.goToPage?.(cur + 1);
-          } else if (typeof page === 'number') {
-            instance.goToPage?.(page);
-          }
+    actions.push({
+      id: 'page-nav',
+      icon: '',
+      label: 'Page Navigation',
+      type: 'page-nav',
+      group: 'navigation',
+      value: instance.getCurrentPage?.() ?? 1,
+      max: totalPages,
+      execute: (action: unknown, page?: unknown) => {
+        const cur = instance.getCurrentPage?.() ?? 1;
+        const max = instance.getPageCount?.() ?? 1;
+        if (action === 'prev') {
+          if (cur > 1) instance.goToPage?.(cur - 1);
+        } else if (action === 'next') {
+          if (cur < max) instance.goToPage?.(cur + 1);
+        } else if (typeof page === 'number') {
+          instance.goToPage?.(page);
         }
-      });
-    }
+      }
+    });
 
     actions.push(
       {
@@ -125,16 +123,18 @@ export class DocxPlugin implements PreviewPlugin {
     wrapper.className = 'fp-docx-wrapper';
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
-    wrapper.style.padding = '16px 8px';
+    wrapper.style.padding = '0';
     wrapper.style.maxWidth = 'none';
-    wrapper.style.width = '100%';
+    wrapper.style.width = '816px';
+    wrapper.style.margin = '0 auto';
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
-    wrapper.style.margin = '0 auto';
     wrapper.style.boxSizing = 'border-box';
     
-    ctx.container.style.overflow = 'auto';
+    ctx.container.style.overflowX = 'hidden';
+    ctx.container.style.overflowY = 'auto';
+    ctx.container.style.padding = '16px 8px';
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(wrapper);
 
@@ -349,39 +349,12 @@ export class DocxPlugin implements PreviewPlugin {
     const totalPages = Math.max(1, pageElements.length);
     let currentPage = 1;
 
-    let indicator: HTMLElement | null = null;
-    if (totalPages > 1) {
-      indicator = document.createElement('div');
-      indicator.className = 'fp-docx-page-indicator';
-      indicator.style.position = 'sticky';
-      indicator.style.bottom = '16px';
-      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-      indicator.style.backdropFilter = 'blur(8px)';
-      indicator.style.color = '#f8fafc';
-      indicator.style.fontSize = '12px';
-      indicator.style.fontWeight = '600';
-      indicator.style.padding = '5px 14px';
-      indicator.style.borderRadius = '20px';
-      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-      indicator.style.zIndex = '10';
-      indicator.style.userSelect = 'none';
-      indicator.style.pointerEvents = 'none';
-      indicator.style.textAlign = 'center';
-      indicator.style.width = 'fit-content';
-      indicator.style.margin = '16px auto 0';
-      ctx.container.appendChild(indicator);
-    }
-
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       if (pageElements.length > 1) {
         pageElements.forEach((sec, idx) => {
-          sec.style.display = (idx + 1 === currentPage) ? 'block' : 'none';
+          sec.style.display = (idx + 1 === currentPage) ? '' : 'none';
         });
-      }
-      if (indicator) {
-        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
       }
       ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
@@ -394,17 +367,18 @@ export class DocxPlugin implements PreviewPlugin {
     scale = 1.0;
     let rotation = 0;
     let fitMode: 'width' | 'page' = 'page';
+    let isUserZoomed = false;
 
     const calculateFitScale = (_mode: 'width' | 'page' = fitMode) => {
       const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
       const elW = activeEl.offsetWidth || 816;
       
-      // Minimal side margins: 12px left + 12px right = 24px
-      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availW = Math.max(280, ctx.container.clientWidth - 32);
       const sW = availW / elW;
 
       // Fit to Page fills the frame horizontally with only minimal side margins
-      return Math.max(0.25, Math.min(3.5, sW));
+      return Math.max(0.35, Math.min(3.0, sW));
     };
 
     const applyTransform = () => {
@@ -422,10 +396,12 @@ export class DocxPlugin implements PreviewPlugin {
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
-        const newFit = calculateFitScale('page');
-        if (Math.abs(scale - newFit) > 0.015) {
-          scale = newFit;
-          applyTransform();
+        if (!isUserZoomed) {
+          const newFit = calculateFitScale('page');
+          if (Math.abs(scale - newFit) > 0.015) {
+            scale = newFit;
+            applyTransform();
+          }
         }
       });
       resizeObserver.observe(ctx.container);
@@ -439,7 +415,6 @@ export class DocxPlugin implements PreviewPlugin {
     const cleanup = () => {
       resizeObserver?.disconnect();
       resizeObserver = null;
-      indicator?.remove();
       for (const url of createdBlobUrls) {
         URL.revokeObjectURL(url);
       }
@@ -458,19 +433,23 @@ export class DocxPlugin implements PreviewPlugin {
         showPage(page);
       },
       zoomIn: () => {
+        isUserZoomed = true;
         scale = Math.min(3.5, scale + 0.15);
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         scale = calculateFitScale('page');
         rotation = 0;
         applyTransform();

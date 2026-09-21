@@ -282,7 +282,7 @@ export class FilePreviewViewer {
     if (targetUrl) {
       const newWin = window.open(targetUrl, '_blank');
       if (!newWin) {
-        alert('Popup blocker prevented opening the preview in a separate window. Please allow popups for this site.');
+        console.warn('[FilePreviewViewer] Popup blocker prevented opening the preview in a separate window.');
         return null;
       }
       return newWin;
@@ -292,7 +292,7 @@ export class FilePreviewViewer {
     const title = (this.currentMetadata?.name || 'Document Preview') + ' - Full Preview';
     const newWin = window.open('', '_blank');
     if (!newWin) {
-      alert('Popup blocker prevented opening the preview in a separate window. Please allow popups for this site.');
+      console.warn('[FilePreviewViewer] Popup blocker prevented opening the preview in a separate window.');
       return null;
     }
 

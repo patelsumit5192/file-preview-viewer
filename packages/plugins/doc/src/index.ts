@@ -29,28 +29,26 @@ export class DocPlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (totalPages > 1) {
-      actions.push({
-        id: 'page-nav',
-        icon: '',
-        label: 'Page Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        value: instance.getCurrentPage?.() ?? 1,
-        max: totalPages,
-        execute: (action: unknown, page?: unknown) => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const max = instance.getPageCount?.() ?? 1;
-          if (action === 'prev') {
-            if (cur > 1) instance.goToPage?.(cur - 1);
-          } else if (action === 'next') {
-            if (cur < max) instance.goToPage?.(cur + 1);
-          } else if (typeof page === 'number') {
-            instance.goToPage?.(page);
-          }
+    actions.push({
+      id: 'page-nav',
+      icon: '',
+      label: 'Page Navigation',
+      type: 'page-nav',
+      group: 'navigation',
+      value: instance.getCurrentPage?.() ?? 1,
+      max: totalPages,
+      execute: (action: unknown, page?: unknown) => {
+        const cur = instance.getCurrentPage?.() ?? 1;
+        const max = instance.getPageCount?.() ?? 1;
+        if (action === 'prev') {
+          if (cur > 1) instance.goToPage?.(cur - 1);
+        } else if (action === 'next') {
+          if (cur < max) instance.goToPage?.(cur + 1);
+        } else if (typeof page === 'number') {
+          instance.goToPage?.(page);
         }
-      });
-    }
+      }
+    });
 
     actions.push(
       {
@@ -127,7 +125,8 @@ export class DocPlugin implements PreviewPlugin {
     container.className = 'fp-doc-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflow = 'auto';
+    container.style.overflowX = 'hidden';
+    container.style.overflowY = 'auto';
     container.style.padding = '16px 8px';
     container.style.backgroundColor = '#f1f5f9';
     container.style.display = 'flex';
@@ -187,16 +186,15 @@ export class DocPlugin implements PreviewPlugin {
       const pageCard = document.createElement('div');
       pageCard.className = 'fp-doc-page-card';
       pageCard.style.width = '816px';
-      pageCard.style.height = '1056px';
+      pageCard.style.minHeight = '1056px';
       pageCard.style.backgroundColor = '#ffffff';
-      pageCard.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
+      pageCard.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
       pageCard.style.borderRadius = '4px';
-      pageCard.style.padding = '96px 72px';
+      pageCard.style.padding = '72px 56px';
       pageCard.style.boxSizing = 'border-box';
-      pageCard.style.overflow = 'hidden';
       pageCard.style.display = i === 0 ? 'block' : 'none';
       pageCard.style.transformOrigin = 'top center';
-      pageCard.style.transition = 'transform 0.2s ease';
+      pageCard.style.transition = 'transform 0.15s ease';
       pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
       pageCard.style.color = '#1e293b';
 
@@ -216,38 +214,15 @@ export class DocPlugin implements PreviewPlugin {
       pageCards.push(pageCard);
     }
 
-    let indicator: HTMLElement | null = null;
-    if (totalPages > 1) {
-      indicator = document.createElement('div');
-      indicator.className = 'fp-doc-page-indicator';
-      indicator.style.position = 'fixed';
-      indicator.style.bottom = '16px';
-      indicator.style.left = '50%';
-      indicator.style.transform = 'translateX(-50%)';
-      indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-      indicator.style.backdropFilter = 'blur(8px)';
-      indicator.style.color = '#f8fafc';
-      indicator.style.fontSize = '12px';
-      indicator.style.fontWeight = '600';
-      indicator.style.padding = '5px 14px';
-      indicator.style.borderRadius = '20px';
-      indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-      indicator.style.zIndex = '10';
-      indicator.style.userSelect = 'none';
-      indicator.style.pointerEvents = 'none';
-      indicator.style.textAlign = 'center';
-      container.appendChild(indicator);
-    }
-
     let rotation = 0;
 
     const applyTransform = () => {
       const activeCard = pageCards[currentPage - 1];
       if (activeCard) {
         activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-        const scaledH = 1056 * scale;
-        const extraH = Math.max(0, scaledH - 1056);
+        const baseH = activeCard.offsetHeight || 1056;
+        const scaledH = baseH * scale;
+        const extraH = Math.max(0, scaledH - baseH);
         activeCard.style.marginBottom = `${extraH + 32}px`;
       }
     };
@@ -262,9 +237,6 @@ export class DocPlugin implements PreviewPlugin {
           card.style.display = 'none';
         }
       });
-      if (indicator) {
-        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
-      }
       container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
@@ -274,27 +246,30 @@ export class DocPlugin implements PreviewPlugin {
     }
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let isUserZoomed = false;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const elW = 816;
       const elH = 1056;
-      // Minimal side margins (12px on each side)
-      const availW = Math.max(280, ctx.container.clientWidth - 24);
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availW = Math.max(280, ctx.container.clientWidth - 32);
       const availH = Math.max(280, ctx.container.clientHeight - 32);
 
       const sW = availW / elW;
       const sH = availH / elH;
 
       if (mode === 'page') {
-        return Math.max(0.35, Math.min(3.5, Math.min(sW, sH)));
+        return Math.max(0.35, Math.min(3.0, Math.min(sW, sH)));
       }
-      return Math.max(0.4, Math.min(3.5, sW));
+      return Math.max(0.4, Math.min(3.0, sW));
     };
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
-          scale = calculateFitScale(fitMode);
-          applyTransform();
+          if (!isUserZoomed) {
+            scale = calculateFitScale(fitMode);
+            applyTransform();
+          }
         })
       : null;
     resizeObserver?.observe(ctx.container);
@@ -306,7 +281,6 @@ export class DocPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       resizeObserver?.disconnect();
-      indicator?.remove();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -319,19 +293,23 @@ export class DocPlugin implements PreviewPlugin {
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
@@ -800,20 +778,31 @@ export class DocPlugin implements PreviewPlugin {
         i++; continue;
       }
 
-      if (line.length < 60 && !line.endsWith('.') && (/^[A-Z0-9\s:_-]+$/.test(line) || line.startsWith('#'))) {
+      // Drop stray single numbers (leftover field codes or font size tokens like '11')
+      if (/^\d{1,2}$/.test(line.trim())) { i++; continue; }
+
+      const isShortLine = line.length < 60 && !line.endsWith('.') && !line.endsWith(',');
+      const isTitleLike = isShortLine && (
+        /^[A-Z0-9\s:_-]+$/.test(line) ||
+        line.startsWith('#') ||
+        /^(?:Chapter|Section|Part|\d+\.)\b/i.test(line) ||
+        /^[A-Z][a-zA-Z0-9\s#:-]{2,45}$/.test(line)
+      );
+
+      if (isTitleLike) {
         if (inList) { html += '</ul>'; inList = false; }
-        html += `<h2 style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line, sanitizeOptions)}</h2>`;
+        html += `<h2 style="font-size: 18px; font-weight: 700; color: #1e3a8a; margin: 18px 0 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${DOMPurify.sanitize(line, sanitizeOptions)}</h2>`;
       } else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
         if (!inList) {
-          html += '<ul style="margin: 8px 0; padding-left: 24px;">';
+          html += '<ul style="margin: 8px 0 12px; padding-left: 24px;">';
           inList = true;
         }
         const bulletText = line.replace(/^[•\-\*]\s*/, '');
-        html += `<li style="margin: 4px 0; line-height: 1.15; font-size: 12pt;">${DOMPurify.sanitize(bulletText, sanitizeOptions)}</li>`;
+        html += `<li style="margin: 4px 0; line-height: 1.5; font-size: 11pt; color: #1e293b;">${DOMPurify.sanitize(bulletText, sanitizeOptions)}</li>`;
       } else {
         if (inList) { html += '</ul>'; inList = false; }
-        // Use proper paragraph spacing (1.15× line height, 12pt font by default)
-        html += `<p style="line-height: 1.15; margin: 0; font-size: 12pt; text-align: justify;">${DOMPurify.sanitize(line, sanitizeOptions)}</p>`;
+        // Standard Microsoft Word paragraph spacing (1.5 line height, 11pt font, 12px bottom margin)
+        html += `<p style="line-height: 1.5; margin: 0 0 12px 0; font-size: 11pt; color: #1e293b; text-align: justify;">${DOMPurify.sanitize(line, sanitizeOptions)}</p>`;
       }
       
       i++;

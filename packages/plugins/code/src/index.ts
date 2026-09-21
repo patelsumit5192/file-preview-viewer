@@ -34,28 +34,26 @@ export class CodePlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (totalPages > 1) {
-      actions.push({
-        id: 'page-nav',
-        icon: '',
-        label: 'Page Navigation',
-        type: 'page-nav',
-        group: 'navigation',
-        value: instance.getCurrentPage?.() ?? 1,
-        max: totalPages,
-        execute: (action: unknown, page?: unknown) => {
-          const cur = instance.getCurrentPage?.() ?? 1;
-          const max = instance.getPageCount?.() ?? 1;
-          if (action === 'prev') {
-            if (cur > 1) instance.goToPage?.(cur - 1);
-          } else if (action === 'next') {
-            if (cur < max) instance.goToPage?.(cur + 1);
-          } else if (typeof page === 'number') {
-            instance.goToPage?.(page);
-          }
+    actions.push({
+      id: 'page-nav',
+      icon: '',
+      label: 'Page Navigation',
+      type: 'page-nav',
+      group: 'navigation',
+      value: instance.getCurrentPage?.() ?? 1,
+      max: totalPages,
+      execute: (action: unknown, page?: unknown) => {
+        const cur = instance.getCurrentPage?.() ?? 1;
+        const max = instance.getPageCount?.() ?? 1;
+        if (action === 'prev') {
+          if (cur > 1) instance.goToPage?.(cur - 1);
+        } else if (action === 'next') {
+          if (cur < max) instance.goToPage?.(cur + 1);
+        } else if (typeof page === 'number') {
+          instance.goToPage?.(page);
         }
-      });
-    }
+      }
+    });
 
     actions.push(
       {
@@ -212,10 +210,13 @@ export class CodePlugin implements PreviewPlugin {
     let fontSize = 13;
     let rotation = 0;
     let zoomLevel = 1;
+    let isUserZoomed = false;
     const pre = document.createElement('pre');
     const code = document.createElement('code');
 
     if (isTxt) {
+      container.style.overflowX = 'hidden';
+      container.style.overflowY = 'auto';
       container.style.backgroundColor = '#f1f5f9';
       container.style.padding = '16px 8px';
       container.style.boxSizing = 'border-box';
@@ -223,7 +224,7 @@ export class CodePlugin implements PreviewPlugin {
       container.style.flexDirection = 'column';
       container.style.alignItems = 'center';
 
-      pre.style.margin = '0';
+      pre.style.margin = '0 auto';
       pre.style.fontFamily = "Consolas, 'Courier New', monospace";
       pre.style.fontSize = '13px';
       pre.style.color = '#1e293b';
@@ -236,10 +237,12 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.minHeight = '1056px';
       pre.style.padding = '72px 56px';
       pre.style.boxSizing = 'border-box';
-      pre.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+      pre.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
       pre.style.borderRadius = '4px';
       pre.style.transformOrigin = 'top center';
+      pre.style.transition = 'transform 0.15s ease';
     } else {
+      container.style.overflow = 'auto';
       container.style.backgroundColor = '#1e1e1e';
       container.style.color = '#d4d4d4';
       container.style.padding = '16px';
@@ -277,45 +280,9 @@ export class CodePlugin implements PreviewPlugin {
     pre.appendChild(code);
     container.appendChild(pre);
 
-    let indicator: HTMLElement | null = null;
-    if (totalPages > 1) {
-      indicator = document.createElement('div');
-      indicator.className = 'fp-code-page-indicator';
-      indicator.style.position = 'sticky';
-      indicator.style.bottom = '16px';
-      
-      if (isTxt) {
-        indicator.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-        indicator.style.color = '#334155';
-        indicator.style.border = '1px solid #e2e8f0';
-        indicator.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-      } else {
-        indicator.style.backgroundColor = 'rgba(15, 23, 42, 0.85)';
-        indicator.style.color = '#f8fafc';
-        indicator.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-        indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-        indicator.style.backdropFilter = 'blur(8px)';
-      }
-      
-      indicator.style.fontSize = '12px';
-      indicator.style.fontWeight = '600';
-      indicator.style.padding = '5px 14px';
-      indicator.style.borderRadius = '20px';
-      indicator.style.zIndex = '10';
-      indicator.style.userSelect = 'none';
-      indicator.style.pointerEvents = 'none';
-      indicator.style.textAlign = 'center';
-      indicator.style.width = 'fit-content';
-      indicator.style.margin = '16px auto 0';
-      container.appendChild(indicator);
-    }
-
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       renderCodePage(rawPages[currentPage - 1] || (isTxt ? '' : fullText));
-      if (indicator) {
-        indicator.textContent = `Page ${currentPage} of ${totalPages}`;
-      }
       container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
@@ -327,9 +294,9 @@ export class CodePlugin implements PreviewPlugin {
     ctx.container.appendChild(container);
 
     const calculateTxtFit = () => {
-      // Minimal side margins (12px on each side)
-      const availW = Math.max(280, container.clientWidth - 24);
-      return Math.max(0.4, Math.min(3.5, availW / 816));
+      // Minimal side margins (16px on each side, safe from vertical scrollbar)
+      const availW = Math.max(280, container.clientWidth - 32);
+      return Math.max(0.4, Math.min(3.0, availW / 816));
     };
 
     const updateTransform = () => {
@@ -353,8 +320,10 @@ export class CodePlugin implements PreviewPlugin {
 
       resizeObserver = typeof ResizeObserver !== 'undefined'
         ? new ResizeObserver(() => {
-            zoomLevel = calculateTxtFit();
-            updateTransform();
+            if (!isUserZoomed) {
+              zoomLevel = calculateTxtFit();
+              updateTransform();
+            }
           })
         : null;
       resizeObserver?.observe(container);
@@ -362,7 +331,6 @@ export class CodePlugin implements PreviewPlugin {
 
     const cleanup = () => {
       resizeObserver?.disconnect();
-      indicator?.remove();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -375,6 +343,7 @@ export class CodePlugin implements PreviewPlugin {
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
       zoomIn: () => {
+        isUserZoomed = true;
         if (isTxt) {
           zoomLevel = Math.min(3.5, zoomLevel + 0.15);
         } else {
@@ -383,6 +352,7 @@ export class CodePlugin implements PreviewPlugin {
         updateTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         if (isTxt) {
           zoomLevel = Math.max(0.1, zoomLevel - 0.15);
         } else {
@@ -392,6 +362,7 @@ export class CodePlugin implements PreviewPlugin {
       },
       getZoom: () => isTxt ? zoomLevel : fontSize / 13,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         if (isTxt) {
           zoomLevel = level;
         } else {
@@ -400,6 +371,7 @@ export class CodePlugin implements PreviewPlugin {
         updateTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         fontSize = 13;
         rotation = 0;
         zoomLevel = isTxt ? calculateTxtFit() : 1;
