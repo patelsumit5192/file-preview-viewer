@@ -116,7 +116,7 @@ export class FilePreviewViewer {
         buffer,
         options,
         signal,
-        emit: (event, payload) => {
+        emit: (event: string, payload?: unknown) => {
           if (event === 'page-change' && payload && typeof (payload as any).page === 'number') {
             const total = (payload as any).total ?? (payload as any).totalPages;
             this.toolbar?.setPage((payload as any).page, total);
@@ -124,7 +124,8 @@ export class FilePreviewViewer {
           }
           this.eventEmitter.emit(event, payload);
         },
-      });
+        toggleThumbnails: () => this.toggleThumbnails(),
+      } as any);
 
       this.activeInstance = instance;
       (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();

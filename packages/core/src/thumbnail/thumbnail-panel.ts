@@ -19,6 +19,9 @@ export class ThumbnailPanel {
     this.onToggleCallback = onToggle;
 
     this.panelEl = createElement('div', { className: 'fp-thumbnail-panel hidden' });
+    this.panelEl.style.width = '0px';
+    this.panelEl.style.minWidth = '0px';
+    this.panelEl.style.opacity = '0';
 
     // Header
     this.headerEl = createElement('div', { className: 'fp-thumbnail-header' });
@@ -45,7 +48,7 @@ export class ThumbnailPanel {
   }
 
   isOpen(): boolean {
-    return !this.panelEl.classList.contains('hidden');
+    return !this.panelEl.classList.contains('hidden') && this.panelEl.style.width !== '0px';
   }
 
   update(thumbnails: Thumbnail[], onSelect: (index: number) => void): void {
@@ -59,6 +62,10 @@ export class ThumbnailPanel {
     }
 
     this.render();
+
+    if (this.isOpen()) {
+      this.renderAllVisible();
+    }
   }
 
   setActive(index: number): void {
@@ -67,7 +74,6 @@ export class ThumbnailPanel {
     items.forEach((item, i) => {
       if (i === index) {
         item.classList.add('active');
-        // Smoothly scroll active thumbnail into view
         item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } else {
         item.classList.remove('active');
@@ -76,22 +82,29 @@ export class ThumbnailPanel {
   }
 
   show(): void {
-    if (this.panelEl.classList.contains('hidden')) {
-      this.panelEl.classList.remove('hidden');
-      this.onToggleCallback?.(true);
-    }
+    this.panelEl.classList.remove('hidden');
+    this.panelEl.style.width = '200px';
+    this.panelEl.style.minWidth = '200px';
+    this.panelEl.style.opacity = '1';
+    this.panelEl.style.display = 'flex';
+    this.onToggleCallback?.(true);
+    this.renderAllVisible();
   }
 
   hide(): void {
-    if (!this.panelEl.classList.contains('hidden')) {
-      this.panelEl.classList.add('hidden');
-      this.onToggleCallback?.(false);
-    }
+    this.panelEl.classList.add('hidden');
+    this.panelEl.style.width = '0px';
+    this.panelEl.style.minWidth = '0px';
+    this.panelEl.style.opacity = '0';
+    this.onToggleCallback?.(false);
   }
 
   toggle(): void {
-    const isNowHidden = this.panelEl.classList.toggle('hidden');
-    this.onToggleCallback?.(!isNowHidden);
+    if (this.isOpen()) {
+      this.hide();
+    } else {
+      this.show();
+    }
   }
 
   destroy(): void {
@@ -101,6 +114,28 @@ export class ThumbnailPanel {
     }
     this.renderedIndices.clear();
     this.el.innerHTML = '';
+  }
+
+  renderAllVisible(): void {
+    const items = this.listEl.querySelectorAll<HTMLElement>('.fp-thumbnail-item');
+    items.forEach((item) => {
+      const idx = parseInt(item.dataset.thumbIndex || '-1', 10);
+      if (idx >= 0 && !this.renderedIndices.has(idx)) {
+        this.renderThumbnailItem(idx, item);
+      }
+    });
+  }
+
+  private renderThumbnailItem(idx: number, itemEl: HTMLElement): void {
+    if (this.renderedIndices.has(idx)) return;
+    this.renderedIndices.add(idx);
+    const canvas = itemEl.querySelector('canvas') as HTMLCanvasElement | null;
+    const thumb = this.thumbnails[idx];
+    if (canvas && thumb) {
+      Promise.resolve(thumb.render(canvas)).catch((err) => {
+        console.warn(`[FilePreview] Error rendering thumbnail ${idx}:`, err);
+      });
+    }
   }
 
   private render(): void {
@@ -117,22 +152,15 @@ export class ThumbnailPanel {
             if (entry.isIntersecting) {
               const target = entry.target as HTMLElement;
               const idx = parseInt(target.dataset.thumbIndex || '-1', 10);
-              if (idx >= 0 && !this.renderedIndices.has(idx)) {
-                this.renderedIndices.add(idx);
-                const canvas = target.querySelector('canvas') as HTMLCanvasElement | null;
-                const thumb = this.thumbnails[idx];
-                if (canvas && thumb) {
-                  Promise.resolve(thumb.render(canvas)).catch((err) => {
-                    console.warn(`[FilePreview] Error rendering thumbnail ${idx}:`, err);
-                  });
-                }
+              if (idx >= 0) {
+                this.renderThumbnailItem(idx, target);
               }
             }
           }
         },
         {
           root: this.listEl,
-          rootMargin: '100px 0px 100px 0px'
+          rootMargin: '120px 0px 120px 0px'
         }
       );
     }
@@ -161,12 +189,11 @@ export class ThumbnailPanel {
 
       if (this.observer) {
         this.observer.observe(itemEl);
-      } else {
-        // Direct render fallback
-        this.renderedIndices.add(i);
-        Promise.resolve(thumb.render(canvas)).catch((err) => {
-          console.warn(`[FilePreview] Error rendering thumbnail ${i}:`, err);
-        });
+      }
+
+      // Eagerly render first 4 items immediately
+      if (i < 4) {
+        this.renderThumbnailItem(i, itemEl);
       }
     }
   }

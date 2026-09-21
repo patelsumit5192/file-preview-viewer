@@ -473,6 +473,14 @@ if (openWindowHeaderBtn) {
   }
 }
 
+// Wire up "Thumbnails" button in preview header
+const headerThumbnailsBtn = document.getElementById('header-thumbnails-btn');
+if (headerThumbnailsBtn) {
+  headerThumbnailsBtn.addEventListener('click', () => {
+    viewer.toggleThumbnails();
+  });
+}
+
 // Expose on window for automated verification and debugging
 (window as any).__viewer = viewer;
 (window as any).__loadFile = loadFile;
@@ -518,10 +526,10 @@ async function initDemo() {
     const fileName = urlParams.get('name') || fileParam.split('/').pop() || 'document';
     await loadFile(fileParam, fileName);
   } else {
-    // Initial load with Markdown sample
-    const initialBtn = document.querySelector('[data-sample="markdown"]') as HTMLElement;
+    // Initial load with PDF document sample
+    const initialBtn = document.querySelector('[data-sample="pdf"]') as HTMLElement;
     if (initialBtn) initialBtn.classList.add('active');
-    const initial = samples.markdown();
+    const initial = samples.pdf();
     await loadFile(initial.data, initial.name, initial.ext);
   }
 }
