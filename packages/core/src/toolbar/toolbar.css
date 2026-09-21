@@ -140,48 +140,177 @@
   overflow: hidden;
 }
 
+.fp-thumbnail-container {
+  height: 100%;
+  display: flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
 .fp-thumbnail-panel {
   width: 200px;
-  background: var(--fp-sidebar-bg);
-  border-right: 1px solid var(--fp-sidebar-border);
+  height: 100%;
+  background: var(--fp-sidebar-bg, #0f172a);
+  border-right: 1px solid var(--fp-sidebar-border, #1e293b);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  transition: margin-left 0.3s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .fp-thumbnail-panel.hidden {
-  margin-left: -200px;
+  width: 0 !important;
+  min-width: 0 !important;
+  border-right: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fp-thumbnail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fp-sidebar-border, #1e293b);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fp-text-color, #e2e8f0);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.fp-thumbnail-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fp-thumbnail-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--fp-text-color, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.fp-thumbnail-close-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fp-thumbnail-close-btn:hover {
+  background: var(--fp-btn-hover-bg, rgba(255, 255, 255, 0.1));
+  color: #ffffff;
+}
+
+.fp-thumbnail-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .fp-thumbnail-item {
-  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
-  border-bottom: 1px solid var(--fp-sidebar-border);
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.15s ease, transform 0.1s ease;
+  user-select: none;
+  width: 150px;
+  box-sizing: border-box;
 }
 
 .fp-thumbnail-item:hover {
-  background: var(--fp-btn-hover-bg);
+  background: var(--fp-btn-hover-bg, rgba(255, 255, 255, 0.08));
 }
 
 .fp-thumbnail-item.active {
-  background: var(--fp-btn-active-bg);
+  background: var(--fp-btn-active-bg, rgba(59, 130, 246, 0.15));
+}
+
+.fp-thumbnail-canvas-wrapper {
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  max-width: 134px;
+  overflow: hidden;
+}
+
+.fp-thumbnail-item.active .fp-thumbnail-canvas-wrapper {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .fp-thumbnail-item canvas {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: block;
   max-width: 100%;
   height: auto;
-  background: white;
+  background: #ffffff;
 }
 
 .fp-thumbnail-label {
-  font-size: 12px;
-  color: var(--fp-text-color);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fp-text-color, #94a3b8);
+}
+
+.fp-thumbnail-item.active .fp-thumbnail-label {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* PDF Text Layer */
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: transparent;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer ::selection {
+  background: rgba(0, 102, 255, 0.35);
 }
 
 .fp-content {

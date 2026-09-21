@@ -27,7 +27,6 @@ if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   }
 }
 
-
 export class PdfPlugin implements PreviewPlugin {
   id = 'pdf';
   name = 'PDF Document Preview';
@@ -100,12 +99,28 @@ export class PdfPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate Clockwise',
         type: 'button',
         group: 'view',
         execute: () => instance.rotateCW?.()
+      },
+      {
+        id: 'rotate-ccw',
+        icon: 'rotate-ccw',
+        label: 'Rotate Counter-Clockwise',
+        type: 'button',
+        group: 'view',
+        execute: () => instance.rotateCCW?.()
       },
       {
         id: 'download',
@@ -157,14 +172,13 @@ export class PdfPlugin implements PreviewPlugin {
     pageCard.style.borderRadius = '4px';
     pageCard.style.overflow = 'hidden';
     pageCard.style.lineHeight = '0';
-    pageCard.style.transition = 'transform 0.15s ease';
     pageCard.style.position = 'relative';
     pageCard.style.flexShrink = '0';
+    pageCard.style.transition = 'box-shadow 0.2s ease';
 
     let canvas = document.createElement('canvas');
     pageCard.appendChild(canvas);
     container.appendChild(pageCard);
-
     ctx.container.appendChild(container);
 
     const standardFontsUrl = (typeof window !== 'undefined' && (window as any).__PDF_STANDARD_FONTS_URL__) || './standard_fonts/';
@@ -186,6 +200,7 @@ export class PdfPlugin implements PreviewPlugin {
     let rotation = 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let currentRenderTask: any = null;
+    let textLayerDiv: HTMLElement | null = null;
 
     const renderPage = async (pageNum: number) => {
       if (currentRenderTask) {
@@ -199,6 +214,11 @@ export class PdfPlugin implements PreviewPlugin {
       const newCanvas = document.createElement('canvas');
       pageCard.replaceChild(newCanvas, canvas);
       canvas = newCanvas;
+
+      if (textLayerDiv) {
+        textLayerDiv.remove();
+        textLayerDiv = null;
+      }
 
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       ctx.emit('page-change', { page: currentPage, total: totalPages });
@@ -215,23 +235,29 @@ export class PdfPlugin implements PreviewPlugin {
       const scaleW = availWidth / unscaledVp.width;
       const scaleH = availHeight / unscaledVp.height;
 
-      // In 'page' mode: fit page height & width so full document fits comfortably
+      // In 'page' mode: fit page height & width so full document fits comfortably with 0 scroll
       // In 'width' mode: fit page width comfortably for reading with minimal side margins
       let fitScale: number;
       if (fitMode === 'page') {
-        fitScale = Math.max(0.35, Math.min(3.0, Math.min(scaleW, scaleH)));
+        fitScale = Math.max(0.2, Math.min(4.0, Math.min(scaleW, scaleH)));
       } else {
-        fitScale = Math.max(0.4, Math.min(3.0, scaleW));
+        fitScale = Math.max(0.2, Math.min(4.0, scaleW));
       }
       const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
 
       const pixelRatio = window.devicePixelRatio || 1;
       const viewport = page.getViewport({ scale: effectiveScale, rotation });
 
+      const displayWidth = Math.floor(viewport.width);
+      const displayHeight = Math.floor(viewport.height);
+
       canvas.width = Math.floor(viewport.width * pixelRatio);
       canvas.height = Math.floor(viewport.height * pixelRatio);
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+
+      pageCard.style.width = `${displayWidth}px`;
+      pageCard.style.height = `${displayHeight}px`;
 
       const canvasCtx = canvas.getContext('2d');
       if (!canvasCtx) return;
@@ -249,28 +275,96 @@ export class PdfPlugin implements PreviewPlugin {
         if (err?.name !== 'RenderingCancelledException') {
           console.warn('[PdfPlugin] Page render warning:', err);
         }
+        return;
       } finally {
         currentRenderTask = null;
+      }
+
+      // Render Text Layer for text selection and copying
+      try {
+        textLayerDiv = document.createElement('div');
+        textLayerDiv.className = 'textLayer';
+        textLayerDiv.style.width = `${displayWidth}px`;
+        textLayerDiv.style.height = `${displayHeight}px`;
+        textLayerDiv.style.position = 'absolute';
+        textLayerDiv.style.top = '0';
+        textLayerDiv.style.left = '0';
+        textLayerDiv.style.lineHeight = '1';
+        pageCard.appendChild(textLayerDiv);
+
+        if ((pdfjsLib as any).TextLayer) {
+          const textLayer = new (pdfjsLib as any).TextLayer({
+            textContentSource: page.streamTextContent(),
+            container: textLayerDiv,
+            viewport,
+          });
+          await textLayer.render();
+        }
+      } catch (err) {
+        // Non-fatal text layer notice
+        console.debug('[PdfPlugin] TextLayer notice:', err);
       }
     };
 
     renderPage(1);
 
-    // Auto-refit on container resize (window resize, panel toggle, fullscreen)
+    // Auto-refit on container resize (window resize, thumbnail panel toggle, fullscreen)
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        // Only auto-refit if zoom is at default (not user-zoomed)
+        // Auto-refit if zoom is near 1.0
         if (Math.abs(zoomScale - 1.0) < 0.05) {
           renderPage(currentPage);
         }
-      }, 150);
+      }, 120);
     });
     resizeObserver.observe(container);
 
+    // Ctrl + Wheel / Trackpad Pinch Zoom
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.15 : 0.15;
+        zoomScale = Math.max(0.25, Math.min(4.0, Math.round((zoomScale + delta) * 100) / 100));
+        renderPage(currentPage);
+      }
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+
+    // Keyboard navigation (Left/Right arrows, PageUp/PageDown, Home/End)
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        if (currentPage < totalPages) {
+          e.preventDefault();
+          container.scrollTop = 0;
+          renderPage(currentPage + 1);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (currentPage > 1) {
+          e.preventDefault();
+          container.scrollTop = 0;
+          renderPage(currentPage - 1);
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        container.scrollTop = 0;
+        renderPage(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        container.scrollTop = 0;
+        renderPage(totalPages);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+
     const cleanup = () => {
       resizeObserver.disconnect();
+      window.removeEventListener('keydown', onKeyDown);
+      container.removeEventListener('wheel', onWheel);
       if (resizeTimer) clearTimeout(resizeTimer);
       if (currentRenderTask) {
         try { currentRenderTask.cancel(); } catch {}
@@ -287,22 +381,26 @@ export class PdfPlugin implements PreviewPlugin {
     const instance: PreviewInstance = {
       destroy: cleanup,
       zoomIn: () => {
-        zoomScale = Math.min(3.5, zoomScale + 0.2);
+        zoomScale = Math.min(4.0, Math.round((zoomScale + 0.2) * 10) / 10);
         renderPage(currentPage);
       },
       zoomOut: () => {
-        zoomScale = Math.max(0.3, zoomScale - 0.2);
+        zoomScale = Math.max(0.25, Math.round((zoomScale - 0.2) * 10) / 10);
         renderPage(currentPage);
       },
       getZoom: () => zoomScale,
       setZoom: (level: number) => {
-        zoomScale = Math.max(0.3, Math.min(3.5, level));
+        zoomScale = Math.max(0.25, Math.min(4.0, level));
         renderPage(currentPage);
       },
       fitToPage: () => {
+        fitMode = 'page';
+        zoomScale = 1.0;
+        renderPage(currentPage);
+      },
+      fitToWidth: () => {
         fitMode = 'width';
         zoomScale = 1.0;
-        rotation = 0;
         renderPage(currentPage);
       },
       rotateCW: () => {
@@ -319,6 +417,9 @@ export class PdfPlugin implements PreviewPlugin {
       goToPage: (page: number) => {
         container.scrollTop = 0;
         renderPage(page);
+      },
+      toggleThumbnails: () => {
+        (ctx as any)?.toggleThumbnails?.();
       },
       download: () => {
         const blob = new Blob([ctx.buffer], { type: 'application/pdf' });
@@ -353,7 +454,7 @@ export class PdfPlugin implements PreviewPlugin {
       },
       getThumbnails: async (): Promise<Thumbnail[]> => {
         const thumbnails: Thumbnail[] = [];
-        const count = Math.min(totalPages, 50);
+        const count = totalPages;
 
         for (let i = 1; i <= count; i++) {
           thumbnails.push({
@@ -362,9 +463,10 @@ export class PdfPlugin implements PreviewPlugin {
             render: async (thumbCanvas: HTMLCanvasElement) => {
               try {
                 const p = await pdfDoc.getPage(i);
-                const baseVp = p.getViewport({ scale: 1.0 });
-                const thumbScale = (thumbCanvas.width || 120) / baseVp.width;
-                const thumbVp = p.getViewport({ scale: thumbScale });
+                const baseVp = p.getViewport({ scale: 1.0, rotation });
+                const targetW = thumbCanvas.width || 130;
+                const thumbScale = targetW / baseVp.width;
+                const thumbVp = p.getViewport({ scale: thumbScale, rotation });
                 thumbCanvas.height = Math.floor(thumbVp.height);
 
                 const tCtx = thumbCanvas.getContext('2d');

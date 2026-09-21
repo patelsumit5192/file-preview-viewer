@@ -120,6 +120,7 @@ export class FilePreviewViewer {
           if (event === 'page-change' && payload && typeof (payload as any).page === 'number') {
             const total = (payload as any).total ?? (payload as any).totalPages;
             this.toolbar?.setPage((payload as any).page, total);
+            this.thumbnailPanel?.setActive((payload as any).page - 1);
           }
           this.eventEmitter.emit(event, payload);
         },
@@ -127,6 +128,7 @@ export class FilePreviewViewer {
 
       this.activeInstance = instance;
       (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();
+      (instance as any).toggleThumbnails = () => this.toggleThumbnails();
 
       // FAST STARTUP: Hide loading immediately once the instance is mounted!
       this.hideLoading();
@@ -186,6 +188,13 @@ export class FilePreviewViewer {
               this.openInSeparateWindow();
             }
           });
+        }
+
+        const thumbAction = actions.find(a => a.id === 'thumbnails');
+        if (thumbAction) {
+          thumbAction.execute = () => {
+            this.toggleThumbnails();
+          };
         }
 
         this.toolbar.update(actions);
@@ -566,7 +575,13 @@ export class FilePreviewViewer {
    * Toggle thumbnails sidebar panel.
    */
   toggleThumbnails(): void {
-    this.thumbnailPanel?.toggle();
+    if (!this.thumbnailPanel) return;
+    this.thumbnailPanel.toggle();
+    const isOpen = this.thumbnailPanel.isOpen();
+    this.toolbar?.setActionActive('thumbnails', isOpen);
+    setTimeout(() => {
+      this.activeInstance?.fitToPage?.();
+    }, 260);
   }
 
   // --- Private methods ---
@@ -655,7 +670,12 @@ export class FilePreviewViewer {
     // Initialize toolbar and thumbnail controllers
     const initialToolbarConfig = this.extractToolbarConfig(options);
     this.toolbar = new ToolbarController(toolbarEl, initialToolbarConfig);
-    this.thumbnailPanel = new ThumbnailPanel(thumbnailEl);
+    this.thumbnailPanel = new ThumbnailPanel(thumbnailEl, (isOpen) => {
+      this.toolbar?.setActionActive('thumbnails', isOpen);
+      setTimeout(() => {
+        this.activeInstance?.fitToPage?.();
+      }, 260);
+    });
 
     // Enable keyboard shortcuts & drag/drop
     this.setupKeyboardShortcuts();

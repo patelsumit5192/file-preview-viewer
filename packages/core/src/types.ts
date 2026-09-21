@@ -75,6 +75,7 @@ export interface PreviewInstance {
   getZoom?(): number;
   setZoom?(level: number): void;
   fitToPage?(): void;
+  fitToWidth?(): void;
 
   // --- Pagination / Navigation ---
   goToPage?(page: number): void;

@@ -140,6 +140,18 @@ export class ToolbarController {
     }
   }
 
+  setActionActive(actionId: string, active: boolean): void {
+    const norm = this.normalizeActionId(actionId);
+    const btn = this.toolbarEl.querySelector(`button[data-action-id="${actionId}"], button[data-action-id="${norm}"]`) as HTMLButtonElement | null;
+    if (btn) {
+      if (active) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  }
+
   isActionEnabled(action: ToolbarAction): boolean {
     const c: Record<string, any> = this.config;
     const id = action.id;
