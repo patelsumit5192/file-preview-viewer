@@ -90,26 +90,6 @@ export class ExcelPlugin implements PreviewPlugin {
         }
       },
       {
-        id: 'fit-page',
-        icon: 'fit-page',
-        label: 'Fit to View',
-        type: 'button',
-        group: 'zoom',
-        execute: () => {
-          instance.fitToPage?.();
-        }
-      },
-      {
-        id: 'rotate-cw',
-        icon: 'rotate-cw',
-        label: 'Rotate',
-        type: 'button',
-        group: 'view',
-        execute: () => {
-          instance.rotateCW?.();
-        }
-      },
-      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -175,13 +155,12 @@ export class ExcelPlugin implements PreviewPlugin {
     ctx.container.appendChild(container);
 
     let scale = 1.0;
-    let rotation = 0;
     let currentSheetIndex = 1;
     let sheetNames: string[] = [];
     let wb: XLSX.WorkBook | null = null;
 
     const applyTransform = () => {
-      contentArea.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      contentArea.style.transform = `scale(${scale})`;
       contentArea.style.transformOrigin = 'top left';
     };
 
@@ -190,8 +169,8 @@ export class ExcelPlugin implements PreviewPlugin {
       if (!table) return 1.0;
       const availW = Math.max(280, container.clientWidth - 48);
       const tW = table.offsetWidth || 800;
-      // Tables scroll vertically; scale to fit visible width comfortably without crushing rows
-      return Math.max(0.65, Math.min(1.0, availW / tW));
+      // Automatically fit table to visible page width
+      return Math.max(0.4, Math.min(1.0, availW / tW));
     };
 
     try {
@@ -259,7 +238,19 @@ export class ExcelPlugin implements PreviewPlugin {
       });
 
       ctx.emit('page-change', { page: currentSheetIndex, total: sheetNames.length });
+
+      // Automatically set fit to page by default
+      requestAnimationFrame(() => {
+        scale = calculateFitScale();
+        applyTransform();
+      });
     };
+
+    const ro = new ResizeObserver(() => {
+      scale = calculateFitScale();
+      applyTransform();
+    });
+    ro.observe(container);
 
     if (sheetNames.length > 0) {
       sheetNames.forEach((name, idx) => {
@@ -289,6 +280,7 @@ export class ExcelPlugin implements PreviewPlugin {
     }
 
     const cleanup = () => {
+      ro.disconnect();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -312,17 +304,10 @@ export class ExcelPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         scale = calculateFitScale();
-        rotation = 0;
         applyTransform();
       },
-      rotateCW: () => {
-        rotation = (rotation + 90) % 360;
-        applyTransform();
-      },
-      rotateCCW: () => {
-        rotation = (rotation - 90 + 360) % 360;
-        applyTransform();
-      },
+      rotateCW: () => {},
+      rotateCCW: () => {},
       goToPage: (page: number) => {
         if (page > 0 && page <= sheetNames.length) {
           renderSheet(page);
