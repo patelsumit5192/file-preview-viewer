@@ -10,7 +10,9 @@ export default defineConfig({
     angular: 'src/angular.ts',
   },
   format: ['esm', 'cjs'],
-  dts: true,
+  dts: {
+    resolve: true,
+  },
   clean: true,
   sourcemap: true,
   splitting: false,
