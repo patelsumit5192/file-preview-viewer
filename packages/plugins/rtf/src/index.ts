@@ -13,8 +13,6 @@ interface ParsedRtfTable {
   id: string;
   rows: string[][];
   colPercents: number[];
-  anchorBefore?: string;
-  anchorAfter?: string;
 }
 
 function cleanRtfText(raw: string): string {
@@ -37,7 +35,7 @@ function cleanRtfText(raw: string): string {
     .replace(/\\rquote\b/g, '’')
     .replace(/\\ldblquote\b/g, '“')
     .replace(/\\rdblquote\b/g, '”')
-    .replace(/\\\w+(?:-?\d+)?\s?/g, ' ')
+    .replace(/\\[a-zA-Z]+-?\d*\s?/g, ' ')
     .replace(/[{}\r\n]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -53,8 +51,6 @@ function parseRtfTables(rtfText: string): ParsedRtfTable[] {
     lastEnd: number;
     rows: { cells: string[]; widths: number[] }[];
     columnWidths: number[];
-    anchorBefore: string;
-    anchorAfter: string;
   }
 
   const rawTables: RawTable[] = [];
@@ -68,7 +64,6 @@ function parseRtfTables(rtfText: string): ParsedRtfTable[] {
 
     const cellParts = segment.split(/\\cell\b/);
     if (cellParts.length > 1) {
-      // Extract cellx definitions for column widths
       const cellxMatches = [...segment.matchAll(/\\cellx(\d+)/g)].map(m => parseInt(m[1], 10));
       let cellWidths: number[] = [];
       if (cellxMatches.length > 0) {
@@ -95,21 +90,14 @@ function parseRtfTables(rtfText: string): ParsedRtfTable[] {
         cells.push(cleanRtfText(rawCell));
       }
 
-      // Check if this row belongs to currentTable
       const isNewTable = !currentTable || (segmentStart - currentTable.lastEnd > 2500);
       if (isNewTable) {
-        const prevTextSlice = rtfText.slice(Math.max(0, segmentStart - 4000), segmentStart);
-        const cleanPrev = cleanRtfText(prevTextSlice);
-        const anchorBefore = cleanPrev.slice(-80).trim();
-
         currentTable = {
           id: `RTF_TABLE_${rawTables.length}`,
           startPos: segmentStart,
           lastEnd: segmentEnd,
           rows: [],
-          columnWidths: cellWidths,
-          anchorBefore,
-          anchorAfter: ''
+          columnWidths: cellWidths
         };
         rawTables.push(currentTable);
       }
@@ -126,12 +114,6 @@ function parseRtfTables(rtfText: string): ParsedRtfTable[] {
     charOffset += segment.length + 4;
   }
 
-  rawTables.forEach(tbl => {
-    const afterSlice = rtfText.slice(tbl.lastEnd, Math.min(rtfText.length, tbl.lastEnd + 2000));
-    const cleanAfter = cleanRtfText(afterSlice);
-    tbl.anchorAfter = cleanAfter.slice(0, 80).trim();
-  });
-
   return rawTables.map(tbl => {
     const totalW = (tbl.columnWidths || []).reduce((a, b) => a + b, 0);
     const colPercents = totalW > 0
@@ -141,9 +123,7 @@ function parseRtfTables(rtfText: string): ParsedRtfTable[] {
     return {
       id: tbl.id,
       rows: tbl.rows.map(r => r.cells),
-      colPercents,
-      anchorBefore: tbl.anchorBefore,
-      anchorAfter: tbl.anchorAfter
+      colPercents
     };
   });
 }
@@ -157,8 +137,6 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
   tableEl.style.fontSize = '10pt';
   tableEl.style.lineHeight = '1.5';
   tableEl.style.border = '1px solid #cbd5e1';
-  tableEl.style.borderRadius = '4px';
-  tableEl.style.boxSizing = 'border-box';
   tableEl.style.backgroundColor = '#ffffff';
 
   const thead = document.createElement('thead');
@@ -170,12 +148,6 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
 
     if (isHeader) {
       tr.style.backgroundColor = '#f8fafc';
-      tr.style.borderBottom = '2px solid #cbd5e1';
-    } else {
-      tr.style.borderBottom = '1px solid #e2e8f0';
-      if (rIdx % 2 === 0) {
-        tr.style.backgroundColor = '#fcfdfe';
-      }
     }
 
     rowCells.forEach((cellText, cIdx) => {
@@ -183,8 +155,6 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
       cellEl.style.padding = '8px 12px';
       cellEl.style.border = '1px solid #cbd5e1';
       cellEl.style.verticalAlign = 'top';
-      cellEl.style.color = isHeader ? '#0f172a' : '#1e293b';
-      cellEl.style.fontWeight = isHeader ? '600' : 'normal';
 
       if (table.colPercents && table.colPercents[cIdx]) {
         cellEl.style.width = `${table.colPercents[cIdx]}%`;
@@ -192,8 +162,6 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
 
       if (/^\d+$/.test(cellText.trim()) || cellText.trim() === '#') {
         cellEl.style.textAlign = 'center';
-      } else {
-        cellEl.style.textAlign = 'left';
       }
 
       cellEl.textContent = cellText;
@@ -212,23 +180,19 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
   return tableEl;
 }
 
-function extractMediaFingerprint(el: HTMLElement): string | null {
-  const img = el.tagName.toLowerCase() === 'img' ? (el as HTMLImageElement) : el.querySelector('img');
-  if (img && img.src) {
-    const s = img.src;
-    return s.length > 300 ? `img_${s.slice(0, 80)}_${s.length}_${s.slice(-80)}` : `img_${s}`;
+function isHeadingElement(el: HTMLElement): boolean {
+  if (['H1', 'H2', 'H3', 'H4'].includes(el.tagName)) return true;
+  const spans = el.querySelectorAll ? Array.from(el.querySelectorAll('span, b, strong, div')) : [];
+  for (const s of spans) {
+    const hEl = s as HTMLElement;
+    const fs = parseFloat(hEl.style.fontSize) || 0;
+    const isBold = hEl.style.fontWeight === 'bold' || parseInt(hEl.style.fontWeight, 10) >= 600 || ['B', 'STRONG'].includes(hEl.tagName);
+    if (isBold && fs >= 14) return true;
   }
-  const innerImg = el.querySelector('image');
-  if (innerImg) {
-    const h = innerImg.getAttribute('xlink:href') || innerImg.getAttribute('href') || '';
-    if (h) return h.length > 300 ? `svgimg_${h.slice(0, 80)}_${h.length}_${h.slice(-80)}` : `svgimg_${h}`;
-  }
-  const svg = el.tagName.toLowerCase() === 'svg' ? el : el.querySelector('svg');
-  if (svg) {
-    const vb = svg.getAttribute('viewBox') || '';
-    return `svg_${vb}_${svg.innerHTML.length}`;
-  }
-  return null;
+  const elFs = parseFloat(el.style.fontSize) || 0;
+  const elBold = el.style.fontWeight === 'bold' || parseInt(el.style.fontWeight, 10) >= 600;
+  if (elBold && elFs >= 14) return true;
+  return false;
 }
 
 export class RtfPlugin implements PreviewPlugin {
@@ -348,10 +312,75 @@ export class RtfPlugin implements PreviewPlugin {
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
+    const rawRtf = new TextDecoder('latin1').decode(ctx.buffer);
+
+    // --- 1. DYNAMIC PAGE SETUP FROM RTF STREAM ---
+    const paperwMatch = rawRtf.match(/\\paperw(\d+)/);
+    const paperhMatch = rawRtf.match(/\\paperh(\d+)/);
+    const marglMatch = rawRtf.match(/\\margl(\d+)/);
+    const margrMatch = rawRtf.match(/\\margr(\d+)/);
+    const margtMatch = rawRtf.match(/\\margt(\d+)/);
+    const margbMatch = rawRtf.match(/\\margb(\d+)/);
+
+    const paperwTwips = paperwMatch ? parseInt(paperwMatch[1], 10) : 11906;
+    const paperhTwips = paperhMatch ? parseInt(paperhMatch[1], 10) : 16838;
+    const marglTwips = marglMatch ? parseInt(marglMatch[1], 10) : 1134;
+    const margrTwips = margrMatch ? parseInt(margrMatch[1], 10) : 1134;
+    const margtTwips = margtMatch ? parseInt(margtMatch[1], 10) : 1134;
+    const margbTwips = margbMatch ? parseInt(margbMatch[1], 10) : 1134;
+
+    const pageWidth = Math.round(paperwTwips / 15);
+    const pageHeight = Math.round(paperhTwips / 15);
+    const padLeft = Math.round(marglTwips / 15);
+    const padRight = Math.round(margrTwips / 15);
+    const padTop = Math.round(margtTwips / 15);
+    const padBottom = Math.round(margbTwips / 15);
+    const printableHeight = pageHeight - padTop - padBottom;
+
+    // --- 2. DYNAMIC RAW IMAGE EXTRACTION ---
+    const extractedImages: { mime: string; dataUrl: string; offset: number }[] = [];
+    let p = 0;
+    while ((p = rawRtf.indexOf('\\pict', p)) !== -1) {
+      const startP = p;
+      p += 5;
+      const header = rawRtf.substring(startP, startP + 600);
+      let mime = '';
+      let magic = '';
+      if (header.includes('\\pngblip')) {
+        mime = 'image/png';
+        magic = '89504e47';
+      } else if (header.includes('\\jpegblip')) {
+        mime = 'image/jpeg';
+        magic = 'ffd8ff';
+      }
+      if (!mime || !magic) continue;
+      const magicPos = rawRtf.indexOf(magic, startP);
+      if (magicPos === -1 || magicPos - startP > 3000) continue;
+      let endP = magicPos;
+      while (endP < rawRtf.length && /[0-9a-fA-F\r\n\s]/.test(rawRtf[endP])) {
+        endP++;
+      }
+      const cleanHex = rawRtf.substring(magicPos, endP).replace(/[\r\n\s]/g, '');
+      if (cleanHex.length < 100) continue;
+      const hexLen = cleanHex.length / 2;
+      const u8 = new Uint8Array(hexLen);
+      for (let k = 0; k < hexLen; k++) {
+        u8[k] = parseInt(cleanHex.substr(k * 2, 2), 16);
+      }
+      let bStr = '';
+      for (let k = 0; k < u8.length; k += 8192) {
+        bStr += String.fromCharCode.apply(null, Array.from(u8.subarray(k, k + 8192)));
+      }
+      extractedImages.push({ mime, dataUrl: `data:${mime};base64,${btoa(bStr)}`, offset: startP });
+    }
+
+    // --- 3. PARSE DYNAMIC TABLES ---
+    const tables = parseRtfTables(rawRtf);
+
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-rtf-wrapper';
     wrapper.style.padding = '0';
-    wrapper.style.width = '816px';
+    wrapper.style.width = `${pageWidth}px`;
     wrapper.style.margin = '0 auto';
     wrapper.style.boxSizing = 'border-box';
     wrapper.style.display = 'flex';
@@ -371,13 +400,11 @@ export class RtfPlugin implements PreviewPlugin {
     let rotation = 0;
     let pageElements: HTMLElement[] = [];
     let isUserZoomed = false;
-
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
-      const activeEl = pageElements[currentPage - 1] || wrapper;
-      const elW = 816;
-      const singlePageH = activeEl?.offsetHeight || 1056;
+      const elW = pageWidth;
+      const singlePageH = pageHeight;
       const availW = Math.max(280, ctx.container.clientWidth - 32);
       const availH = Math.max(280, ctx.container.clientHeight - 32);
 
@@ -393,8 +420,7 @@ export class RtfPlugin implements PreviewPlugin {
     const applyTransform = () => {
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
       wrapper.style.transformOrigin = 'top center';
-      const activeEl = pageElements[currentPage - 1];
-      const baseH = activeEl?.offsetHeight || 1056;
+      const baseH = pageHeight;
       const scaledH = baseH * scale;
       const extraH = Math.max(0, scaledH - baseH);
       wrapper.style.marginBottom = `${extraH + 32}px`;
@@ -420,232 +446,247 @@ export class RtfPlugin implements PreviewPlugin {
         (RTFJS as any).loggingEnabled(false);
       }
 
-      // Pre-extract tables from RTF
-      const rawText = new TextDecoder('latin1').decode(ctx.buffer);
-      const tables = parseRtfTables(rawText);
-
       // Render document with RTFJS
-      const seenMediaSignatures = new Set<string>();
       const doc = new (RTFJS as any).Document(ctx.buffer, {
         onPicture: (isLegacy: boolean | null, createPic: () => HTMLElement) => {
-          // 1. Drop legacy fallback duplicates (e.g. \nonshppict)
-          if (isLegacy === true) {
-            return null;
-          }
-          const pic = createPic();
-          if (!pic) return null;
-
-          // 2. Prevent duplicate images from rendering more than once
-          const fp = extractMediaFingerprint(pic);
-          if (fp) {
-            if (seenMediaSignatures.has(fp)) {
-              return null;
-            }
-            seenMediaSignatures.add(fp);
-          }
-          return pic;
+          if (isLegacy === true) return null;
+          return createPic();
         }
       });
-      const htmlElements = await doc.render();
+      const elements: HTMLElement[] = await doc.render();
 
-      // Collect block-level elements without flattening paragraphs into raw inline spans
-      const contentNodes: HTMLElement[] = [];
-      const seenInContentBlocks = new Set<string>();
-      const extractBlocks = (nodes: any[]) => {
-        for (const item of nodes) {
-          if (!item || !(item instanceof HTMLElement)) continue;
-          const tag = item.tagName.toLowerCase();
-          
-          const hasChildBlocks = Array.from(item.children).some(c => {
-            const ct = c.tagName.toLowerCase();
-            return ['p', 'div', 'table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'ul', 'ol'].includes(ct);
-          });
+      // Replace [Unsupported image format] with extracted high-res raw images
+      let unsupportedIndex = 1;
+      const usedTables = new Set<number>();
 
-          if (hasChildBlocks && !['table', 'tr', 'td', 'th', 'ul', 'ol', 'li'].includes(tag)) {
-            extractBlocks(Array.from(item.children));
-          } else {
-            // Check if this element contains an image that was already placed in contentNodes
-            const fp = extractMediaFingerprint(item);
-            if (fp) {
-              if (seenInContentBlocks.has(fp)) {
-                continue; // Skip duplicate / repeated image
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        const text = el.textContent || '';
+
+        if (text.includes('[Unsupported image format]')) {
+          if (extractedImages[unsupportedIndex]) {
+            const img = document.createElement('img');
+            img.src = extractedImages[unsupportedIndex].dataUrl;
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.style.maxHeight = '430px';
+            img.style.objectFit = 'contain';
+            img.style.display = 'block';
+            img.style.margin = '12px auto';
+            el.innerHTML = '';
+            el.appendChild(img);
+            unsupportedIndex++;
+          }
+        }
+
+        // Replace flattened table elements at their natural position
+        if (tables.length > 0) {
+          for (let t = 0; t < tables.length; t++) {
+            if (usedTables.has(t)) continue;
+            const tbl = tables[t];
+            if (tbl.rows.length >= 2) {
+              const sampleCell1 = tbl.rows[1]?.[1] || tbl.rows[0]?.[1] || '';
+              const sampleCell2 = tbl.rows[2]?.[1] || tbl.rows[1]?.[0] || '';
+              const match1 = sampleCell1 && text.includes(sampleCell1.slice(0, 15).trim());
+              const match2 = sampleCell2 && text.includes(sampleCell2.slice(0, 15).trim());
+              if (match1 && match2) {
+                el.innerHTML = '';
+                el.appendChild(renderRtfTableElement(tbl));
+                usedTables.add(t);
+                break;
               }
-              seenInContentBlocks.add(fp);
-            }
-
-            // Drop completely empty text blocks with no media
-            const hasMedia = item.querySelector('img, svg, canvas, table') !== null || ['img', 'svg', 'table'].includes(tag);
-            const textContent = (item.textContent || '').trim();
-            if (!hasMedia && textContent.length === 0) {
-              continue;
-            }
-
-            // Constrain images/SVGs to standard page width and reasonable height
-            const svgs = item.querySelectorAll('svg, img');
-            svgs.forEach(s => {
-              const el = s as HTMLElement;
-              el.style.maxWidth = '100%';
-              el.style.maxHeight = '360px';
-              el.style.display = 'block';
-              el.style.margin = '12px auto';
-              if (s.tagName.toLowerCase() === 'svg') {
-                s.removeAttribute('width');
-                s.removeAttribute('height');
-                el.style.width = '100%';
-                el.style.maxHeight = '360px';
-              }
-            });
-
-            if (tag === 'p' || tag === 'div') {
-              item.style.display = 'block';
-              item.style.marginBottom = '12px';
-              item.style.lineHeight = '1.6';
-            }
-            contentNodes.push(item);
-          }
-        }
-      };
-
-      extractBlocks(htmlElements);
-
-      // Insert parsed tables at their semantic positions in contentNodes
-      tables.forEach(table => {
-        const tableEl = renderRtfTableElement(table);
-        let inserted = false;
-
-        // Try anchorBefore match: find node whose text contains part of anchorBefore
-        if (table.anchorBefore && table.anchorBefore.length > 10) {
-          const keyword = table.anchorBefore.slice(-35).trim();
-          for (let i = 0; i < contentNodes.length; i++) {
-            if (contentNodes[i].textContent?.includes(keyword)) {
-              contentNodes.splice(i + 1, 0, tableEl);
-              inserted = true;
-              break;
             }
           }
         }
+      }
 
-        // Try anchorAfter match if not inserted: find node whose text contains start of anchorAfter
-        if (!inserted && table.anchorAfter && table.anchorAfter.length > 10) {
-          const keyword = table.anchorAfter.slice(0, 35).trim();
-          for (let i = 0; i < contentNodes.length; i++) {
-            if (contentNodes[i].textContent?.includes(keyword)) {
-              contentNodes.splice(i, 0, tableEl);
-              inserted = true;
-              break;
-            }
-          }
-        }
+      // Constrain SVGs and images to standard page boundaries and aspect ratio
+      elements.forEach(el => {
+        const svgs = el.querySelectorAll ? Array.from(el.querySelectorAll('svg')) : [];
+        svgs.forEach(svg => {
+          svg.removeAttribute('width');
+          svg.removeAttribute('height');
+          svg.style.maxWidth = '100%';
+          svg.style.maxHeight = '430px';
+          svg.style.height = 'auto';
+          svg.style.display = 'block';
+          svg.style.margin = '12px auto';
+        });
+        const imgs = el.querySelectorAll ? Array.from(el.querySelectorAll('img')) : [];
+        imgs.forEach(img => {
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '430px';
+          img.style.height = 'auto';
+          img.style.objectFit = 'contain';
+          img.style.display = 'block';
+          img.style.margin = '12px auto';
+        });
+      });
 
-        // Fallback: insert after first major block
-        if (!inserted) {
-          if (contentNodes.length > 2) {
-            contentNodes.splice(2, 0, tableEl);
-          } else {
-            contentNodes.push(tableEl);
-          }
+      // Await all image decodes for exact geometry measurement
+      const allImgs = Array.from(document.querySelectorAll('img')).concat(
+        elements.flatMap(el => Array.from(el.querySelectorAll ? el.querySelectorAll('img') : []))
+      );
+      await Promise.all(allImgs.map(img => {
+        if (img.complete && img.naturalHeight > 0) return Promise.resolve();
+        if (img.decode) return img.decode().catch(() => {});
+        return new Promise(r => { img.onload = r as any; img.onerror = r as any; });
+      }));
+
+      // Format bullet items
+      elements.forEach(el => {
+        const text = el.textContent || '';
+        if (text.includes('\uf0b7')) {
+          const cleanText = text.replace(/^[\s\uf0b7\t]+/, '');
+          el.style.display = 'flex';
+          el.style.alignItems = 'flex-start';
+          el.style.margin = '6px 0 6px 28px';
+          el.style.fontSize = '11pt';
+          el.style.lineHeight = '1.5';
+          el.innerHTML = `<span style="margin-right:10px; user-select:none;">&#9633;</span><span>${cleanText}</span>`;
         }
       });
 
-      const createRtfCard = (pageNum: number) => {
+      // Apply typography styles
+      elements.forEach(el => {
+        const text = (el.textContent || '').trim();
+        const hasMedia = el.querySelector('img, svg, canvas, table') !== null || ['IMG', 'SVG', 'TABLE'].includes(el.tagName);
+        if (isHeadingElement(el)) {
+          el.style.marginTop = '20px';
+          el.style.marginBottom = '10px';
+          el.style.lineHeight = '1.25';
+        } else if (text.length > 0 && !hasMedia) {
+          el.style.marginBottom = '12px';
+          el.style.lineHeight = '1.45';
+        }
+      });
+
+      // --- 4. MEASURE & DYNAMICALLY LAYOUT ---
+      const measureCard = document.createElement('div');
+      measureCard.style.width = `${pageWidth}px`;
+      measureCard.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
+      measureCard.style.boxSizing = 'border-box';
+      measureCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
+      measureCard.style.lineHeight = '1.45';
+      measureCard.style.visibility = 'hidden';
+      measureCard.style.position = 'absolute';
+      measureCard.style.top = '-99999px';
+      document.body.appendChild(measureCard);
+
+      const createPageCard = (num: number) => {
         const card = document.createElement('div');
         card.className = 'fp-rtf-page-card';
-        card.setAttribute('data-page-number', String(pageNum));
+        card.setAttribute('data-page-number', String(num));
         card.style.backgroundColor = '#ffffff';
         card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)';
         card.style.borderRadius = '4px';
-        card.style.padding = '64px 56px';
-        card.style.width = '816px';
-        card.style.minHeight = '1056px';
-        card.style.maxHeight = '1056px';
-        card.style.overflow = 'hidden';
+        card.style.width = `${pageWidth}px`;
+        card.style.height = `${pageHeight}px`;
+        card.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
         card.style.boxSizing = 'border-box';
+        card.style.overflow = 'hidden';
         card.style.marginBottom = '24px';
-        card.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
-        card.style.lineHeight = '1.6';
         card.style.color = '#1e293b';
+        card.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
+        card.style.lineHeight = '1.45';
         card.style.position = 'relative';
+        card.style.textAlign = 'left';
         return card;
       };
 
-      // Measure layout heights inside a true page card container (704px content width)
-      wrapper.innerHTML = '';
-      const measureCard = createRtfCard(0);
-      measureCard.style.maxHeight = 'none';
-      measureCard.style.height = 'auto';
-      wrapper.appendChild(measureCard);
+      const pages: HTMLElement[] = [];
+      let curCard = createPageCard(1);
+      pages.push(curCard);
+      let curHeight = 0;
 
-      contentNodes.forEach(node => measureCard.appendChild(node));
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        if (!el || !(el instanceof HTMLElement)) continue;
 
-      const childHeights = contentNodes.map(c => {
-        const rect = c.getBoundingClientRect ? c.getBoundingClientRect() : null;
-        const rectH = rect ? rect.height : 0;
-        const offH = c.offsetHeight || 0;
-        let realH = Math.max(rectH, offH);
-        try {
-          const cs = window.getComputedStyle(c);
-          realH += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
-        } catch {}
+        const text = (el.textContent || '').trim();
+        const hasMedia = el.querySelector('img, svg, canvas, table') !== null || ['IMG', 'SVG', 'TABLE'].includes(el.tagName);
+        const isEmptyPar = !hasMedia && text.length === 0;
 
-        const hasMedia = c.querySelector('img, svg') !== null || ['img', 'svg'].includes(c.tagName.toLowerCase());
-        const hasTable = c.querySelector('table') !== null || c.tagName.toLowerCase() === 'table';
-        if (hasMedia) {
-          realH = Math.max(realH, 300);
-        } else if (hasTable) {
-          realH = Math.max(realH, 240);
-        }
-
-        if (realH > 0) return realH;
-        const textLen = c.textContent?.trim().length || 0;
-        return Math.max(28, Math.ceil(textLen / 75) * 26 + 16);
-      });
-
-      wrapper.innerHTML = '';
-
-      let curCard = createRtfCard(1);
-      wrapper.appendChild(curCard);
-      pageElements = [curCard];
-      let curH = 0;
-      const maxH = 860; // Clean margin boundary for 1056px page height
-
-      for (let i = 0; i < contentNodes.length; i++) {
-        const child = contentNodes[i];
-        const chH = childHeights[i];
-        const isChildEmpty = (child.textContent || '').trim().length === 0 && !child.querySelector('table, img, svg, canvas');
-
-        if (curH === 0 && isChildEmpty) {
+        if (isEmptyPar) {
+          const emptyH = 35;
+          if (curHeight + emptyH > printableHeight) {
+            if (curCard.childNodes.length > 0) {
+              curCard = createPageCard(pages.length + 1);
+              pages.push(curCard);
+              curHeight = 0;
+            }
+          }
+          const spacer = document.createElement('div');
+          spacer.style.height = `${emptyH}px`;
+          curCard.appendChild(spacer);
+          curHeight += emptyH;
           continue;
         }
 
-        const isTable = child.querySelector('table') !== null || child.tagName.toLowerCase() === 'table';
-        const shouldBreakBeforeTable = isTable && curH > 400 && curCard.childNodes.length > 0;
+        measureCard.innerHTML = '';
+        const clone = el.cloneNode(true) as HTMLElement;
+        measureCard.appendChild(clone);
+        const compStyle = window.getComputedStyle(clone);
+        const mt = parseFloat(compStyle.marginTop) || 0;
+        const mb = parseFloat(compStyle.marginBottom) || 0;
+        const elH = clone.offsetHeight + mt + mb;
 
-        if ((curH + chH > maxH || shouldBreakBeforeTable) && curCard.childNodes.length > 0) {
-          curCard = createRtfCard(pageElements.length + 1);
-          wrapper.appendChild(curCard);
-          pageElements.push(curCard);
-          curH = 0;
+        const isHeading = isHeadingElement(el);
+
+        // Lookahead for Keep-With-Next
+        let nextContentH = 0;
+        if (isHeading || hasMedia) {
+          for (let j = i + 1; j < elements.length; j++) {
+            const nextEl = elements[j];
+            if (nextEl && (nextEl.textContent || '').trim().length > 0) {
+              measureCard.innerHTML = '';
+              const nClone = nextEl.cloneNode(true) as HTMLElement;
+              measureCard.appendChild(nClone);
+              const nStyle = window.getComputedStyle(nClone);
+              nextContentH = nClone.offsetHeight + (parseFloat(nStyle.marginTop) || 0) + (parseFloat(nStyle.marginBottom) || 0);
+              break;
+            }
+          }
         }
 
-        curCard.appendChild(child);
-        curH += chH;
+        const remainingSpace = printableHeight - curHeight;
+        const isLargeMedia = hasMedia && elH > 300;
+        const keepWithNextOverflow = isHeading && nextContentH > 0 && (elH + nextContentH + 20 > remainingSpace);
+        const largeMediaOverflow = isLargeMedia && curHeight > 0 && (elH + 80 > remainingSpace);
+        const shouldBreak = (curHeight + elH > printableHeight || keepWithNextOverflow || largeMediaOverflow) && curCard.childNodes.length > 0;
+
+        if (shouldBreak) {
+          curCard = createPageCard(pages.length + 1);
+          pages.push(curCard);
+          curHeight = 0;
+        }
+
+        curCard.appendChild(el);
+        curHeight += elH;
       }
 
-      // Eliminate empty trailing cards / ghost pages
-      pageElements = pageElements.filter(card => {
+      measureCard.remove();
+
+      pageElements = pages.filter(card => {
         const hasText = (card.textContent || '').trim().length > 0;
-        const hasMedia = card.querySelector('table, img, svg, canvas') !== null;
-        return hasText || hasMedia;
+        const hasCardMedia = card.querySelector('table, img, svg, canvas') !== null;
+        return hasText || hasCardMedia;
       });
 
       if (pageElements.length === 0) {
         pageElements = [curCard];
       }
+
+      wrapper.innerHTML = '';
+      pageElements.forEach((card, idx) => {
+        card.setAttribute('data-page-number', String(idx + 1));
+        card.style.display = idx === 0 ? 'block' : 'none';
+        wrapper.appendChild(card);
+      });
+
     } catch (err) {
       console.warn('[RtfPlugin] RTF render error, fallback text:', err);
-      const text = new TextDecoder('latin1').decode(ctx.buffer);
-      const tables = parseRtfTables(text);
-
+      const text = rawRtf;
       const rawPages = text.split(/\\page\b/).map(segment => {
         return segment.replace(/\\par[d]?/g, '\n').replace(/\\[a-zA-Z0-9\-]+/g, '').replace(/[{}]/g, '').trim();
       }).filter(p => p.length > 0);
@@ -658,9 +699,9 @@ export class RtfPlugin implements PreviewPlugin {
         pageCard.style.backgroundColor = '#ffffff';
         pageCard.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
         pageCard.style.borderRadius = '4px';
-        pageCard.style.padding = '64px 56px';
-        pageCard.style.width = '816px';
-        pageCard.style.minHeight = '1056px';
+        pageCard.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
+        pageCard.style.width = `${pageWidth}px`;
+        pageCard.style.minHeight = `${pageHeight}px`;
         pageCard.style.boxSizing = 'border-box';
         pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
         pageCard.style.fontSize = '12pt';
@@ -684,11 +725,9 @@ export class RtfPlugin implements PreviewPlugin {
 
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      if (totalPages > 1) {
-        pageElements.forEach((el, idx) => {
-          el.style.display = idx + 1 === currentPage ? 'block' : 'none';
-        });
-      }
+      pageElements.forEach((el, idx) => {
+        el.style.display = idx + 1 === currentPage ? 'block' : 'none';
+      });
       ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
