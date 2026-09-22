@@ -87,26 +87,6 @@ export class CodePlugin implements PreviewPlugin {
         }
       },
       {
-        id: 'fit-page',
-        icon: 'fit-page',
-        label: 'Fit to View',
-        type: 'button',
-        group: 'zoom',
-        execute: () => {
-          instance.fitToPage?.();
-        }
-      },
-      {
-        id: 'rotate-cw',
-        icon: 'rotate-cw',
-        label: 'Rotate',
-        type: 'button',
-        group: 'view',
-        execute: () => {
-          instance.rotateCW?.();
-        }
-      },
-      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Content',
