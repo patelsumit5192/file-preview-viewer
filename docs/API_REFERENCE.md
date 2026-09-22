@@ -709,7 +709,8 @@ Each file format plugin adheres to the universal standard while honoring the nat
 | **CSV Table** | `.csv`, `.tsv` | ❌ (Continuous single load) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Plain Text** | `.txt` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (Document) | ✅ Auto-fit width | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported | **LOCKED** 🔒 |
-| **Word** | `.docx`, `.doc`, `.rtf`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
+| **Rich Text** | `.rtf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Auto-fit width / page | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Word Documents** | `.docx`, `.doc`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Presentations** | `.pptx`, `.ppt`, `.odp` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ | ✅ Fit to slide | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Images & Vector**| `.png`, `.jpg`, `.svg`, `.webp`| ❌ | ❌ | ✅ CW & CCW | ✅ Pan & Zoom | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Media** | `.mp4`, `.webm`, `.mp3` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ❌ | ❌ | ✅ Supported | ✅ Supported | Available |
