@@ -702,16 +702,16 @@ document.getElementById('btn-download')?.addEventListener('click', () => instanc
 
 Each file format plugin adheres to the universal standard while honoring the natural paradigm of its file type:
 
-| Format Category | Extensions | Page Navigation (`goToPage`) | Thumbnails Sidebar (`toggleThumbnails`) | Rotate (`rotateCW`) | Auto Fit-to-Width | Copy (`copy`) | Download & Print | Separate Full Window |
-|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **PDF** | `.pdf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Fit to Page / Width | ❌ | ✅ Supported | ✅ Supported |
-| **Word** | `.docx`, `.doc`, `.rtf`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported |
-| **Spreadsheets** | `.xlsx`, `.xls`, `.ods` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported |
-| **CSV Table** | `.csv`, `.tsv` | ❌ (Continuous single load) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported |
-| **Plain Text** | `.txt` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (Document) | ✅ Auto-fit width | ✅ Supported | ✅ Supported | ✅ Supported |
-| **Presentations** | `.pptx`, `.ppt`, `.odp` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ | ✅ Fit to slide | ❌ | ✅ Supported | ✅ Supported |
-| **Images & Vector**| `.png`, `.jpg`, `.svg`, `.webp`| ❌ | ❌ | ✅ CW & CCW | ✅ Pan & Zoom | ❌ | ✅ Supported | ✅ Supported |
-| **Media** | `.mp4`, `.webm`, `.mp3` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ❌ | ❌ | ✅ Supported | ✅ Supported |
-| **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported |
-| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view | ❌ | ✅ Supported | ✅ Supported |
-| **Code** | `.js`, `.ts`, `.py`, etc. | ❌ (Single file) | ❌ | ❌ | ❌ | ✅ Supported | ✅ Supported | ✅ Supported |
+| Format Category | Extensions | Page Navigation (`goToPage`) | Thumbnails Sidebar (`toggleThumbnails`) | Rotate (`rotateCW`) | Auto Fit-to-Width | Copy (`copy`) | Download & Print | Separate Full Window | Status |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **PDF** | `.pdf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Fit to Page / Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Spreadsheets** | `.xlsx`, `.xls`, `.ods` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **CSV Table** | `.csv`, `.tsv` | ❌ (Continuous single load) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Plain Text** | `.txt` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (Document) | ✅ Auto-fit width | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported | **LOCKED** 🔒 |
+| **Word** | `.docx`, `.doc`, `.rtf`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
+| **Presentations** | `.pptx`, `.ppt`, `.odp` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ | ✅ Fit to slide | ❌ | ✅ Supported | ✅ Supported | Available |
+| **Images & Vector**| `.png`, `.jpg`, `.svg`, `.webp`| ❌ | ❌ | ✅ CW & CCW | ✅ Pan & Zoom | ❌ | ✅ Supported | ✅ Supported | Available |
+| **Media** | `.mp4`, `.webm`, `.mp3` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ❌ | ❌ | ✅ Supported | ✅ Supported | Available |
+| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view | ❌ | ✅ Supported | ✅ Supported | Available |
+| **Code** | `.js`, `.ts`, `.py`, etc. | ❌ (Single file) | ❌ | ❌ | ❌ | ✅ Supported | ✅ Supported | ✅ Supported | Available |
