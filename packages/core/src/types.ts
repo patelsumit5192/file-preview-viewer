@@ -200,6 +200,10 @@ export interface PreviewViewerOptions extends ToolbarConfig {
   fitMode?: 'page' | 'width';
   /** Show thumbnail sidebar initially */
   showThumbnails?: boolean;
+  /** Whether to display the file name / title bar above the toolbar in the preview panel (defaults to true) */
+  showFileName?: boolean;
+  /** Custom file name / title override to display */
+  fileName?: string;
   /** Custom CSS class for the container */
   className?: string;
   /** Plugin-specific options */

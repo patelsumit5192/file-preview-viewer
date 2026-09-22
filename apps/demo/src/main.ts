@@ -25,6 +25,7 @@ if (isFullscreen) {
 }
 
 let currentTheme: 'light' | 'dark' = 'light';
+let isFileNameVisible = true;
 let activeFileExt = '.docx';
 let activeFileName = 'document.docx';
 let currentTab: 'react' | 'angular' | 'vue' | 'vanilla' = 'react';
@@ -345,6 +346,7 @@ async function loadFile(source: string | File | Blob | ArrayBuffer, name: string
     await viewer.preview(viewport, source as any, {
       theme: currentTheme,
       showToolbar: true,
+      showFileName: isFileNameVisible,
       toolbarPosition: 'top',
       _isSeparateWindow: isFullscreen,
       metadata: {
@@ -478,6 +480,23 @@ const headerThumbnailsBtn = document.getElementById('header-thumbnails-btn');
 if (headerThumbnailsBtn) {
   headerThumbnailsBtn.addEventListener('click', () => {
     viewer.toggleThumbnails();
+  });
+}
+
+// Wire up "Toggle File Name" button in preview header
+const toggleFileNameBtn = document.getElementById('toggle-filename-btn');
+const fileNameBtnText = document.getElementById('filename-btn-text');
+if (toggleFileNameBtn) {
+  toggleFileNameBtn.addEventListener('click', () => {
+    isFileNameVisible = !isFileNameVisible;
+    viewer.setShowFileName(isFileNameVisible);
+    if (fileNameBtnText) {
+      fileNameBtnText.textContent = `File Name: ${isFileNameVisible ? 'ON' : 'OFF'}`;
+    }
+    const activeFileInfo = document.querySelector('.active-file-info') as HTMLElement;
+    if (activeFileInfo) {
+      activeFileInfo.style.opacity = isFileNameVisible ? '1' : '0.2';
+    }
   });
 }
 

@@ -36,16 +36,14 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    if (isPresentation) {
-      actions.push({
-        id: 'thumbnails',
-        icon: 'thumbnails',
-        label: 'Slide Thumbnails',
-        type: 'button',
-        group: 'navigation',
-        execute: () => instance.toggleThumbnails?.()
-      });
-    }
+    actions.push({
+      id: 'thumbnails',
+      icon: 'thumbnails',
+      label: isPresentation ? 'Slide Thumbnails' : 'Page Thumbnails',
+      type: 'button',
+      group: 'navigation',
+      execute: () => instance.toggleThumbnails?.()
+    });
 
     actions.push({
       id: 'page-nav',
@@ -423,23 +421,45 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
       getThumbnails: async (): Promise<Thumbnail[]> => {
-        if (!isPresentation) return [];
-        return slides.map((_, idx) => ({
-          index: idx,
-          label: `Slide ${idx + 1}`,
-          render: async (canvas: HTMLCanvasElement) => {
-            const ctx2d = canvas.getContext('2d');
-            if (!ctx2d) return;
-            canvas.width = 160;
-            canvas.height = 90;
-            ctx2d.fillStyle = '#f8fafc';
-            ctx2d.fillRect(0, 0, 160, 90);
-            ctx2d.fillStyle = '#334155';
-            ctx2d.font = 'bold 12px sans-serif';
-            ctx2d.textAlign = 'center';
-            ctx2d.fillText(`Slide ${idx + 1}`, 80, 50);
-          }
-        }));
+        const count = totalPages || slides.length || 1;
+        const items: Thumbnail[] = [];
+        for (let idx = 0; idx < count; idx++) {
+          const itemIdx = idx;
+          items.push({
+            index: itemIdx,
+            label: isPresentation ? `Slide ${itemIdx + 1}` : `Page ${itemIdx + 1}`,
+            render: async (canvas: HTMLCanvasElement) => {
+              const ctx2d = canvas.getContext('2d');
+              if (!ctx2d) return;
+              if (isPresentation) {
+                canvas.width = 160;
+                canvas.height = 90;
+                ctx2d.fillStyle = '#f8fafc';
+                ctx2d.fillRect(0, 0, 160, 90);
+                ctx2d.strokeStyle = '#cbd5e1';
+                ctx2d.lineWidth = 1;
+                ctx2d.strokeRect(0.5, 0.5, 159, 89);
+                ctx2d.fillStyle = '#334155';
+                ctx2d.font = 'bold 11px sans-serif';
+                ctx2d.textAlign = 'center';
+                ctx2d.fillText(`Slide ${itemIdx + 1}`, 80, 50);
+              } else {
+                canvas.width = 140;
+                canvas.height = 180;
+                ctx2d.fillStyle = '#ffffff';
+                ctx2d.fillRect(0, 0, 140, 180);
+                ctx2d.strokeStyle = '#cbd5e1';
+                ctx2d.lineWidth = 1;
+                ctx2d.strokeRect(0.5, 0.5, 139, 179);
+                ctx2d.fillStyle = '#64748b';
+                ctx2d.font = 'bold 10px sans-serif';
+                ctx2d.textAlign = 'center';
+                ctx2d.fillText(`Page ${itemIdx + 1}`, 70, 90);
+              }
+            }
+          });
+        }
+        return items;
       },
       download: () => {
         const mimeType = this.mimeTypes.find(m => m.includes(ext.replace('.', ''))) || 'application/octet-stream';

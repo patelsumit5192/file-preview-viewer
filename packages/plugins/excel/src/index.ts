@@ -3,7 +3,8 @@ import type {
   RenderContext, 
   ToolbarAction, 
   PreviewPlugin, 
-  PreviewInstance 
+  PreviewInstance,
+  Thumbnail 
 } from '@patel.sumit51/core';
 import * as XLSX from 'xlsx';
 
@@ -20,7 +21,7 @@ export class ExcelPlugin implements PreviewPlugin {
     'application/vnd.ms-excel.template.macroEnabled.12',
     'application/vnd.oasis.opendocument.spreadsheet'
   ];
-  weight = 80;
+  weight = 85;
 
   supports(file: FileInfo): boolean {
     const ext = file.metadata.extension?.toLowerCase();
@@ -34,6 +35,15 @@ export class ExcelPlugin implements PreviewPlugin {
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
     const totalSheets = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
+
+    actions.push({
+      id: 'thumbnails',
+      icon: 'thumbnails',
+      label: 'Sheet Thumbnails',
+      type: 'button',
+      group: 'navigation',
+      execute: () => (instance as any).toggleThumbnails?.()
+    });
 
     if (totalSheets > 1) {
       actions.push({
@@ -117,6 +127,16 @@ export class ExcelPlugin implements PreviewPlugin {
         group: 'actions',
         execute: () => {
           instance.print?.();
+        }
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => {
+          (instance as any).openInSeparateWindow?.();
         }
       }
     );
@@ -310,6 +330,83 @@ export class ExcelPlugin implements PreviewPlugin {
       },
       getPageCount: () => sheetNames.length,
       getCurrentPage: () => currentSheetIndex,
+      getThumbnails: (): Thumbnail[] => {
+        return sheetNames.map((name, idx) => ({
+          index: idx,
+          label: name,
+          render: async (canvas: HTMLCanvasElement) => {
+            canvas.width = 140;
+            canvas.height = 100;
+            const c = canvas.getContext('2d');
+            if (!c) return;
+
+            // Sheet Paper Background
+            c.fillStyle = '#ffffff';
+            c.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Top Header Bar (Excel Green)
+            c.fillStyle = '#107c41';
+            c.fillRect(0, 0, canvas.width, 16);
+
+            // Tab icon & name
+            c.fillStyle = '#ffffff';
+            c.font = 'bold 8px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            c.fillText(`📊 ${name.slice(0, 16)}`, 6, 11);
+
+            // Grid header row (Columns A, B, C, D)
+            const startY = 17;
+            const rowH = 13;
+            const colW = 30;
+            const colHeaders = ['A', 'B', 'C', 'D'];
+
+            c.fillStyle = '#f1f5f9';
+            c.fillRect(0, startY, canvas.width, rowH);
+            c.strokeStyle = '#cbd5e1';
+            c.lineWidth = 0.8;
+            c.strokeRect(0, startY, canvas.width, rowH);
+
+            c.fillStyle = '#64748b';
+            c.font = 'bold 7px sans-serif';
+            for (let ci = 0; ci < colHeaders.length; ci++) {
+              c.fillText(colHeaders[ci], 14 + ci * colW, startY + 9);
+            }
+
+            // Grid rows
+            const ws = wb?.Sheets[name];
+            for (let ri = 1; ri <= 5; ri++) {
+              const y = startY + ri * rowH;
+              if (y > canvas.height - 2) break;
+
+              // Row number cell
+              c.fillStyle = '#f8fafc';
+              c.fillRect(0, y, 12, rowH);
+              c.fillStyle = '#94a3b8';
+              c.font = '6px sans-serif';
+              c.fillText(String(ri), 3, y + 9);
+
+              // Row border
+              c.strokeStyle = '#e2e8f0';
+              c.strokeRect(0, y, canvas.width, rowH);
+
+              // Cell contents
+              c.fillStyle = '#334155';
+              c.font = '6px sans-serif';
+              for (let ci = 0; ci < colHeaders.length; ci++) {
+                const cellRef = `${colHeaders[ci]}${ri}`;
+                const cellVal = ws?.[cellRef]?.w || ws?.[cellRef]?.v;
+                if (cellVal !== undefined) {
+                  c.fillText(String(cellVal).slice(0, 6), 14 + ci * colW, y + 9);
+                }
+              }
+            }
+
+            // Overall border
+            c.strokeStyle = '#cbd5e1';
+            c.lineWidth = 1;
+            c.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
+          }
+        }));
+      },
       download: () => {
         const blob = new Blob([ctx.buffer], { type: this.mimeTypes[0] });
         const url = URL.createObjectURL(blob);

@@ -356,3 +356,56 @@
   font-size: 48px;
   margin-bottom: 16px;
 }
+
+/* File Name / Title Bar (above toolbar) */
+.fp-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--fp-toolbar-bg, #1e293b);
+  border-bottom: 1px solid var(--fp-toolbar-border, #334155);
+  color: var(--fp-text-color, #f8fafc);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.fp-titlebar-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fp-titlebar-icon {
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.fp-titlebar-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--fp-text-color, #f8fafc);
+}
+
+.fp-titlebar-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--fp-btn-active-bg, rgba(59, 130, 246, 0.2));
+  color: var(--fp-accent, #3b82f6);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+

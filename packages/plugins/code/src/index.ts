@@ -3,7 +3,8 @@ import type {
   RenderContext, 
   ToolbarAction, 
   PreviewPlugin, 
-  PreviewInstance 
+  PreviewInstance,
+  Thumbnail 
 } from '@patel.sumit51/core';
 import hljs from 'highlight.js';
 
@@ -33,6 +34,15 @@ export class CodePlugin implements PreviewPlugin {
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
+
+    actions.push({
+      id: 'thumbnails',
+      icon: 'thumbnails',
+      label: 'Page Thumbnails',
+      type: 'button',
+      group: 'navigation',
+      execute: () => (instance as any).toggleThumbnails?.()
+    });
 
     actions.push({
       id: 'page-nav',
@@ -342,6 +352,44 @@ export class CodePlugin implements PreviewPlugin {
       getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => showPage(page),
+      getThumbnails: (): Thumbnail[] => {
+        return rawPages.map((pageText, idx) => ({
+          index: idx,
+          label: `Page ${idx + 1}`,
+          render: async (canvas: HTMLCanvasElement) => {
+            canvas.width = 140;
+            canvas.height = 180;
+            const c = canvas.getContext('2d');
+            if (!c) return;
+
+            // Page Background
+            c.fillStyle = '#ffffff';
+            c.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle paper border
+            c.strokeStyle = '#cbd5e1';
+            c.lineWidth = 1;
+            c.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
+
+            // Miniature lines of text
+            c.fillStyle = '#64748b';
+            const lines = (pageText || '').split('\n').slice(0, 24);
+            const lineH = 6;
+            const startY = 14;
+            const startX = 12;
+            const maxW = canvas.width - 24;
+
+            c.font = '5px monospace';
+            for (let li = 0; li < lines.length; li++) {
+              const l = lines[li].trim();
+              if (!l) continue;
+              const y = startY + li * lineH;
+              if (y > canvas.height - 12) break;
+              c.fillText(l.slice(0, 30), startX, y, maxW);
+            }
+          }
+        }));
+      },
       zoomIn: () => {
         isUserZoomed = true;
         if (isTxt) {

@@ -35,6 +35,7 @@ export class FilePreviewViewer {
   private currentOptions: PreviewViewerOptions = {};
   private resizeObserver: ResizeObserver | null = null;
   private fullscreenHandler: (() => void) | null = null;
+  private titleBarEl: HTMLElement | null = null;
 
   /**
    * Register a preview plugin.
@@ -89,6 +90,7 @@ export class FilePreviewViewer {
       }
       this.currentBuffer = buffer.slice(0);
       this.currentMetadata = metadata;
+      this.updateTitleBar(options, metadata);
 
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
@@ -390,6 +392,7 @@ export class FilePreviewViewer {
     this.currentBuffer = null;
     this.currentMetadata = null;
     this.currentContainer = null;
+    this.titleBarEl = null;
   }
 
   /**
@@ -585,7 +588,53 @@ export class FilePreviewViewer {
     }, 260);
   }
 
+  /**
+   * Set whether to display the file name / title bar above the toolbar.
+   */
+  setShowFileName(show: boolean): void {
+    if (this.currentOptions) {
+      this.currentOptions.showFileName = show;
+    }
+    this.updateTitleBar(this.currentOptions, this.currentMetadata);
+  }
+
+  /**
+   * Set or override the displayed file name in the preview panel.
+   */
+  setFileName(name: string): void {
+    if (this.currentOptions) {
+      this.currentOptions.fileName = name;
+    }
+    this.updateTitleBar(this.currentOptions, this.currentMetadata);
+  }
+
   // --- Private methods ---
+
+  private updateTitleBar(options?: PreviewViewerOptions, metadata?: import('./types').FileMetadata | null): void {
+    if (!this.titleBarEl) return;
+    const show = options?.showFileName !== false;
+    if (!show) {
+      this.titleBarEl.style.display = 'none';
+      return;
+    }
+
+    const name = options?.fileName || metadata?.name || this.currentMetadata?.name || '';
+    if (!name) {
+      this.titleBarEl.style.display = 'none';
+      return;
+    }
+
+    this.titleBarEl.style.display = 'flex';
+    const ext = metadata?.extension || (name.includes('.') ? '.' + name.split('.').pop() : '');
+    const badge = ext ? ext.replace('.', '').toUpperCase() : '';
+    this.titleBarEl.innerHTML = `
+      <div class="fp-titlebar-info">
+        <span class="fp-titlebar-icon">📄</span>
+        <span class="fp-titlebar-name" title="${name}">${name}</span>
+        ${badge ? `<span class="fp-titlebar-badge">${badge}</span>` : ''}
+      </div>
+    `;
+  }
 
   private extractToolbarConfig(options?: PreviewViewerOptions): ToolbarConfig {
     if (!options) return {};
@@ -657,10 +706,18 @@ export class FilePreviewViewer {
     bodyEl.appendChild(thumbnailEl);
     bodyEl.appendChild(this.contentEl);
 
+    // Title / File name bar (above toolbar)
+    const titleBarEl = document.createElement('div');
+    titleBarEl.className = 'fp-titlebar';
+    this.titleBarEl = titleBarEl;
+    this.updateTitleBar(options, this.currentMetadata);
+
     if (toolbarPos === 'top') {
+      this.wrapperEl.appendChild(titleBarEl);
       this.wrapperEl.appendChild(toolbarEl);
       this.wrapperEl.appendChild(bodyEl);
     } else {
+      this.wrapperEl.appendChild(titleBarEl);
       this.wrapperEl.appendChild(bodyEl);
       this.wrapperEl.appendChild(toolbarEl);
     }
