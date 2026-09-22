@@ -212,6 +212,25 @@ function renderRtfTableElement(table: ParsedRtfTable): HTMLElement {
   return tableEl;
 }
 
+function extractMediaFingerprint(el: HTMLElement): string | null {
+  const img = el.tagName.toLowerCase() === 'img' ? (el as HTMLImageElement) : el.querySelector('img');
+  if (img && img.src) {
+    const s = img.src;
+    return s.length > 300 ? `img_${s.slice(0, 80)}_${s.length}_${s.slice(-80)}` : `img_${s}`;
+  }
+  const innerImg = el.querySelector('image');
+  if (innerImg) {
+    const h = innerImg.getAttribute('xlink:href') || innerImg.getAttribute('href') || '';
+    if (h) return h.length > 300 ? `svgimg_${h.slice(0, 80)}_${h.length}_${h.slice(-80)}` : `svgimg_${h}`;
+  }
+  const svg = el.tagName.toLowerCase() === 'svg' ? el : el.querySelector('svg');
+  if (svg) {
+    const vb = svg.getAttribute('viewBox') || '';
+    return `svg_${vb}_${svg.innerHTML.length}`;
+  }
+  return null;
+}
+
 export class RtfPlugin implements PreviewPlugin {
   id = 'rtf';
   name = 'Rich Text Format (RTF)';
@@ -406,11 +425,32 @@ export class RtfPlugin implements PreviewPlugin {
       const tables = parseRtfTables(rawText);
 
       // Render document with RTFJS
-      const doc = new (RTFJS as any).Document(ctx.buffer, {});
+      const seenMediaSignatures = new Set<string>();
+      const doc = new (RTFJS as any).Document(ctx.buffer, {
+        onPicture: (isLegacy: boolean | null, createPic: () => HTMLElement) => {
+          // 1. Drop legacy fallback duplicates (e.g. \nonshppict)
+          if (isLegacy === true) {
+            return null;
+          }
+          const pic = createPic();
+          if (!pic) return null;
+
+          // 2. Prevent duplicate images from rendering more than once
+          const fp = extractMediaFingerprint(pic);
+          if (fp) {
+            if (seenMediaSignatures.has(fp)) {
+              return null;
+            }
+            seenMediaSignatures.add(fp);
+          }
+          return pic;
+        }
+      });
       const htmlElements = await doc.render();
 
       // Collect block-level elements without flattening paragraphs into raw inline spans
       const contentNodes: HTMLElement[] = [];
+      const seenInContentBlocks = new Set<string>();
       const extractBlocks = (nodes: any[]) => {
         for (const item of nodes) {
           if (!item || !(item instanceof HTMLElement)) continue;
@@ -424,6 +464,22 @@ export class RtfPlugin implements PreviewPlugin {
           if (hasChildBlocks && !['table', 'tr', 'td', 'th', 'ul', 'ol', 'li'].includes(tag)) {
             extractBlocks(Array.from(item.children));
           } else {
+            // Check if this element contains an image that was already placed in contentNodes
+            const fp = extractMediaFingerprint(item);
+            if (fp) {
+              if (seenInContentBlocks.has(fp)) {
+                continue; // Skip duplicate / repeated image
+              }
+              seenInContentBlocks.add(fp);
+            }
+
+            // Drop completely empty text blocks with no media
+            const hasMedia = item.querySelector('img, svg, canvas, table') !== null || ['img', 'svg', 'table'].includes(tag);
+            const textContent = (item.textContent || '').trim();
+            if (!hasMedia && textContent.length === 0) {
+              continue;
+            }
+
             // Constrain images/SVGs to standard page width and reasonable height
             const svgs = item.querySelectorAll('svg, img');
             svgs.forEach(s => {
@@ -491,43 +547,66 @@ export class RtfPlugin implements PreviewPlugin {
         }
       });
 
-      // Temporarily mount to wrapper to measure real layout heights
-      wrapper.innerHTML = '';
-      contentNodes.forEach(node => wrapper.appendChild(node));
-
-      const childHeights = contentNodes.map(c => {
-        const rectH = c.getBoundingClientRect ? c.getBoundingClientRect().height : 0;
-        const offH = c.offsetHeight || 0;
-        const realH = Math.max(rectH, offH);
-        if (realH > 0) return realH;
-        const textLen = c.textContent?.trim().length || 0;
-        return Math.max(24, Math.ceil(textLen / 95) * 22 + 12);
-      });
-
-      wrapper.innerHTML = '';
-
-      const createRtfCard = () => {
+      const createRtfCard = (pageNum: number) => {
         const card = document.createElement('div');
         card.className = 'fp-rtf-page-card';
+        card.setAttribute('data-page-number', String(pageNum));
         card.style.backgroundColor = '#ffffff';
-        card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+        card.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)';
         card.style.borderRadius = '4px';
         card.style.padding = '64px 56px';
         card.style.width = '816px';
         card.style.minHeight = '1056px';
+        card.style.maxHeight = '1056px';
+        card.style.overflow = 'hidden';
         card.style.boxSizing = 'border-box';
         card.style.marginBottom = '24px';
         card.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
         card.style.lineHeight = '1.6';
         card.style.color = '#1e293b';
+        card.style.position = 'relative';
         return card;
       };
 
-      let curCard = createRtfCard();
+      // Measure layout heights inside a true page card container (704px content width)
+      wrapper.innerHTML = '';
+      const measureCard = createRtfCard(0);
+      measureCard.style.maxHeight = 'none';
+      measureCard.style.height = 'auto';
+      wrapper.appendChild(measureCard);
+
+      contentNodes.forEach(node => measureCard.appendChild(node));
+
+      const childHeights = contentNodes.map(c => {
+        const rect = c.getBoundingClientRect ? c.getBoundingClientRect() : null;
+        const rectH = rect ? rect.height : 0;
+        const offH = c.offsetHeight || 0;
+        let realH = Math.max(rectH, offH);
+        try {
+          const cs = window.getComputedStyle(c);
+          realH += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+        } catch {}
+
+        const hasMedia = c.querySelector('img, svg') !== null || ['img', 'svg'].includes(c.tagName.toLowerCase());
+        const hasTable = c.querySelector('table') !== null || c.tagName.toLowerCase() === 'table';
+        if (hasMedia) {
+          realH = Math.max(realH, 300);
+        } else if (hasTable) {
+          realH = Math.max(realH, 240);
+        }
+
+        if (realH > 0) return realH;
+        const textLen = c.textContent?.trim().length || 0;
+        return Math.max(28, Math.ceil(textLen / 75) * 26 + 16);
+      });
+
+      wrapper.innerHTML = '';
+
+      let curCard = createRtfCard(1);
       wrapper.appendChild(curCard);
       pageElements = [curCard];
       let curH = 0;
-      const maxH = 928; // 1056px - 128px margins
+      const maxH = 860; // Clean margin boundary for 1056px page height
 
       for (let i = 0; i < contentNodes.length; i++) {
         const child = contentNodes[i];
@@ -538,8 +617,11 @@ export class RtfPlugin implements PreviewPlugin {
           continue;
         }
 
-        if (curH + chH > maxH && curCard.childNodes.length > 0) {
-          curCard = createRtfCard();
+        const isTable = child.querySelector('table') !== null || child.tagName.toLowerCase() === 'table';
+        const shouldBreakBeforeTable = isTable && curH > 400 && curCard.childNodes.length > 0;
+
+        if ((curH + chH > maxH || shouldBreakBeforeTable) && curCard.childNodes.length > 0) {
+          curCard = createRtfCard(pageElements.length + 1);
           wrapper.appendChild(curCard);
           pageElements.push(curCard);
           curH = 0;

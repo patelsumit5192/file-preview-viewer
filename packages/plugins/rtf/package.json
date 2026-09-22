@@ -1,6 +1,6 @@
 {
   "name": "@patel.sumit51/plugin-rtf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RTF (Rich Text Format) preview plugin for @file-preview",
   "license": "MIT",
   "type": "module",
