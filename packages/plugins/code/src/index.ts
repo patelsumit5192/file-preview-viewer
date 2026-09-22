@@ -32,38 +32,7 @@ export class CodePlugin implements PreviewPlugin {
   }
 
   getToolbarActions(instance: PreviewInstance): ToolbarAction[] {
-    const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
-
-    actions.push({
-      id: 'thumbnails',
-      icon: 'thumbnails',
-      label: 'Page Thumbnails',
-      type: 'button',
-      group: 'navigation',
-      execute: () => (instance as any).toggleThumbnails?.()
-    });
-
-    actions.push({
-      id: 'page-nav',
-      icon: '',
-      label: 'Page Navigation',
-      type: 'page-nav',
-      group: 'navigation',
-      value: instance.getCurrentPage?.() ?? 1,
-      max: totalPages,
-      execute: (action: unknown, page?: unknown) => {
-        const cur = instance.getCurrentPage?.() ?? 1;
-        const max = instance.getPageCount?.() ?? 1;
-        if (action === 'prev') {
-          if (cur > 1) instance.goToPage?.(cur - 1);
-        } else if (action === 'next') {
-          if (cur < max) instance.goToPage?.(cur + 1);
-        } else if (typeof page === 'number') {
-          instance.goToPage?.(page);
-        }
-      }
-    });
 
     actions.push(
       {
@@ -84,26 +53,6 @@ export class CodePlugin implements PreviewPlugin {
         group: 'zoom',
         execute: () => {
           instance.zoomIn?.();
-        }
-      },
-      {
-        id: 'fit-page',
-        icon: 'fit-page',
-        label: 'Fit to View',
-        type: 'button',
-        group: 'zoom',
-        execute: () => {
-          instance.fitToPage?.();
-        }
-      },
-      {
-        id: 'rotate-cw',
-        icon: 'rotate-cw',
-        label: 'Rotate',
-        type: 'button',
-        group: 'view',
-        execute: () => {
-          instance.rotateCW?.();
         }
       },
       {
@@ -159,104 +108,44 @@ export class CodePlugin implements PreviewPlugin {
     const mimeRaw = ctx.metadata.mimeType?.toLowerCase();
     const isTxt = extRaw === '.txt' || (mimeRaw === 'text/plain' && (!extRaw || !this.extensions.filter(e => e !== '.txt').includes(extRaw)));
 
-    let rawPages: string[] = [];
-    if (isTxt) {
-      const explicitPages = fullText.split(/(?:\f|\x0C)/);
-      const charsPerLine = 85;
-      const maxVisualLines = 45;
-      const charsPerPage = charsPerLine * maxVisualLines; // ~3825 characters per page
-
-      for (const ep of explicitPages) {
-        const lines = ep.split(/\r?\n/);
-        let currentChunk: string[] = [];
-        let currentLines = 0;
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          const vLines = Math.max(1, Math.ceil((line.length || 1) / charsPerLine));
-
-          if (currentLines + vLines > maxVisualLines && currentChunk.length > 0) {
-            rawPages.push(currentChunk.join('\n'));
-            currentChunk = [];
-            currentLines = 0;
-          }
-
-          if (vLines > maxVisualLines) {
-            // Large uninterrupted paragraph: break cleanly at word boundaries
-            let remaining = line;
-            while (remaining.length > charsPerPage) {
-              let splitIdx = remaining.lastIndexOf(' ', charsPerPage);
-              if (splitIdx < charsPerPage * 0.75) splitIdx = charsPerPage;
-              rawPages.push(remaining.slice(0, splitIdx));
-              remaining = remaining.slice(splitIdx).trimStart();
-            }
-            if (remaining.length > 0) {
-              currentChunk.push(remaining);
-              currentLines = Math.ceil(remaining.length / charsPerLine);
-            }
-          } else {
-            currentChunk.push(line);
-            currentLines += vLines;
-          }
-        }
-        if (currentChunk.length > 0) {
-          rawPages.push(currentChunk.join('\n'));
-        }
-      }
-      if (rawPages.length === 0) rawPages = [''];
-    } else {
-      const pageSplitRegex = /(?:\f|\x0C|(?:\r?\n|^)\s*[-=_]{3,}\s*(?:PAGE|Page|page break|Page Break)[\s\d\w-]*[-=_]{3,}\s*(?:\r?\n|$))/i;
-      rawPages = fullText.split(pageSplitRegex).map(p => p.trim()).filter(p => p.length > 0);
-    }
-    
-    const totalPages = Math.max(1, rawPages.length);
-    let currentPage = 1;
-    
     const container = document.createElement('div');
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.overflow = 'auto';
-    
+    container.style.boxSizing = 'border-box';
+
     let fontSize = 13;
-    let rotation = 0;
-    let zoomLevel = 1;
-    let isUserZoomed = false;
     const pre = document.createElement('pre');
     const code = document.createElement('code');
 
     if (isTxt) {
-      container.style.overflowX = 'hidden';
-      container.style.overflowY = 'auto';
-      container.style.backgroundColor = '#f1f5f9';
-      container.style.padding = '16px 8px';
-      container.style.boxSizing = 'border-box';
+      container.style.backgroundColor = '#f8fafc';
+      container.style.padding = '24px 16px';
       container.style.display = 'flex';
-      container.style.flexDirection = 'column';
-      container.style.alignItems = 'center';
+      container.style.justifyContent = 'center';
 
-      pre.style.margin = '0 auto';
+      pre.style.margin = '0';
       pre.style.fontFamily = "Consolas, 'Courier New', monospace";
-      pre.style.fontSize = '13px';
+      pre.style.fontSize = `${fontSize}px`;
       pre.style.color = '#1e293b';
-      pre.style.lineHeight = '1.5';
+      pre.style.lineHeight = '1.6';
       pre.style.whiteSpace = 'pre-wrap';
       pre.style.wordBreak = 'break-word';
-      
       pre.style.backgroundColor = '#ffffff';
-      pre.style.width = '816px';
-      pre.style.minHeight = '1056px';
-      pre.style.padding = '72px 56px';
+      pre.style.width = '100%';
+      pre.style.maxWidth = '900px';
+      pre.style.minHeight = '100%';
+      pre.style.padding = '36px';
       pre.style.boxSizing = 'border-box';
-      pre.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
-      pre.style.borderRadius = '4px';
-      pre.style.transformOrigin = 'top center';
-      pre.style.transition = 'transform 0.15s ease';
+      pre.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.06)';
+      pre.style.borderRadius = '6px';
+      pre.style.border = '1px solid #e2e8f0';
+
+      code.textContent = fullText;
     } else {
-      container.style.overflow = 'auto';
       container.style.backgroundColor = '#1e1e1e';
       container.style.color = '#d4d4d4';
       container.style.padding = '16px';
-      container.style.boxSizing = 'border-box';
 
       pre.style.margin = '0';
       pre.style.fontFamily = 'Consolas, Menlo, Monaco, monospace';
@@ -264,83 +153,28 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.lineHeight = '1.5';
       pre.style.whiteSpace = 'pre-wrap';
       pre.style.wordBreak = 'break-all';
-      pre.style.transformOrigin = 'top left';
+
+      const ext = (ctx.metadata.extension || '').replace('.', '');
+      try {
+        if (ext && hljs.getLanguage(ext)) {
+          code.innerHTML = hljs.highlight(fullText, { language: ext }).value;
+        } else {
+          code.innerHTML = hljs.highlightAuto(fullText).value;
+        }
+      } catch {
+        code.textContent = fullText;
+      }
     }
 
-    const ext = (ctx.metadata.extension || '').replace('.', '');
-
-    const renderCodePage = (text: string) => {
-      if (isTxt) {
-        code.textContent = text;
-      } else {
-        try {
-          if (ext && hljs.getLanguage(ext)) {
-            code.innerHTML = hljs.highlight(text, { language: ext }).value;
-          } else {
-            code.innerHTML = hljs.highlightAuto(text).value;
-          }
-        } catch {
-          code.textContent = text;
-        }
-      }
-    };
-
-    renderCodePage(rawPages[0] || (isTxt ? '' : fullText));
-    
     pre.appendChild(code);
     container.appendChild(pre);
-
-    const showPage = (pageNum: number) => {
-      currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      renderCodePage(rawPages[currentPage - 1] || (isTxt ? '' : fullText));
-      container.scrollTop = 0;
-      ctx.emit('page-change', { page: currentPage, total: totalPages });
-    };
-
-    if (totalPages > 1) {
-      showPage(1);
-    }
-
     ctx.container.appendChild(container);
 
-    const calculateTxtFit = () => {
-      // Minimal side margins (16px on each side, safe from vertical scrollbar)
-      const availW = Math.max(280, container.clientWidth - 32);
-      return Math.max(0.4, Math.min(3.0, availW / 816));
+    const updateFont = () => {
+      pre.style.fontSize = `${fontSize}px`;
     };
-
-    const updateTransform = () => {
-      if (isTxt) {
-        pre.style.transform = `scale(${zoomLevel}) rotate(${rotation}deg)`;
-        const scaledH = 1056 * zoomLevel;
-        const extraH = Math.max(0, scaledH - 1056);
-        pre.style.marginBottom = `${extraH + 32}px`;
-      } else {
-        pre.style.transform = `rotate(${rotation}deg)`;
-        pre.style.fontSize = `${fontSize}px`;
-      }
-    };
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (isTxt) {
-      setTimeout(() => {
-        zoomLevel = calculateTxtFit();
-        updateTransform();
-      }, 60);
-
-      resizeObserver = typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => {
-            if (!isUserZoomed) {
-              zoomLevel = calculateTxtFit();
-              updateTransform();
-            }
-          })
-        : null;
-      resizeObserver?.observe(container);
-    }
 
     const cleanup = () => {
-      resizeObserver?.disconnect();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -349,97 +183,36 @@ export class CodePlugin implements PreviewPlugin {
 
     return {
       destroy: cleanup,
-      getPageCount: () => totalPages,
-      getCurrentPage: () => currentPage,
-      goToPage: (page: number) => showPage(page),
-      getThumbnails: (): Thumbnail[] => {
-        return rawPages.map((pageText, idx) => ({
-          index: idx,
-          label: `Page ${idx + 1}`,
-          render: async (canvas: HTMLCanvasElement) => {
-            canvas.width = 140;
-            canvas.height = 180;
-            const c = canvas.getContext('2d');
-            if (!c) return;
-
-            // Page Background
-            c.fillStyle = '#ffffff';
-            c.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Subtle paper border
-            c.strokeStyle = '#cbd5e1';
-            c.lineWidth = 1;
-            c.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
-
-            // Miniature lines of text
-            c.fillStyle = '#64748b';
-            const lines = (pageText || '').split('\n').slice(0, 24);
-            const lineH = 6;
-            const startY = 14;
-            const startX = 12;
-            const maxW = canvas.width - 24;
-
-            c.font = '5px monospace';
-            for (let li = 0; li < lines.length; li++) {
-              const l = lines[li].trim();
-              if (!l) continue;
-              const y = startY + li * lineH;
-              if (y > canvas.height - 12) break;
-              c.fillText(l.slice(0, 30), startX, y, maxW);
-            }
-          }
-        }));
-      },
+      getPageCount: () => 1,
+      getCurrentPage: () => 1,
+      goToPage: () => {},
+      getThumbnails: (): Thumbnail[] => [],
       zoomIn: () => {
-        isUserZoomed = true;
-        if (isTxt) {
-          zoomLevel = Math.min(3.5, zoomLevel + 0.15);
-        } else {
-          fontSize = Math.min(32, fontSize + 2);
-        }
-        updateTransform();
+        fontSize = Math.min(32, fontSize + 2);
+        updateFont();
       },
       zoomOut: () => {
-        isUserZoomed = true;
-        if (isTxt) {
-          zoomLevel = Math.max(0.1, zoomLevel - 0.15);
-        } else {
-          fontSize = Math.max(8, fontSize - 2);
-        }
-        updateTransform();
+        fontSize = Math.max(9, fontSize - 2);
+        updateFont();
       },
-      getZoom: () => isTxt ? zoomLevel : fontSize / 13,
+      getZoom: () => fontSize / 13,
       setZoom: (level: number) => {
-        isUserZoomed = true;
-        if (isTxt) {
-          zoomLevel = level;
-        } else {
-          fontSize = Math.round(13 * level);
-        }
-        updateTransform();
+        fontSize = Math.max(9, Math.min(32, Math.round(13 * level)));
+        updateFont();
       },
       fitToPage: () => {
-        isUserZoomed = false;
         fontSize = 13;
-        rotation = 0;
-        zoomLevel = isTxt ? calculateTxtFit() : 1;
-        updateTransform();
+        updateFont();
       },
-      rotateCW: () => {
-        rotation = (rotation + 90) % 360;
-        updateTransform();
-      },
-      rotateCCW: () => {
-        rotation = (rotation - 90 + 360) % 360;
-        updateTransform();
-      },
+      rotateCW: () => {},
+      rotateCCW: () => {},
       download: () => {
         const mimeType = ctx.metadata.mimeType || 'text/plain';
         const blob = new Blob([ctx.buffer], { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = ctx.metadata.name || 'code.txt';
+        a.download = ctx.metadata.name || 'document.txt';
         a.click();
         URL.revokeObjectURL(url);
       },
