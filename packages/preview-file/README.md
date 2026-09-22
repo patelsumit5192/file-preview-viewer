@@ -490,16 +490,34 @@ Use directly with any build tool (Vite, Webpack, Rollup) or via `<script type="m
 |---|---|---|---|
 | `preview()` | `container: HTMLElement`, `source: FileSource`, `options?: PreviewViewerOptions` | `Promise<PreviewInstance>` | Renders any supported file into the target DOM element. Cleans up previous renders automatically. |
 | `getInstance()` | None | `PreviewInstance \| null` | Returns the active preview instance, exposing zoom, navigation, export, and rotation methods. |
-| `setToolbarConfig()` | `config: ToolbarConfig` | `void` | Dynamically reconfigures which toolbar buttons/actions are shown. |
+| `openInSeparateWindow()` | None | `Window \| null` | Clones current file buffer and opens it in a full-screen isolated browser tab. |
+| `setShowFileName(show)` | `show: boolean` | `void` | Dynamically toggles the file name and format badge title bar above the toolbar. |
+| `setFileName(name)` | `name: string` | `void` | Dynamically updates the displayed file title in the preview panel. |
+| `setToolbarConfig(config)` | `config: ToolbarConfig` | `void` | Dynamically reconfigures which toolbar buttons/actions are shown. |
 | `getToolbarConfig()` | None | `ToolbarConfig` | Returns the active toolbar configuration. |
-| `hideToolbarAction()` | `actionId: string` | `void` | Hides a specific toolbar action by ID or alias (e.g. `'zoomIn'`, `'print'`, `'download'`). |
-| `showToolbarAction()` | `actionId: string` | `void` | Shows a previously hidden toolbar action. |
-| `enableToolbarAction()` | `actionId: string` | `void` | Enables a disabled toolbar action button. |
-| `disableToolbarAction()` | `actionId: string` | `void` | Disables a toolbar action button. |
-| `fitToPage()` | None | `void` | Scales document page so it fills the frame width with minimal side margins. |
-| `on()` | `event: string`, `handler: (data: any) => void` | `Unsubscribe: () => void` | Subscribes to lifecycle events. Returns an unsubscribe cleanup function. |
-| `registerPlugin()` | `plugin: PreviewPlugin` | `this` | Registers a custom renderer plugin. |
-| `registerPlugins()` | `plugins: PreviewPlugin[]` | `this` | Registers multiple renderer plugins at once. |
+| `hideToolbarAction(id)` | `actionId: string` | `void` | Hides a specific toolbar action by ID or alias (e.g. `'zoomIn'`, `'print'`, `'download'`). |
+| `showToolbarAction(id)` | `actionId: string` | `void` | Shows a previously hidden toolbar action. |
+| `enableToolbarAction(id)` | `actionId: string` | `void` | Enables a disabled toolbar action button. |
+| `disableToolbarAction(id)` | `actionId: string` | `void` | Disables a toolbar action button. |
+| `toggleThumbnails()` | None | `void` | Toggles the page/sheet thumbnail sidebar panel. |
+| `toggleFullscreen()` | None | `void` | Toggles browser fullscreen on the viewer container. |
+| `fitToPage()` | None | `void` | Scales document page or table so it fits the frame width with minimal margins. |
+| `zoomIn()` | None | `void` | Programmatically zooms in. |
+| `zoomOut()` | None | `void` | Programmatically zooms out. |
+| `setZoom(level)` | `level: number` | `void` | Programmatically sets exact zoom scale (e.g. `1.5` = 150%). |
+| `getZoom()` | None | `number` | Returns current zoom level. |
+| `rotateCW()` | None | `void` | Rotates document or image 90° clockwise. |
+| `rotateCCW()` | None | `void` | Rotates document or image 90° counter-clockwise. |
+| `goToPage(page)` | `page: number` | `void` | Navigates to a specific page or sheet (1-based index). |
+| `nextPage()` | None | `void` | Navigates to next page or sheet. |
+| `prevPage()` | None | `void` | Navigates to previous page or sheet. |
+| `getPageCount()` | None | `number` | Returns total page/sheet count. |
+| `getCurrentPage()` | None | `number` | Returns current active page number (1-based). |
+| `download()` | None | `void` | Downloads current file with original name and detected MIME type. |
+| `print()` | None | `void` | Triggers browser print dialog for document. |
+| `on(event, handler)` | `event: string`, `handler: (data: any) => void` | `Unsubscribe: () => void` | Subscribes to lifecycle events. Returns an unsubscribe cleanup function. |
+| `registerPlugin(plugin)` | `plugin: PreviewPlugin` | `this` | Registers a custom renderer plugin. |
+| `registerPlugins(list)` | `plugins: PreviewPlugin[]` | `this` | Registers multiple renderer plugins at once. |
 | `destroy()` | None | `void` | Destroys the active instance, removes toolbar DOM, cancels network abort controllers, and clears listeners. |
 
 ---
@@ -661,13 +679,22 @@ Passed to `options` prop in React/Angular/Vue or third argument to `viewer.previ
 |---|---|---|---|
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'light'` | UI theme. `'auto'` adapts to system dark mode preferences. |
 | `showToolbar` | `boolean` | `true` | Set `false` to hide built-in toolbar (e.g. when using your own custom buttons). |
+| `toolbar` | `boolean \| ToolbarConfig` | `true` | Fine-grained button visibility flags (`zoomIn`, `print`, `download`, `pageNav`, etc.). |
 | `toolbarPosition` | `'top' \| 'bottom'` | `'top'` | Positions toolbar at the top or bottom of the viewer container. |
+| `showFileName` | `boolean` | `true` | When `true`, displays file name and format badge in title bar above toolbar. |
+| `fileName` | `string` | `undefined` | Custom file title override displayed in title bar. |
+| `fitMode` | `'page' \| 'width'` | `'page'` | Preferred fit calculation strategy. |
 | `showThumbnails` | `boolean` | `false` | Opens page thumbnails sidebar panel automatically on load. |
 | `className` | `string` | `''` | Custom CSS class attached to the root viewer container element. |
 | `zoom` | `number` | `1.0` | Initial zoom multiplier (`1.0` = 100%, `1.5` = 150%). |
 | `page` | `number` | `1` | Initial page, slide, or sheet number to display on load (1-based). |
 | `locale` | `string` | `'en'` | UI label language localization. |
+| `metadata` | `FileMetadata` | `undefined` | Manual override object for file attributes (`name`, `extension`, `mimeType`, `size`). |
+| `standaloneViewerUrl` | `string` | `undefined` | Custom URL opened when user clicks "Open in Separate Full Window". |
+| `onOpenSeparateWindow` | `function` | `undefined` | Custom callback hook to handle opening preview in separate window. |
 | `pluginOptions` | `Record<string, unknown>` | `{}` | Custom options passed directly to underlying format renderer plugins. |
+
+> 📖 **For exhaustive details and TypeScript interfaces, see the full [API Reference Documentation](../../docs/API_REFERENCE.md).**
 
 ---
 

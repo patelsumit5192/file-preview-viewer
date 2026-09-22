@@ -39,6 +39,8 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
   @Output() error = new EventEmitter<Error>();
   @Output() pageChange = new EventEmitter<unknown>();
   @Output() zoomChange = new EventEmitter<unknown>();
+  @Output() rotate = new EventEmitter<unknown>();
+  @Output() destroyed = new EventEmitter<void>();
 
   @ViewChild('container', { static: true }) container!: ElementRef<HTMLDivElement>;
 
@@ -67,6 +69,12 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
     });
     viewer.on('zoom-change', (data: unknown) => {
       this.ngZone.run(() => this.zoomChange.emit(data));
+    });
+    viewer.on('rotate', (data: unknown) => {
+      this.ngZone.run(() => this.rotate.emit(data));
+    });
+    viewer.on('destroy', () => {
+      this.ngZone.run(() => this.destroyed.emit());
     });
 
     this.render();
@@ -107,6 +115,14 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
 
   public getInstance(): PreviewInstance | null {
     return this.instance;
+  }
+
+  public getViewer(): FilePreviewViewer | null {
+    return this.viewer;
+  }
+
+  public destroy(): void {
+    this.viewer?.destroy();
   }
 }
 

@@ -25,6 +25,10 @@ export interface FilePreviewProps {
   onPageChange?: (data: unknown) => void;
   /** Triggered on zoom level change */
   onZoomChange?: (data: unknown) => void;
+  /** Triggered on orientation rotation change */
+  onRotate?: (data: unknown) => void;
+  /** Triggered when viewer is destroyed */
+  onDestroy?: () => void;
   /** Custom wrapper CSS class name */
   className?: string;
   /** Custom wrapper inline style */
@@ -48,6 +52,8 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       onError,
       onPageChange,
       onZoomChange,
+      onRotate,
+      onDestroy,
       className,
       style,
     },
@@ -75,6 +81,8 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       if (onError) unsubs.push(viewer.on('error', (e: unknown) => onError(e instanceof Error ? e : new Error(String(e)))));
       if (onPageChange) unsubs.push(viewer.on('page-change', onPageChange));
       if (onZoomChange) unsubs.push(viewer.on('zoom-change', onZoomChange));
+      if (onRotate) unsubs.push(viewer.on('rotate', onRotate));
+      if (onDestroy) unsubs.push(viewer.on('destroy', onDestroy));
 
       return () => {
         unsubs.forEach(fn => fn());

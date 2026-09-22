@@ -24,7 +24,7 @@ export const FilePreview = defineComponent({
       default: () => ({}),
     },
   },
-  emits: ['loading', 'loaded', 'error', 'page-change', 'zoom-change'],
+  emits: ['loading', 'loaded', 'error', 'page-change', 'zoom-change', 'rotate', 'destroy'],
   setup(props, { emit, expose }) {
     const containerRef = ref<HTMLDivElement | null>(null);
     let viewer: FilePreviewViewer | null = null;
@@ -51,6 +51,8 @@ export const FilePreview = defineComponent({
       viewer.on('error', (data) => emit('error', data));
       viewer.on('page-change', (data) => emit('page-change', data));
       viewer.on('zoom-change', (data) => emit('zoom-change', data));
+      viewer.on('rotate', (data) => emit('rotate', data));
+      viewer.on('destroy', (data) => emit('destroy', data));
 
       renderPreview();
     });
