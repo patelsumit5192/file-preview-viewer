@@ -36,6 +36,7 @@ const ICON_MAP: Record<string, string> = {
   'reset-zoom': icons.ICON_RESET_ZOOM,
   'zoom-reset': icons.ICON_RESET_ZOOM,
   'resetZoom': icons.ICON_RESET_ZOOM,
+  'speed': icons.ICON_SPEED,
 };
 
 export class ToolbarController {

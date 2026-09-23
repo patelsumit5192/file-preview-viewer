@@ -366,6 +366,11 @@ export class DocumentPreviewService {
     ext: '.mp3',
     data: getSampleUrl('audio.mp3')
   }),
+  wav: () => ({
+    name: 'sample.wav',
+    ext: '.wav',
+    data: getSampleUrl('sample.wav')
+  }),
   video: () => ({
     name: 'video.mp4',
     ext: '.mp4',

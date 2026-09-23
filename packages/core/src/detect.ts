@@ -80,6 +80,10 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
   '.wav': 'audio/wav',
   '.aac': 'audio/aac',
   '.flac': 'audio/flac',
+  '.m4a': 'audio/mp4',
+  '.wma': 'audio/x-ms-wma',
+  '.opus': 'audio/opus',
+  '.weba': 'audio/webm',
   // Code/Text
   '.txt': 'text/plain',
   '.log': 'text/plain',

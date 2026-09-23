@@ -176,14 +176,44 @@ export class MediaPlugin implements PreviewPlugin {
       });
     }
 
+    actions.push({
+      id: 'open-window',
+      icon: 'open-window',
+      label: 'Open in Separate Full Window',
+      type: 'button',
+      group: 'actions',
+      execute: () => {
+        (instance as any).openInSeparateWindow?.();
+      }
+    });
+
     return actions;
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
-    const mimeType = ctx.metadata.mimeType || 'application/octet-stream';
-    const isImage = mimeType.startsWith('image/') || IMAGE_EXTS.includes(ctx.metadata.extension || '');
-    const isVideo = mimeType.startsWith('video/') || VIDEO_EXTS.includes(ctx.metadata.extension || '');
-    const isAudio = mimeType.startsWith('audio/') || AUDIO_EXTS.includes(ctx.metadata.extension || '');
+    const ext = (ctx.metadata.extension || '').toLowerCase();
+    let mimeType = ctx.metadata.mimeType || '';
+    if (!mimeType || mimeType === 'application/octet-stream') {
+      const audioMimes: Record<string, string> = {
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+        '.ogg': 'audio/ogg',
+        '.flac': 'audio/flac',
+        '.aac': 'audio/aac',
+        '.m4a': 'audio/mp4',
+        '.wma': 'audio/x-ms-wma',
+        '.opus': 'audio/opus',
+        '.weba': 'audio/webm'
+      };
+      if (audioMimes[ext]) {
+        mimeType = audioMimes[ext];
+      } else {
+        mimeType = 'application/octet-stream';
+      }
+    }
+    const isImage = mimeType.startsWith('image/') || IMAGE_EXTS.includes(ext);
+    const isVideo = mimeType.startsWith('video/') || VIDEO_EXTS.includes(ext);
+    const isAudio = mimeType.startsWith('audio/') || AUDIO_EXTS.includes(ext);
     
     let url = '';
     let naturalW = 800;
@@ -260,10 +290,94 @@ export class MediaPlugin implements PreviewPlugin {
         video.addEventListener('canplay', onMeta, { once: true });
       }
     } else if (isAudio) {
+      const audioCard = document.createElement('div');
+      audioCard.className = 'fp-audio-card';
+
+      // 1. Vinyl Disc Artwork
+      const artWrapper = document.createElement('div');
+      artWrapper.className = 'fp-audio-artwork-wrapper';
+      const disc = document.createElement('div');
+      disc.className = 'fp-audio-disc';
+      const discCenter = document.createElement('div');
+      discCenter.className = 'fp-audio-disc-center';
+      const discHole = document.createElement('div');
+      discHole.className = 'fp-audio-disc-hole';
+      discCenter.appendChild(discHole);
+      disc.appendChild(discCenter);
+      artWrapper.appendChild(disc);
+      audioCard.appendChild(artWrapper);
+
+      // 2. Track Info & Badges
+      const info = document.createElement('div');
+      info.className = 'fp-audio-info';
+      const title = document.createElement('div');
+      title.className = 'fp-audio-title';
+      title.textContent = ctx.metadata.name || 'Audio Track';
+      
+      const badges = document.createElement('div');
+      badges.className = 'fp-audio-badges';
+      
+      const extTag = document.createElement('span');
+      extTag.className = 'fp-audio-ext-tag';
+      const cleanExt = (ext || '.mp3').replace('.', '').toUpperCase();
+      extTag.textContent = `${cleanExt} AUDIO`;
+      badges.appendChild(extTag);
+
+      const timeTag = document.createElement('span');
+      timeTag.className = 'fp-audio-time-tag';
+      timeTag.textContent = '0:00';
+      badges.appendChild(timeTag);
+
+      info.appendChild(title);
+      info.appendChild(badges);
+      audioCard.appendChild(info);
+
+      // 3. Animated Waveform Equalizer Bars
+      const waveform = document.createElement('div');
+      waveform.className = 'fp-audio-waveform';
+      for (let i = 0; i < 16; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'fp-audio-wave-bar';
+        waveform.appendChild(bar);
+      }
+      audioCard.appendChild(waveform);
+
+      // 4. Native audio element
+      const nativeWrapper = document.createElement('div');
+      nativeWrapper.className = 'fp-audio-native-wrapper';
       const audio = document.createElement('audio');
       audio.src = url;
       audio.controls = true;
-      element = audio;
+      nativeWrapper.appendChild(audio);
+      audioCard.appendChild(nativeWrapper);
+
+      const onPlay = () => {
+        disc.classList.add('playing');
+        waveform.classList.add('playing');
+      };
+      const onPause = () => {
+        disc.classList.remove('playing');
+        waveform.classList.remove('playing');
+      };
+      const formatTime = (secs: number) => {
+        if (!isFinite(secs) || isNaN(secs)) return '0:00';
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+      };
+      const onTimeUpdate = () => {
+        timeTag.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+      };
+      const onLoadedMetadata = () => {
+        timeTag.textContent = `0:00 / ${formatTime(audio.duration)}`;
+      };
+
+      audio.addEventListener('play', onPlay);
+      audio.addEventListener('pause', onPause);
+      audio.addEventListener('timeupdate', onTimeUpdate);
+      audio.addEventListener('loadedmetadata', onLoadedMetadata);
+
+      element = audioCard;
       mediaElement = audio;
     } else {
       element = document.createElement('div');
@@ -274,11 +388,12 @@ export class MediaPlugin implements PreviewPlugin {
     scrollWrapper.className = 'fp-media-scroll-wrapper';
     scrollWrapper.style.minWidth = '100%';
     scrollWrapper.style.minHeight = '100%';
-    scrollWrapper.style.width = 'max-content';
-    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.width = isAudio ? '100%' : 'max-content';
+    scrollWrapper.style.height = isAudio ? '100%' : 'max-content';
     scrollWrapper.style.display = 'flex';
     scrollWrapper.style.flexDirection = 'column';
     scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.justifyContent = isAudio ? 'center' : 'flex-start';
     scrollWrapper.style.padding = '16px';
     scrollWrapper.style.boxSizing = 'border-box';
 
@@ -290,6 +405,11 @@ export class MediaPlugin implements PreviewPlugin {
     sizer.style.justifyContent = 'center';
     sizer.style.alignItems = 'center';
     sizer.style.margin = 'auto 0';
+    if (isAudio) {
+      sizer.style.width = '100%';
+      sizer.style.maxWidth = '520px';
+      sizer.style.margin = 'auto';
+    }
 
     sizer.appendChild(element);
     scrollWrapper.appendChild(sizer);
@@ -357,7 +477,9 @@ export class MediaPlugin implements PreviewPlugin {
         element.style.transformOrigin = 'center center';
         element.style.flexShrink = '0';
       } else {
-        element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        if (!isAudio) {
+          element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        }
       }
     };
 
@@ -389,6 +511,10 @@ export class MediaPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       ro?.disconnect();
+      if (mediaElement) {
+        mediaElement.pause();
+        mediaElement.src = '';
+      }
       if (url) URL.revokeObjectURL(url);
       scrollWrapper.remove();
       ctx.container.innerHTML = '';
@@ -414,36 +540,54 @@ export class MediaPlugin implements PreviewPlugin {
         currentZoom = level;
         applyTransform();
       } : undefined,
-      fitToPage: isImage || isVideo ? () => {
-        isUserZoomed = false;
-        fitMode = 'page';
-        currentZoom = 1.0;
-        rotation = 0;
-        ctx.container.scrollTop = 0;
-        ctx.container.scrollLeft = 0;
-        updateBaseDimensions();
-        applyTransform();
-      } : undefined,
-      fitToWidth: isImage || isVideo ? () => {
-        isUserZoomed = false;
-        fitMode = 'width';
-        currentZoom = 1.0;
-        rotation = 0;
-        ctx.container.scrollTop = 0;
-        ctx.container.scrollLeft = 0;
-        updateBaseDimensions();
-        applyTransform();
-      } : undefined,
-      resetZoom: isImage || isVideo ? () => {
-        isUserZoomed = false;
-        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
-        currentZoom = 1.0;
-        rotation = 0;
-        ctx.container.scrollTop = 0;
-        ctx.container.scrollLeft = 0;
-        updateBaseDimensions();
-        applyTransform();
-      } : undefined,
+      fitToPage: () => {
+        if (isImage || isVideo) {
+          isUserZoomed = false;
+          fitMode = 'page';
+          currentZoom = 1.0;
+          rotation = 0;
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          updateBaseDimensions();
+          applyTransform();
+        } else if (isAudio) {
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          currentZoom = 1.0;
+        }
+      },
+      fitToWidth: () => {
+        if (isImage || isVideo) {
+          isUserZoomed = false;
+          fitMode = 'width';
+          currentZoom = 1.0;
+          rotation = 0;
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          updateBaseDimensions();
+          applyTransform();
+        } else if (isAudio) {
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          currentZoom = 1.0;
+        }
+      },
+      resetZoom: () => {
+        if (isImage || isVideo) {
+          isUserZoomed = false;
+          fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+          currentZoom = 1.0;
+          rotation = 0;
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          updateBaseDimensions();
+          applyTransform();
+        } else if (isAudio) {
+          ctx.container.scrollTop = 0;
+          ctx.container.scrollLeft = 0;
+          currentZoom = 1.0;
+        }
+      },
       rotateCW: isImage || isVideo ? () => {
         rotation = (rotation + 90) % 360;
         applyTransform();
