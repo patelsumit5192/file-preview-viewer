@@ -47,7 +47,9 @@
     "clean": "turbo run clean",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo run build && changeset publish"
+    "release": "turbo run build && changeset publish",
+    "release:sync": "node scripts/sync-release.cjs",
+    "verify:sync": "node scripts/verify-sync.cjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
