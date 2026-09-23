@@ -65,6 +65,10 @@ export class FilePreviewViewer {
     source: FileSource,
     options: PreviewViewerOptions = {}
   ): Promise<PreviewInstance> {
+    options = {
+      ...options,
+      fitMode: options.fitMode ?? 'width',
+    };
     this.currentOptions = options;
 
     // 1. Abort any in-flight operation
@@ -132,8 +136,8 @@ export class FilePreviewViewer {
       this.activeInstance = instance;
       (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();
       (instance as any).toggleThumbnails = () => this.toggleThumbnails();
-      if (!instance.resetZoom && instance.fitToPage) {
-        (instance as any).resetZoom = () => instance.fitToPage?.();
+      if (!instance.resetZoom) {
+        (instance as any).resetZoom = () => (instance.fitToWidth ? instance.fitToWidth() : instance.fitToPage?.());
       }
 
       // FAST STARTUP: Hide loading immediately once the instance is mounted!
@@ -585,7 +589,7 @@ export class FilePreviewViewer {
       this.wrapperEl?.classList.toggle('fp-fullscreen-active');
     }
     setTimeout(() => {
-      this.activeInstance?.fitToPage?.();
+      this.triggerAutoFit();
     }, 120);
   }
 
@@ -745,7 +749,7 @@ export class FilePreviewViewer {
     this.thumbnailPanel = new ThumbnailPanel(thumbnailEl, (isOpen) => {
       this.toolbar?.setActionActive('thumbnails', isOpen);
       setTimeout(() => {
-        this.activeInstance?.fitToPage?.();
+        this.triggerAutoFit();
       }, 260);
     });
 
@@ -755,12 +759,24 @@ export class FilePreviewViewer {
     this.setupResizeAndFullscreenListeners();
   }
 
+  private triggerAutoFit(): void {
+    if (!this.activeInstance) return;
+    const mode = this.currentOptions?.fitMode ?? 'width';
+    if (mode === 'width' && this.activeInstance.fitToWidth) {
+      this.activeInstance.fitToWidth();
+    } else if (this.activeInstance.fitToPage) {
+      this.activeInstance.fitToPage();
+    } else if (this.activeInstance.resetZoom) {
+      this.activeInstance.resetZoom();
+    }
+  }
+
   private setupResizeAndFullscreenListeners(): void {
     if (this.fullscreenHandler) return;
 
     this.fullscreenHandler = () => {
       setTimeout(() => {
-        this.activeInstance?.fitToPage?.();
+        this.triggerAutoFit();
       }, 100);
     };
 
@@ -771,7 +787,7 @@ export class FilePreviewViewer {
       this.resizeObserver = new ResizeObserver(() => {
         // Auto-fit content when viewport dimensions resize
         if (this.activeInstance && (!this.activeInstance.getZoom || Math.abs((this.activeInstance.getZoom?.() ?? 1) - 1.0) < 0.05)) {
-          this.activeInstance.fitToPage?.();
+          this.triggerAutoFit();
         }
       });
       this.resizeObserver.observe(this.contentEl);
@@ -808,7 +824,7 @@ export class FilePreviewViewer {
       } else if (e.key === '-' || e.key === '_') {
         this.activeInstance.zoomOut?.();
       } else if (e.key === '0') {
-        this.activeInstance.fitToPage?.();
+        this.resetZoom();
       } else if (e.key === 'r' || e.key === 'R') {
         this.activeInstance.rotateCW?.();
       } else if (e.key === 'f' || e.key === 'F') {

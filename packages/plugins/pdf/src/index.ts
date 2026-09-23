@@ -415,7 +415,7 @@ export class PdfPlugin implements PreviewPlugin {
         renderPage(currentPage);
       },
       resetZoom: () => {
-        fitMode = 'page';
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
         zoomScale = 1.0;
         rotation = 0;
         container.scrollTop = 0;

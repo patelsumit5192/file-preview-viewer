@@ -100,6 +100,16 @@ export class ExcelPlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.fitToWidth?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -344,6 +354,11 @@ export class ExcelPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
+        scale = calculateFitScale();
+        applyTransform();
+      },
+      fitToWidth: () => {
         isUserZoomed = false;
         scale = calculateFitScale();
         applyTransform();

@@ -64,6 +64,14 @@ export class ArchivePlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download Archive',
@@ -278,6 +286,10 @@ export class ArchivePlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
+        scale = 1.0;
+        applyTransform();
+      },
+      fitToWidth: () => {
         scale = 1.0;
         applyTransform();
       },

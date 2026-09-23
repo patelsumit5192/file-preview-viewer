@@ -97,6 +97,16 @@ export class CodePlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.fitToWidth?.();
+        }
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Content',
@@ -438,6 +448,13 @@ export class CodePlugin implements PreviewPlugin {
         updateTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
+        fontSize = 13;
+        rotation = 0;
+        zoomLevel = isTxt ? calculateTxtFit() : 1;
+        updateTransform();
+      },
+      fitToWidth: () => {
         isUserZoomed = false;
         fontSize = 13;
         rotation = 0;

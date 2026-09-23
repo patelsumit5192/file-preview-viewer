@@ -102,6 +102,14 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -238,7 +246,10 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       const sH = availH / (isPresentation ? 540 : singlePageH);
 
       if (isPresentation) {
-        return Math.min(2.5, Math.min(sW, sH));
+        if (mode === 'page') {
+          return Math.min(2.5, Math.min(sW, sH));
+        }
+        return Math.min(2.5, sW);
       }
 
       if (mode === 'page') {
@@ -440,6 +451,13 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
+        rotation = 0;
+        applyTransform();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
@@ -447,8 +465,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       },
       resetZoom: () => {
         isUserZoomed = false;
-        fitMode = 'width';
-        scale = calculateFitScale('width');
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;

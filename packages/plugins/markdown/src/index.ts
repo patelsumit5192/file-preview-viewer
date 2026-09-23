@@ -58,6 +58,14 @@ export class MarkdownPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Markdown',
@@ -221,6 +229,10 @@ export class MarkdownPlugin implements PreviewPlugin {
         wrapper.style.fontSize = `${fontSize}px`;
       },
       fitToPage: () => {
+        fontSize = 15;
+        wrapper.style.fontSize = '15px';
+      },
+      fitToWidth: () => {
         fontSize = 15;
         wrapper.style.fontSize = '15px';
       },

@@ -683,7 +683,7 @@ Passed to `options` prop in React/Angular/Vue or third argument to `viewer.previ
 | `toolbarPosition` | `'top' \| 'bottom'` | `'top'` | Positions toolbar at the top or bottom of the viewer container. |
 | `showFileName` | `boolean` | `true` | When `true`, displays file name and format badge in title bar above toolbar. |
 | `fileName` | `string` | `undefined` | Custom file title override displayed in title bar. |
-| `fitMode` | `'page' \| 'width'` | `'page'` | Preferred fit calculation strategy. |
+| `fitMode` | `'width' \| 'page'` | `'width'` | Preferred fit calculation strategy ('width' fits container width preserving aspect ratio). |
 | `showThumbnails` | `boolean` | `false` | Opens page thumbnails sidebar panel automatically on load. |
 | `className` | `string` | `''` | Custom CSS class attached to the root viewer container element. |
 | `zoom` | `number` | `1.0` | Initial zoom multiplier (`1.0` = 100%, `1.5` = 150%). |

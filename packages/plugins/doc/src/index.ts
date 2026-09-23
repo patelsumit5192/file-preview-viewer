@@ -84,6 +84,14 @@ export class DocPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -343,6 +351,13 @@ export class DocPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
+        rotation = 0;
+        applyTransform();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
@@ -350,8 +365,8 @@ export class DocPlugin implements PreviewPlugin {
       },
       resetZoom: () => {
         isUserZoomed = false;
-        fitMode = 'width';
-        scale = calculateFitScale('width');
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;

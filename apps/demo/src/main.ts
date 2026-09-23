@@ -98,6 +98,26 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.xls',
     data: getSampleUrl('spreadsheet.xls')
   }),
+  odt: () => ({
+    name: 'document.odt',
+    ext: '.odt',
+    data: getSampleUrl('document.odt')
+  }),
+  ods: () => ({
+    name: 'spreadsheet.ods',
+    ext: '.ods',
+    data: getSampleUrl('spreadsheet.ods')
+  }),
+  image: () => ({
+    name: 'photo.jpg',
+    ext: '.jpg',
+    data: getSampleUrl('photo.jpg')
+  }),
+  photo: () => ({
+    name: 'photo.jpg',
+    ext: '.jpg',
+    data: getSampleUrl('photo.jpg')
+  }),
   pptx: () => ({
     name: 'presentation.pptx',
     ext: '.pptx',
@@ -262,25 +282,10 @@ export async function initViewer(containerId: string, url: string) {
     ext: '.rtf',
     data: getSampleUrl('document.rtf')
   }),
-  odt: () => ({
-    name: 'document.odt',
-    ext: '.odt',
-    data: getSampleUrl('document.odt')
-  }),
-  ods: () => ({
-    name: 'spreadsheet.ods',
-    ext: '.ods',
-    data: getSampleUrl('spreadsheet.ods')
-  }),
   html: () => ({
     name: 'webpage.html',
     ext: '.html',
     data: getSampleUrl('webpage.html')
-  }),
-  photo: () => ({
-    name: 'photo.jpg',
-    ext: '.jpg',
-    data: getSampleUrl('photo.jpg')
   }),
   audio: () => ({
     name: 'audio.mp3',

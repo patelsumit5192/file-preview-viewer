@@ -98,6 +98,14 @@ export class PptxPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -189,12 +197,18 @@ export class PptxPlugin implements PreviewPlugin {
     ctx.container.style.overflow = 'auto';
     ctx.container.appendChild(wrapper);
 
-    const calculateFitScale = () => {
-      const availW = Math.max(200, ctx.container.clientWidth - 48);
-      const availH = Math.max(200, ctx.container.clientHeight - 72);
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let isUserZoomed = false;
+
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
+      const availW = Math.max(200, ctx.container.clientWidth - 32);
+      const availH = Math.max(200, ctx.container.clientHeight - 32);
       const cW = canvas.offsetWidth || 1280;
       const cH = canvas.offsetHeight || 720;
-      return Math.min(1.0, Math.min(availW / cW, availH / cH));
+      if (mode === 'page') {
+        return Math.min(2.5, Math.min(availW / cW, availH / cH));
+      }
+      return Math.min(2.5, availW / cW);
     };
 
     const applyTransform = () => {
@@ -217,7 +231,9 @@ export class PptxPlugin implements PreviewPlugin {
       try {
         await renderer.renderSlide(currentSlide - 1, canvas, 1280);
         ctx.emit('page-change', { page: currentSlide, totalPages: slideCount });
-        scale = calculateFitScale();
+        if (!isUserZoomed) {
+          scale = calculateFitScale(fitMode);
+        }
         applyTransform();
       } catch (err) {
         console.error('[PptxPlugin] Failed to render slide:', err);
@@ -226,7 +242,18 @@ export class PptxPlugin implements PreviewPlugin {
 
     await renderCurrentSlide();
 
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          if (!isUserZoomed) {
+            scale = calculateFitScale(fitMode);
+            applyTransform();
+          }
+        })
+      : null;
+    ro?.observe(ctx.container);
+
     const cleanup = () => {
+      ro?.disconnect();
       renderer.destroy();
       wrapper.remove();
       ctx.container.innerHTML = '';
@@ -245,28 +272,44 @@ export class PptxPlugin implements PreviewPlugin {
       getPageCount: () => slideCount,
       getCurrentPage: () => currentSlide,
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
-        scale = calculateFitScale();
+        isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
+        rotation = 0;
+        applyTransform();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },
       resetZoom: () => {
-        scale = calculateFitScale();
+        isUserZoomed = false;
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         wrapper.scrollTop = 0;
         wrapper.scrollLeft = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
         applyTransform();
       },
       rotateCW: () => {

@@ -65,6 +65,16 @@ export class CsvPlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.fitToWidth?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -313,6 +323,11 @@ export class CsvPlugin implements PreviewPlugin {
         applyScale();
       },
       fitToPage: () => {
+        isUserZoomed = false;
+        scale = calculateFitScale();
+        applyScale();
+      },
+      fitToWidth: () => {
         isUserZoomed = false;
         scale = calculateFitScale();
         applyScale();

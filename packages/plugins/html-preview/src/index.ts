@@ -55,6 +55,14 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy HTML',
@@ -160,6 +168,10 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         applyTransform();
       },
       fitToPage: () => {
+        scale = 1.0;
+        applyTransform();
+      },
+      fitToWidth: () => {
         scale = 1.0;
         applyTransform();
       },

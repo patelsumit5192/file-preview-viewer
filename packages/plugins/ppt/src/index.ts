@@ -101,6 +101,14 @@ export class PptPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -181,10 +189,16 @@ export class PptPlugin implements PreviewPlugin {
     let slides: PptSlide[] = [];
     const createdBlobUrls: string[] = [];
 
-    const calculateFitScale = () => {
-      const availW = Math.max(200, container.clientWidth - 48);
-      const availH = Math.max(200, container.clientHeight - 72);
-      return Math.min(1.0, Math.min(availW / 960, availH / 540));
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let isUserZoomed = false;
+
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
+      const availW = Math.max(200, container.clientWidth - 32);
+      const availH = Math.max(200, container.clientHeight - 32);
+      if (mode === 'page') {
+        return Math.min(2.5, Math.min(availW / 960, availH / 540));
+      }
+      return Math.min(2.5, availW / 960);
     };
 
     const applyTransform = () => {
@@ -203,8 +217,18 @@ export class PptPlugin implements PreviewPlugin {
       slideCard.style.transformOrigin = 'center center';
     };
 
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          if (!isUserZoomed) {
+            scale = calculateFitScale(fitMode);
+            applyTransform();
+          }
+        })
+      : null;
+    ro?.observe(container);
+
     setTimeout(() => {
-      scale = calculateFitScale();
+      scale = calculateFitScale(fitMode);
       applyTransform();
     }, 60);
 
@@ -313,6 +337,7 @@ export class PptPlugin implements PreviewPlugin {
     renderSlide(1);
 
     const cleanup = () => {
+      ro?.disconnect();
       for (const u of createdBlobUrls) {
         URL.revokeObjectURL(u);
       }
@@ -325,28 +350,44 @@ export class PptPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
-        scale = calculateFitScale();
+        isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
+        rotation = 0;
+        applyTransform();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },
       resetZoom: () => {
-        scale = calculateFitScale();
+        isUserZoomed = false;
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
         applyTransform();
       },
       rotateCW: () => {

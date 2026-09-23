@@ -75,6 +75,16 @@ export class MediaPlugin implements PreviewPlugin {
           }
         },
         {
+          id: 'fit-width',
+          icon: 'fit-width',
+          label: 'Fit to Width',
+          type: 'button',
+          group: 'zoom',
+          execute: () => {
+            instance.fitToWidth?.();
+          }
+        },
+        {
           id: 'rotate-cw',
           icon: 'rotate-cw',
           label: 'Rotate',
@@ -176,10 +186,30 @@ export class MediaPlugin implements PreviewPlugin {
     const isAudio = mimeType.startsWith('audio/') || AUDIO_EXTS.includes(ctx.metadata.extension || '');
     
     let url = '';
+    let naturalW = 800;
+    let naturalH = 600;
     
     if (ctx.metadata.extension === '.svg' || mimeType === 'image/svg+xml') {
       const decoder = new TextDecoder('utf-8');
       const svgText = decoder.decode(ctx.buffer);
+      try {
+        const vbMatch = svgText.match(/viewBox=["']\s*([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s*["']/i);
+        if (vbMatch) {
+          const vw = parseFloat(vbMatch[3]);
+          const vh = parseFloat(vbMatch[4]);
+          if (vw > 0 && vh > 0) {
+            naturalW = vw;
+            naturalH = vh;
+          }
+        } else {
+          const wMatch = svgText.match(/width=["']([0-9.]+)(?:px)?["']/i);
+          const hMatch = svgText.match(/height=["']([0-9.]+)(?:px)?["']/i);
+          if (wMatch && hMatch) {
+            naturalW = parseFloat(wMatch[1]) || naturalW;
+            naturalH = parseFloat(hMatch[1]) || naturalH;
+          }
+        }
+      } catch {}
       const blob = new Blob([svgText], { type: 'image/svg+xml' });
       url = URL.createObjectURL(blob);
     } else {
@@ -230,7 +260,7 @@ export class MediaPlugin implements PreviewPlugin {
     scrollWrapper.style.width = 'max-content';
     scrollWrapper.style.height = 'max-content';
     scrollWrapper.style.display = 'flex';
-    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.flexDirection = 'column';
     scrollWrapper.style.alignItems = 'center';
     scrollWrapper.style.padding = '16px';
     scrollWrapper.style.boxSizing = 'border-box';
@@ -242,6 +272,7 @@ export class MediaPlugin implements PreviewPlugin {
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
     sizer.style.alignItems = 'center';
+    sizer.style.margin = 'auto 0';
 
     sizer.appendChild(element);
     scrollWrapper.appendChild(sizer);
@@ -251,39 +282,53 @@ export class MediaPlugin implements PreviewPlugin {
     ctx.container.innerHTML = '';
     ctx.container.appendChild(scrollWrapper);
 
-    let naturalW = 800;
-    let naturalH = 600;
-    let baseW = 800;
-    let baseH = 600;
+    let baseW = naturalW;
+    let baseH = naturalH;
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let isUserZoomed = false;
 
     const updateBaseDimensions = () => {
       if (!isImage) return;
       const img = element as HTMLImageElement;
-      naturalW = img.naturalWidth || naturalW;
-      naturalH = img.naturalHeight || naturalH;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        naturalW = img.naturalWidth;
+        naturalH = img.naturalHeight;
+      }
 
-      const availW = Math.max(100, ctx.container.clientWidth - 48);
-      const availH = Math.max(100, ctx.container.clientHeight - 48);
-      const fitRatio = Math.min(1.0, availW / naturalW, availH / naturalH);
+      const availW = Math.max(100, ctx.container.clientWidth - 32);
+      const availH = Math.max(100, ctx.container.clientHeight - 32);
+
+      let fitRatio: number;
+      if (fitMode === 'page') {
+        fitRatio = Math.min(availW / naturalW, availH / naturalH);
+      } else {
+        fitRatio = availW / naturalW;
+      }
       baseW = Math.max(1, Math.round(naturalW * fitRatio));
       baseH = Math.max(1, Math.round(naturalH * fitRatio));
     };
 
     const applyTransform = () => {
       if (isImage) {
-        updateBaseDimensions();
+        if (!isUserZoomed) {
+          updateBaseDimensions();
+        }
+        const availH = Math.max(100, ctx.container.clientHeight - 32);
         const isRotated90 = (rotation % 180 !== 0);
         const boxW = Math.round((isRotated90 ? baseH : baseW) * currentZoom);
         const boxH = Math.round((isRotated90 ? baseW : baseH) * currentZoom);
 
         sizer.style.width = `${boxW}px`;
         sizer.style.height = `${boxH}px`;
+        sizer.style.margin = boxH < availH ? 'auto 0' : '0';
 
-        element.style.width = `${baseW}px`;
-        element.style.height = `${baseH}px`;
+        const imgW = isRotated90 ? boxH : boxW;
+        const imgH = isRotated90 ? boxW : boxH;
+        element.style.width = `${imgW}px`;
+        element.style.height = `${imgH}px`;
         element.style.maxWidth = 'none';
         element.style.maxHeight = 'none';
-        element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        element.style.transform = rotation ? `rotate(${rotation}deg)` : 'none';
         element.style.transformOrigin = 'center center';
         element.style.flexShrink = '0';
       } else {
@@ -306,7 +351,8 @@ export class MediaPlugin implements PreviewPlugin {
 
     const ro = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
-          if (currentZoom === 1.0) {
+          if (!isUserZoomed && currentZoom === 1.0) {
+            updateBaseDimensions();
             applyTransform();
           }
         })
@@ -325,28 +371,49 @@ export class MediaPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: isImage ? () => {
-        currentZoom += 0.1;
+        isUserZoomed = true;
+        currentZoom = Math.min(5.0, Math.round((currentZoom + 0.15) * 100) / 100);
         applyTransform();
       } : undefined,
       zoomOut: isImage ? () => {
-        currentZoom = Math.max(0.1, currentZoom - 0.1);
+        isUserZoomed = true;
+        currentZoom = Math.max(0.1, Math.round((currentZoom - 0.15) * 100) / 100);
         applyTransform();
       } : undefined,
       getZoom: isImage ? () => currentZoom : undefined,
       setZoom: isImage ? (level: number) => {
+        isUserZoomed = true;
         currentZoom = level;
         applyTransform();
       } : undefined,
       fitToPage: isImage ? () => {
-        currentZoom = 1.0;
-        rotation = 0;
-        applyTransform();
-      } : undefined,
-      resetZoom: isImage ? () => {
+        isUserZoomed = false;
+        fitMode = 'page';
         currentZoom = 1.0;
         rotation = 0;
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
+        updateBaseDimensions();
+        applyTransform();
+      } : undefined,
+      fitToWidth: isImage ? () => {
+        isUserZoomed = false;
+        fitMode = 'width';
+        currentZoom = 1.0;
+        rotation = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
+        updateBaseDimensions();
+        applyTransform();
+      } : undefined,
+      resetZoom: isImage ? () => {
+        isUserZoomed = false;
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        currentZoom = 1.0;
+        rotation = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
+        updateBaseDimensions();
         applyTransform();
       } : undefined,
       rotateCW: isImage || isVideo ? () => {

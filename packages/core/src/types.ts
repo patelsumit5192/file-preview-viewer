@@ -198,7 +198,7 @@ export interface PreviewViewerOptions extends ToolbarConfig {
   toolbar?: boolean | (ToolbarConfig & Record<string, boolean | undefined>);
   /** Toolbar position */
   toolbarPosition?: 'top' | 'bottom';
-  /** Fit mode: 'page' (fill frame width with minimal margins) or 'width' */
+  /** Fit mode: 'width' (default, fit available container width preserving aspect ratio) or 'page' */
   fitMode?: 'page' | 'width';
   /** Show thumbnail sidebar initially */
   showThumbnails?: boolean;

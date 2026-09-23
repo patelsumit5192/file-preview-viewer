@@ -90,6 +90,14 @@ export class DocxPlugin implements PreviewPlugin {
         execute: () => instance.resetZoom?.()
       },
       {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -397,18 +405,23 @@ export class DocxPlugin implements PreviewPlugin {
 
     scale = 1.0;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = 'page';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let isUserZoomed = false;
 
-    const calculateFitScale = (_mode: 'width' | 'page' = fitMode) => {
+    const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
       const elW = activeEl.offsetWidth || 816;
+      const elH = activeEl.offsetHeight || 1056;
       
       // Minimal side margins (16px on each side, safe from vertical scrollbar)
       const availW = Math.max(280, ctx.container.clientWidth - 32);
+      const availH = Math.max(280, ctx.container.clientHeight - 32);
       const sW = availW / elW;
+      const sH = availH / elH;
 
-      // Fit to Page fills the frame horizontally with only minimal side margins
+      if (mode === 'page') {
+        return Math.max(0.35, Math.min(3.0, Math.min(sW, sH)));
+      }
       return Math.max(0.35, Math.min(3.0, sW));
     };
 
@@ -433,7 +446,7 @@ export class DocxPlugin implements PreviewPlugin {
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
         if (!isUserZoomed) {
-          const newFit = calculateFitScale('page');
+          const newFit = calculateFitScale(fitMode);
           if (Math.abs(scale - newFit) > 0.015) {
             scale = newFit;
             applyTransform();
@@ -444,7 +457,7 @@ export class DocxPlugin implements PreviewPlugin {
     }
 
     setTimeout(() => {
-      scale = calculateFitScale('page');
+      scale = calculateFitScale(fitMode);
       applyTransform();
     }, 40);
 
@@ -486,13 +499,22 @@ export class DocxPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         isUserZoomed = false;
+        fitMode = 'page';
         scale = calculateFitScale('page');
+        rotation = 0;
+        applyTransform();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
+        fitMode = 'width';
+        scale = calculateFitScale('width');
         rotation = 0;
         applyTransform();
       },
       resetZoom: () => {
         isUserZoomed = false;
-        scale = calculateFitScale('page');
+        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
+        scale = calculateFitScale(fitMode);
         rotation = 0;
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
