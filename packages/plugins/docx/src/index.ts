@@ -129,7 +129,7 @@ export class DocxPlugin implements PreviewPlugin {
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-docx-wrapper';
-    wrapper.style.transformOrigin = 'top center';
+    wrapper.style.transformOrigin = 'center center';
     wrapper.style.transition = 'transform 0.2s ease';
     wrapper.style.padding = '0';
     wrapper.style.maxWidth = 'none';
@@ -139,12 +139,35 @@ export class DocxPlugin implements PreviewPlugin {
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
     wrapper.style.boxSizing = 'border-box';
+    wrapper.style.flexShrink = '0';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-docx-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-docx-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.padding = '16px 8px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    sizer.appendChild(wrapper);
+    scrollWrapper.appendChild(sizer);
     
-    ctx.container.style.overflowX = 'hidden';
-    ctx.container.style.overflowY = 'auto';
-    ctx.container.style.padding = '16px 8px';
+    ctx.container.style.overflow = 'auto';
+    ctx.container.style.padding = '0';
     ctx.container.style.backgroundColor = '#f1f5f9';
-    ctx.container.appendChild(wrapper);
+    ctx.container.appendChild(scrollWrapper);
 
     // Inject override styles so docx-preview pages match our modern light theme
     const styleOverride = document.createElement('style');
@@ -189,9 +212,9 @@ export class DocxPlugin implements PreviewPlugin {
         useBase64URL: true,
       });
 
-      // Ensure wrapper remains attached to container
-      if (!ctx.container.contains(wrapper)) {
-        ctx.container.appendChild(wrapper);
+      // Ensure wrapper remains attached to sizer
+      if (!sizer.contains(wrapper)) {
+        sizer.appendChild(wrapper);
       }
 
       // Check if visible content was actually produced
@@ -238,8 +261,8 @@ export class DocxPlugin implements PreviewPlugin {
       try {
         wrapper.innerHTML = '';
         this.renderXmlFallback(ctx, wrapper, createdBlobUrls);
-        if (!ctx.container.contains(wrapper)) {
-          ctx.container.appendChild(wrapper);
+        if (!sizer.contains(wrapper)) {
+          sizer.appendChild(wrapper);
         }
         renderedSuccessfully = true;
       } catch (fallbackErr: any) {
@@ -256,8 +279,8 @@ export class DocxPlugin implements PreviewPlugin {
             </p>
           </div>
         `;
-        if (!ctx.container.contains(wrapper)) {
-          ctx.container.appendChild(wrapper);
+        if (!sizer.contains(wrapper)) {
+          sizer.appendChild(wrapper);
         }
       }
     }
@@ -390,15 +413,20 @@ export class DocxPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
-      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'top center';
       const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
+      const elW = activeEl.offsetWidth || 816;
       const elH = activeEl.offsetHeight || 1056;
-      if (scale > 1.0) {
-        wrapper.style.marginBottom = `${Math.round((elH * scale) - elH + 32)}px`;
-      } else {
-        wrapper.style.marginBottom = '32px';
-      }
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? elH : elW) * scale);
+      const boxH = Math.round((isRotated90 ? elW : elH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      wrapper.style.width = `${elW}px`;
+      wrapper.style.height = `${elH}px`;
+      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      wrapper.style.transformOrigin = 'center center';
     };
 
     let resizeObserver: ResizeObserver | null = null;
@@ -426,7 +454,7 @@ export class DocxPlugin implements PreviewPlugin {
       for (const url of createdBlobUrls) {
         URL.revokeObjectURL(url);
       }
-      wrapper.remove();
+      scrollWrapper.remove();
       styleOverride.remove();
       ctx.container.innerHTML = '';
     };

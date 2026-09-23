@@ -148,7 +148,7 @@ export class ExcelPlugin implements PreviewPlugin {
     contentArea.style.flex = '1';
     contentArea.style.overflow = 'auto';
     contentArea.style.padding = '16px';
-    contentArea.style.transformOrigin = 'top left';
+    contentArea.style.boxSizing = 'border-box';
 
     const tabsArea = document.createElement('div');
     tabsArea.className = 'fp-excel-tabs';
@@ -165,20 +165,39 @@ export class ExcelPlugin implements PreviewPlugin {
     ctx.container.appendChild(container);
 
     let scale = 1.0;
+    let isUserZoomed = false;
     let currentSheetIndex = 1;
     let sheetNames: string[] = [];
     let wb: XLSX.WorkBook | null = null;
 
     const applyTransform = () => {
-      contentArea.style.transform = `scale(${scale})`;
-      contentArea.style.transformOrigin = 'top left';
+      const sizer = contentArea.querySelector('.fp-excel-sizer') as HTMLElement;
+      const table = contentArea.querySelector('table');
+      if (!sizer || !table) return;
+
+      if (!(table as any)._baseWidth && table.offsetWidth > 0) {
+        (table as any)._baseWidth = table.offsetWidth;
+        (table as any)._baseHeight = table.offsetHeight;
+      }
+      const baseW = (table as any)._baseWidth || table.offsetWidth || 800;
+      const baseH = (table as any)._baseHeight || table.offsetHeight || 600;
+      const scaledW = Math.round(baseW * scale);
+      const scaledH = Math.round(baseH * scale);
+
+      sizer.style.width = `${scaledW}px`;
+      sizer.style.height = `${scaledH}px`;
+      table.style.position = 'absolute';
+      table.style.top = '0';
+      table.style.left = '0';
+      table.style.transform = `scale(${scale})`;
+      table.style.transformOrigin = 'top left';
     };
 
     const calculateFitScale = () => {
       const table = contentArea.querySelector('table');
       if (!table) return 1.0;
       const availW = Math.max(280, container.clientWidth - 48);
-      const tW = table.offsetWidth || 800;
+      const tW = (table as any)._baseWidth || table.offsetWidth || 800;
       // Automatically fit table to visible page width
       return Math.max(0.4, Math.min(1.0, availW / tW));
     };
@@ -205,11 +224,16 @@ export class ExcelPlugin implements PreviewPlugin {
         return;
       }
 
+      const sizer = document.createElement('div');
+      sizer.className = 'fp-excel-sizer';
+      sizer.style.position = 'relative';
+
       const html = XLSX.utils.sheet_to_html(ws, { id: 'fp-sheet-table', editable: false });
-      contentArea.innerHTML = html;
+      sizer.innerHTML = html;
+      contentArea.appendChild(sizer);
 
       // Style the table
-      const table = contentArea.querySelector('table');
+      const table = sizer.querySelector('table');
       if (table) {
         table.style.borderCollapse = 'collapse';
         table.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -251,14 +275,18 @@ export class ExcelPlugin implements PreviewPlugin {
 
       // Automatically set fit to page by default
       requestAnimationFrame(() => {
-        scale = calculateFitScale();
+        if (!isUserZoomed) {
+          scale = calculateFitScale();
+        }
         applyTransform();
       });
     };
 
     const ro = new ResizeObserver(() => {
-      scale = calculateFitScale();
-      applyTransform();
+      if (!isUserZoomed) {
+        scale = calculateFitScale();
+        applyTransform();
+      }
     });
     ro.observe(container);
 
@@ -300,23 +328,28 @@ export class ExcelPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.15;
         applyTransform();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyTransform();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         scale = calculateFitScale();
         applyTransform();
       },
       resetZoom: () => {
+        isUserZoomed = false;
         scale = calculateFitScale();
         contentArea.scrollTop = 0;
         contentArea.scrollLeft = 0;

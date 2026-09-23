@@ -395,14 +395,37 @@ export class RtfPlugin implements PreviewPlugin {
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
     wrapper.style.backgroundColor = 'transparent';
-    wrapper.style.transformOrigin = 'top center';
+    wrapper.style.transformOrigin = 'center center';
     wrapper.style.transition = 'transform 0.15s ease';
+    wrapper.style.flexShrink = '0';
 
-    ctx.container.style.overflowX = 'hidden';
-    ctx.container.style.overflowY = 'auto';
-    ctx.container.style.padding = '16px 8px';
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-rtf-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-rtf-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.padding = '16px 8px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    sizer.appendChild(wrapper);
+    scrollWrapper.appendChild(sizer);
+
+    ctx.container.style.overflow = 'auto';
+    ctx.container.style.padding = '0';
     ctx.container.style.backgroundColor = '#f1f5f9';
-    ctx.container.appendChild(wrapper);
+    ctx.container.appendChild(scrollWrapper);
 
     let scale = 1.0;
     let rotation = 0;
@@ -426,12 +449,19 @@ export class RtfPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
-      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'top center';
+      const elW = pageWidth;
       const baseH = pageHeight;
-      const scaledH = baseH * scale;
-      const extraH = Math.max(0, scaledH - baseH);
-      wrapper.style.marginBottom = `${extraH + 32}px`;
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? baseH : elW) * scale);
+      const boxH = Math.round((isRotated90 ? elW : baseH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      wrapper.style.width = `${elW}px`;
+      wrapper.style.height = `${baseH}px`;
+      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      wrapper.style.transformOrigin = 'center center';
     };
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -746,7 +776,7 @@ export class RtfPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       resizeObserver?.disconnect();
-      wrapper.remove();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 

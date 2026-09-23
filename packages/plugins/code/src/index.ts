@@ -213,16 +213,30 @@ export class CodePlugin implements PreviewPlugin {
     let isUserZoomed = false;
     const pre = document.createElement('pre');
     const code = document.createElement('code');
+    const sizer = document.createElement('div');
+    const scrollWrapper = document.createElement('div');
 
     if (isTxt) {
-      container.style.overflowX = 'hidden';
-      container.style.overflowY = 'auto';
+      container.style.overflow = 'auto';
       container.style.backgroundColor = '#f1f5f9';
-      container.style.padding = '16px 8px';
-      container.style.boxSizing = 'border-box';
-      container.style.display = 'flex';
-      container.style.flexDirection = 'column';
-      container.style.alignItems = 'center';
+
+      scrollWrapper.className = 'fp-code-scroll-wrapper';
+      scrollWrapper.style.minWidth = '100%';
+      scrollWrapper.style.minHeight = '100%';
+      scrollWrapper.style.width = 'max-content';
+      scrollWrapper.style.height = 'max-content';
+      scrollWrapper.style.display = 'flex';
+      scrollWrapper.style.justifyContent = 'center';
+      scrollWrapper.style.alignItems = 'flex-start';
+      scrollWrapper.style.padding = '16px 8px';
+      scrollWrapper.style.boxSizing = 'border-box';
+
+      sizer.className = 'fp-code-sizer';
+      sizer.style.position = 'relative';
+      sizer.style.flexShrink = '0';
+      sizer.style.display = 'flex';
+      sizer.style.justifyContent = 'center';
+      sizer.style.alignItems = 'center';
 
       pre.style.margin = '0 auto';
       pre.style.fontFamily = "Consolas, 'Courier New', monospace";
@@ -239,8 +253,9 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.boxSizing = 'border-box';
       pre.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
       pre.style.borderRadius = '4px';
-      pre.style.transformOrigin = 'top center';
+      pre.style.transformOrigin = 'center center';
       pre.style.transition = 'transform 0.15s ease';
+      pre.style.flexShrink = '0';
     } else {
       container.style.overflow = 'auto';
       container.style.backgroundColor = '#1e1e1e';
@@ -278,7 +293,13 @@ export class CodePlugin implements PreviewPlugin {
     renderCodePage(rawPages[0] || (isTxt ? '' : fullText));
     
     pre.appendChild(code);
-    container.appendChild(pre);
+    if (isTxt) {
+      sizer.appendChild(pre);
+      scrollWrapper.appendChild(sizer);
+      container.appendChild(scrollWrapper);
+    } else {
+      container.appendChild(pre);
+    }
 
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
@@ -301,10 +322,18 @@ export class CodePlugin implements PreviewPlugin {
 
     const updateTransform = () => {
       if (isTxt) {
+        const elW = 816;
+        const baseH = pre.offsetHeight || 1056;
+        const isRotated90 = (rotation % 180 !== 0);
+        const boxW = Math.round((isRotated90 ? baseH : elW) * zoomLevel);
+        const boxH = Math.round((isRotated90 ? elW : baseH) * zoomLevel);
+
+        sizer.style.width = `${boxW}px`;
+        sizer.style.height = `${boxH}px`;
+
+        pre.style.width = `${elW}px`;
         pre.style.transform = `scale(${zoomLevel}) rotate(${rotation}deg)`;
-        const scaledH = 1056 * zoomLevel;
-        const extraH = Math.max(0, scaledH - 1056);
-        pre.style.marginBottom = `${extraH + 32}px`;
+        pre.style.transformOrigin = 'center center';
       } else {
         pre.style.transform = `rotate(${rotation}deg)`;
         pre.style.fontSize = `${fontSize}px`;

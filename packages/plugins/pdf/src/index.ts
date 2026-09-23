@@ -162,16 +162,23 @@ export class PdfPlugin implements PreviewPlugin {
     container.className = 'fp-pdf-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflowX = 'hidden';
-    container.style.overflowY = 'auto';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = 'flex-start';
-    container.style.padding = '16px 8px';
+    container.style.overflow = 'auto';
     container.style.backgroundColor = '#0f172a';
     container.style.boxSizing = 'border-box';
     container.style.position = 'relative';
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-pdf-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.flexDirection = 'column';
+    scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.justifyContent = 'flex-start';
+    scrollWrapper.style.padding = '16px 8px';
+    scrollWrapper.style.boxSizing = 'border-box';
 
     const pageCard = document.createElement('div');
     pageCard.className = 'fp-pdf-page-card';
@@ -186,7 +193,8 @@ export class PdfPlugin implements PreviewPlugin {
 
     let canvas = document.createElement('canvas');
     pageCard.appendChild(canvas);
-    container.appendChild(pageCard);
+    scrollWrapper.appendChild(pageCard);
+    container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
     const standardFontsUrl = (typeof window !== 'undefined' && (window as any).__PDF_STANDARD_FONTS_URL__) || './standard_fonts/';

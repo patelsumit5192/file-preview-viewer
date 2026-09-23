@@ -89,17 +89,63 @@ export class ArchivePlugin implements PreviewPlugin {
       width: 100%;
       height: 100%;
       overflow: auto;
-      padding: 24px;
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      transform-origin: top left;
-      transition: transform 0.2s ease;
     `;
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-archive-scroll-wrapper';
+    scrollWrapper.style.cssText = `
+      min-width: 100%;
+      min-height: 100%;
+      width: max-content;
+      height: max-content;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 24px;
+      box-sizing: border-box;
+    `;
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-archive-sizer';
+    sizer.style.cssText = `
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    `;
+
+    const card = document.createElement('div');
+    card.className = 'fp-archive-card';
+    card.style.cssText = `
+      width: 900px;
+      box-sizing: border-box;
+      transform-origin: top center;
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    `;
+
+    sizer.appendChild(card);
+    scrollWrapper.appendChild(sizer);
+    wrapper.appendChild(scrollWrapper);
+
     ctx.container.innerHTML = '';
     ctx.container.style.overflow = 'auto';
     ctx.container.appendChild(wrapper);
 
     let scale = 1.0;
+
+    const applyTransform = () => {
+      const boxW = Math.round(900 * scale);
+      const cardH = card.offsetHeight || 600;
+      const boxH = Math.round(cardH * scale);
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+      card.style.transform = `scale(${scale})`;
+      card.style.transformOrigin = 'top center';
+    };
 
     const entries = await new Promise<ArchiveEntry[]>((resolve, reject) => {
       unzip(new Uint8Array(ctx.buffer), (err, unzipped) => {
@@ -126,7 +172,7 @@ export class ArchivePlugin implements PreviewPlugin {
     const totalUncompressedSize = entries.reduce((acc, e) => acc + e.size, 0);
 
     const renderUI = (filteredEntries: ArchiveEntry[]) => {
-      wrapper.innerHTML = `
+      card.innerHTML = `
         <div style="max-width: 900px; margin: 0 auto; background: var(--fp-bg, #ffffff); border: 1px solid var(--fp-border, #e5e7eb); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
           <div style="padding: 16px 20px; background: var(--fp-toolbar-bg, #f9fafb); border-bottom: 1px solid var(--fp-border, #e5e7eb); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
@@ -157,7 +203,7 @@ export class ArchivePlugin implements PreviewPlugin {
         </div>
       `;
 
-      const tbody = wrapper.querySelector('#fp-archive-body') as HTMLElement;
+      const tbody = card.querySelector('#fp-archive-body') as HTMLElement;
       if (filteredEntries.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="padding: 24px; text-align: center; color: #9ca3af;">No matching files found</td></tr>`;
       } else {
@@ -190,19 +236,21 @@ export class ArchivePlugin implements PreviewPlugin {
       });
 
       // Handle search
-      const searchInput = wrapper.querySelector('#fp-archive-search') as HTMLInputElement;
+      const searchInput = card.querySelector('#fp-archive-search') as HTMLInputElement;
       if (searchInput) {
         searchInput.addEventListener('input', () => {
           const q = searchInput.value.toLowerCase().trim();
           const filtered = q ? entries.filter(e => e.path.toLowerCase().includes(q)) : entries;
           renderUI(filtered);
-          const newSearch = wrapper.querySelector('#fp-archive-search') as HTMLInputElement;
+          const newSearch = card.querySelector('#fp-archive-search') as HTMLInputElement;
           if (newSearch) {
             newSearch.value = q;
             newSearch.focus();
           }
         });
       }
+
+      applyTransform();
     };
 
     renderUI(entries);
@@ -218,26 +266,26 @@ export class ArchivePlugin implements PreviewPlugin {
       destroy: cleanup,
       zoomIn: () => {
         scale += 0.1;
-        wrapper.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       zoomOut: () => {
         scale = Math.max(0.3, scale - 0.1);
-        wrapper.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        wrapper.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       fitToPage: () => {
         scale = 1.0;
-        wrapper.style.transform = 'scale(1)';
+        applyTransform();
       },
       resetZoom: () => {
         scale = 1.0;
-        wrapper.style.transform = 'scale(1)';
-        ctx.container.scrollTop = 0;
-        ctx.container.scrollLeft = 0;
+        wrapper.scrollTop = 0;
+        wrapper.scrollLeft = 0;
+        applyTransform();
       },
       download: () => {
         downloadFile(ctx.buffer, ctx.metadata.name || 'archive.zip', 'application/zip');

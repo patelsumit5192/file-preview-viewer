@@ -139,12 +139,32 @@ export class PptxPlugin implements PreviewPlugin {
       width: 100%;
       height: 100%;
       overflow: auto;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 24px;
       box-sizing: border-box;
       background: var(--fp-bg-canvas, #525659);
+    `;
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-pptx-scroll-wrapper';
+    scrollWrapper.style.cssText = `
+      min-width: 100%;
+      min-height: 100%;
+      width: max-content;
+      height: max-content;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      box-sizing: border-box;
+    `;
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-pptx-sizer';
+    sizer.style.cssText = `
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     `;
 
     const slideContainer = document.createElement('div');
@@ -154,15 +174,16 @@ export class PptxPlugin implements PreviewPlugin {
       border-radius: 4px;
       overflow: hidden;
       background: #ffffff;
-      transform-origin: top center;
+      transform-origin: center center;
       transition: transform 0.2s ease;
-      max-width: calc(100% - 32px);
-      max-height: calc(100% - 48px);
+      flex-shrink: 0;
     `;
 
     const canvas = document.createElement('canvas');
     slideContainer.appendChild(canvas);
-    wrapper.appendChild(slideContainer);
+    sizer.appendChild(slideContainer);
+    scrollWrapper.appendChild(sizer);
+    wrapper.appendChild(scrollWrapper);
 
     ctx.container.innerHTML = '';
     ctx.container.style.overflow = 'auto';
@@ -177,7 +198,19 @@ export class PptxPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
+      const cW = canvas.offsetWidth || 1280;
+      const cH = canvas.offsetHeight || 720;
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? cH : cW) * scale);
+      const boxH = Math.round((isRotated90 ? cW : cH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      slideContainer.style.width = `${cW}px`;
+      slideContainer.style.height = `${cH}px`;
       slideContainer.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      slideContainer.style.transformOrigin = 'center center';
     };
 
     const renderCurrentSlide = async () => {

@@ -133,18 +133,33 @@ export class PptPlugin implements PreviewPlugin {
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.overflow = 'auto';
-    container.style.display = 'flex';
-    container.style.justifyContent = 'center';
-    container.style.alignItems = 'center';
-    container.style.padding = '32px 16px';
     container.style.backgroundColor = '#0f172a';
     container.style.boxSizing = 'border-box';
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-ppt-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.padding = '32px 16px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-ppt-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
 
     const slideCard = document.createElement('div');
     slideCard.className = 'fp-ppt-slide-card';
     slideCard.style.width = '960px';
-    slideCard.style.maxWidth = 'calc(100% - 32px)';
-    slideCard.style.maxHeight = 'calc(100% - 48px)';
+    slideCard.style.height = '540px';
     slideCard.style.aspectRatio = '16 / 9';
     slideCard.style.backgroundColor = '#ffffff';
     slideCard.style.boxShadow = '0 12px 40px rgba(0,0,0,0.35)';
@@ -155,7 +170,9 @@ export class PptPlugin implements PreviewPlugin {
     slideCard.style.transformOrigin = 'center center';
     slideCard.style.flexShrink = '0';
 
-    container.appendChild(slideCard);
+    sizer.appendChild(slideCard);
+    scrollWrapper.appendChild(sizer);
+    container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
@@ -171,7 +188,19 @@ export class PptPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
+      const cW = 960;
+      const cH = 540;
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? cH : cW) * scale);
+      const boxH = Math.round((isRotated90 ? cW : cH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      slideCard.style.width = `${cW}px`;
+      slideCard.style.height = `${cH}px`;
       slideCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      slideCard.style.transformOrigin = 'center center';
     };
 
     setTimeout(() => {

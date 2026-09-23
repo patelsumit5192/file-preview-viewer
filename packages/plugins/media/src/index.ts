@@ -223,19 +223,100 @@ export class MediaPlugin implements PreviewPlugin {
       element.textContent = 'Unsupported media type';
     }
     
-    ctx.container.style.display = 'flex';
-    ctx.container.style.alignItems = 'center';
-    ctx.container.style.justifyContent = 'center';
-    ctx.container.style.overflow = 'hidden';
-    ctx.container.appendChild(element);
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-media-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.padding = '16px';
+    scrollWrapper.style.boxSizing = 'border-box';
 
-    const applyTransform = () => {
-      element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-media-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
+
+    sizer.appendChild(element);
+    scrollWrapper.appendChild(sizer);
+
+    ctx.container.style.overflow = 'auto';
+    ctx.container.style.padding = '0';
+    ctx.container.innerHTML = '';
+    ctx.container.appendChild(scrollWrapper);
+
+    let naturalW = 800;
+    let naturalH = 600;
+    let baseW = 800;
+    let baseH = 600;
+
+    const updateBaseDimensions = () => {
+      if (!isImage) return;
+      const img = element as HTMLImageElement;
+      naturalW = img.naturalWidth || naturalW;
+      naturalH = img.naturalHeight || naturalH;
+
+      const availW = Math.max(100, ctx.container.clientWidth - 48);
+      const availH = Math.max(100, ctx.container.clientHeight - 48);
+      const fitRatio = Math.min(1.0, availW / naturalW, availH / naturalH);
+      baseW = Math.max(1, Math.round(naturalW * fitRatio));
+      baseH = Math.max(1, Math.round(naturalH * fitRatio));
     };
 
+    const applyTransform = () => {
+      if (isImage) {
+        updateBaseDimensions();
+        const isRotated90 = (rotation % 180 !== 0);
+        const boxW = Math.round((isRotated90 ? baseH : baseW) * currentZoom);
+        const boxH = Math.round((isRotated90 ? baseW : baseH) * currentZoom);
+
+        sizer.style.width = `${boxW}px`;
+        sizer.style.height = `${boxH}px`;
+
+        element.style.width = `${baseW}px`;
+        element.style.height = `${baseH}px`;
+        element.style.maxWidth = 'none';
+        element.style.maxHeight = 'none';
+        element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+        element.style.transformOrigin = 'center center';
+        element.style.flexShrink = '0';
+      } else {
+        element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+      }
+    };
+
+    if (isImage) {
+      const img = element as HTMLImageElement;
+      if (img.complete && img.naturalWidth > 0) {
+        updateBaseDimensions();
+        applyTransform();
+      } else {
+        img.onload = () => {
+          updateBaseDimensions();
+          applyTransform();
+        };
+      }
+    }
+
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          if (currentZoom === 1.0) {
+            applyTransform();
+          }
+        })
+      : null;
+    ro?.observe(ctx.container);
+
     const cleanup = () => {
+      ro?.disconnect();
       if (url) URL.revokeObjectURL(url);
-      element.remove();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 

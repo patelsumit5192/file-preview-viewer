@@ -89,10 +89,12 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
       ADD_ATTR: ['target', 'rel']
     });
 
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-html-sizer';
+    sizer.style.position = 'relative';
+
     const iframe = document.createElement('iframe');
     iframe.className = 'fp-html-iframe';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
     iframe.style.border = 'none';
     iframe.style.backgroundColor = '#ffffff';
     iframe.style.transformOrigin = 'top left';
@@ -100,18 +102,43 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
     // Sandbox without allow-scripts ensures no malicious JS can execute
     iframe.sandbox.add('allow-same-origin');
 
+    sizer.appendChild(iframe);
+
     ctx.container.style.overflow = 'auto';
     ctx.container.style.width = '100%';
     ctx.container.style.height = '100%';
-    ctx.container.appendChild(iframe);
+    ctx.container.innerHTML = '';
+    ctx.container.appendChild(sizer);
 
     // Set sanitized content via srcdoc
     iframe.srcdoc = sanitized;
 
     let scale = 1.0;
 
+    const applyTransform = () => {
+      const baseW = Math.max(600, ctx.container.clientWidth || 800);
+      const baseH = Math.max(400, ctx.container.clientHeight || 600);
+      const scaledW = Math.round(baseW * scale);
+      const scaledH = Math.round(baseH * scale);
+
+      sizer.style.width = `${scaledW}px`;
+      sizer.style.height = `${scaledH}px`;
+
+      iframe.style.position = 'absolute';
+      iframe.style.top = '0';
+      iframe.style.left = '0';
+      iframe.style.width = `${baseW}px`;
+      iframe.style.height = `${baseH}px`;
+      iframe.style.transform = `scale(${scale})`;
+      iframe.style.transformOrigin = 'top left';
+    };
+
+    requestAnimationFrame(() => {
+      applyTransform();
+    });
+
     const cleanup = () => {
-      iframe.remove();
+      sizer.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -121,26 +148,26 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
       destroy: cleanup,
       zoomIn: () => {
         scale += 0.1;
-        iframe.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       zoomOut: () => {
         scale = Math.max(0.2, scale - 0.1);
-        iframe.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         scale = level;
-        iframe.style.transform = `scale(${scale})`;
+        applyTransform();
       },
       fitToPage: () => {
         scale = 1.0;
-        iframe.style.transform = 'scale(1)';
+        applyTransform();
       },
       resetZoom: () => {
         scale = 1.0;
-        iframe.style.transform = 'scale(1)';
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
+        applyTransform();
       },
       copy: () => {
         navigator.clipboard.writeText(rawHtml);

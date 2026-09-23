@@ -162,26 +162,47 @@ export class CsvPlugin implements PreviewPlugin {
     ctx.container.appendChild(container);
 
     let scale = 1.0;
+    let isUserZoomed = false;
 
     const calculateFitScale = () => {
       const availW = Math.max(280, container.clientWidth - 48);
-      const tW = table.offsetWidth || 800;
+      const tW = (table as any)._baseWidth || table.offsetWidth || 800;
       return Math.max(0.4, Math.min(1.0, availW / tW));
     };
 
     const applyScale = () => {
-      tableWrapper.style.transform = `scale(${scale})`;
+      if (!(table as any)._baseWidth && table.offsetWidth > 0) {
+        (table as any)._baseWidth = table.offsetWidth;
+        (table as any)._baseHeight = table.offsetHeight;
+      }
+      const baseW = (table as any)._baseWidth || table.offsetWidth || 800;
+      const baseH = (table as any)._baseHeight || table.offsetHeight || 600;
+      const scaledW = Math.round(baseW * scale);
+      const scaledH = Math.round(baseH * scale);
+
+      tableWrapper.style.position = 'relative';
+      tableWrapper.style.width = `${scaledW}px`;
+      tableWrapper.style.height = `${scaledH}px`;
+      table.style.position = 'absolute';
+      table.style.top = '0';
+      table.style.left = '0';
+      table.style.transform = `scale(${scale})`;
+      table.style.transformOrigin = 'top left';
     };
 
     // Automatically fit to page width by default
     requestAnimationFrame(() => {
-      scale = calculateFitScale();
+      if (!isUserZoomed) {
+        scale = calculateFitScale();
+      }
       applyScale();
     });
 
     const ro = new ResizeObserver(() => {
-      scale = calculateFitScale();
-      applyScale();
+      if (!isUserZoomed) {
+        scale = calculateFitScale();
+        applyScale();
+      }
     });
     ro.observe(container);
 
@@ -276,23 +297,28 @@ export class CsvPlugin implements PreviewPlugin {
         }];
       },
       zoomIn: () => {
+        isUserZoomed = true;
         scale += 0.1;
         applyScale();
       },
       zoomOut: () => {
+        isUserZoomed = true;
         scale = Math.max(0.2, scale - 0.1);
         applyScale();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
+        isUserZoomed = true;
         scale = level;
         applyScale();
       },
       fitToPage: () => {
+        isUserZoomed = false;
         scale = calculateFitScale();
         applyScale();
       },
       resetZoom: () => {
+        isUserZoomed = false;
         scale = calculateFitScale();
         container.scrollTop = 0;
         container.scrollLeft = 0;

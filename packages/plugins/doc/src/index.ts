@@ -133,14 +133,31 @@ export class DocPlugin implements PreviewPlugin {
     container.className = 'fp-doc-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflowX = 'hidden';
-    container.style.overflowY = 'auto';
-    container.style.padding = '16px 8px';
+    container.style.overflow = 'auto';
     container.style.backgroundColor = '#f1f5f9';
-    container.style.display = 'flex';
-    container.style.justifyContent = 'center';
-    container.style.alignItems = 'flex-start';
 
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-doc-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.padding = '16px 8px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-doc-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
+
+    scrollWrapper.appendChild(sizer);
+    container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
@@ -201,10 +218,11 @@ export class DocPlugin implements PreviewPlugin {
       pageCard.style.padding = '72px 56px';
       pageCard.style.boxSizing = 'border-box';
       pageCard.style.display = i === 0 ? 'block' : 'none';
-      pageCard.style.transformOrigin = 'top center';
+      pageCard.style.transformOrigin = 'center center';
       pageCard.style.transition = 'transform 0.15s ease';
       pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
       pageCard.style.color = '#1e293b';
+      pageCard.style.flexShrink = '0';
 
       if (isFallback && i === 0) {
         pageCard.innerHTML = `
@@ -218,7 +236,7 @@ export class DocPlugin implements PreviewPlugin {
         pageCard.innerHTML = this.formatDocToHtml(rawPages[i], ctx.metadata.name || 'Document');
       }
 
-      container.appendChild(pageCard);
+      sizer.appendChild(pageCard);
       pageCards.push(pageCard);
     }
 
@@ -227,11 +245,18 @@ export class DocPlugin implements PreviewPlugin {
     const applyTransform = () => {
       const activeCard = pageCards[currentPage - 1];
       if (activeCard) {
-        activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        const baseW = 816;
         const baseH = activeCard.offsetHeight || 1056;
-        const scaledH = baseH * scale;
-        const extraH = Math.max(0, scaledH - baseH);
-        activeCard.style.marginBottom = `${extraH + 32}px`;
+        const isRotated90 = (rotation % 180 !== 0);
+        const boxW = Math.round((isRotated90 ? baseH : baseW) * scale);
+        const boxH = Math.round((isRotated90 ? baseW : baseH) * scale);
+
+        sizer.style.width = `${boxW}px`;
+        sizer.style.height = `${boxH}px`;
+
+        activeCard.style.width = `${baseW}px`;
+        activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        activeCard.style.transformOrigin = 'center center';
       }
     };
 
@@ -240,11 +265,11 @@ export class DocPlugin implements PreviewPlugin {
       pageCards.forEach((card, idx) => {
         if (idx + 1 === currentPage) {
           card.style.display = 'block';
-          card.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
         } else {
           card.style.display = 'none';
         }
       });
+      applyTransform();
       container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
@@ -328,6 +353,8 @@ export class DocPlugin implements PreviewPlugin {
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
         applyTransform();

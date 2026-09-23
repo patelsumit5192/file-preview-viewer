@@ -178,10 +178,28 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     container.className = 'fp-odf-container';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.overflowX = 'hidden';
-    container.style.overflowY = 'auto';
-    container.style.padding = '16px 8px';
+    container.style.overflow = 'auto';
     container.style.backgroundColor = '#f1f5f9';
+
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-odf-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.padding = '16px 8px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-odf-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-odf-wrapper';
@@ -191,10 +209,13 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     wrapper.style.backgroundColor = '#ffffff';
     wrapper.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
     wrapper.style.borderRadius = '4px';
-    wrapper.style.transformOrigin = 'top center';
+    wrapper.style.transformOrigin = 'center center';
     wrapper.style.transition = 'transform 0.15s ease';
+    wrapper.style.flexShrink = '0';
 
-    container.appendChild(wrapper);
+    sizer.appendChild(wrapper);
+    scrollWrapper.appendChild(sizer);
+    container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
     let scale = 1.0;
@@ -227,13 +248,20 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
-      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'top center';
       const activeSlide = slides[currentPage - 1];
+      const elW = isPresentation ? 960 : 816;
       const baseH = activeSlide?.offsetHeight || wrapper.offsetHeight || 1056;
-      const scaledH = baseH * scale;
-      const extraH = Math.max(0, scaledH - baseH);
-      wrapper.style.marginBottom = `${extraH + 32}px`;
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? baseH : elW) * scale);
+      const boxH = Math.round((isRotated90 ? elW : baseH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      wrapper.style.width = `${elW}px`;
+      wrapper.style.height = `${baseH}px`;
+      wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      wrapper.style.transformOrigin = 'center center';
     };
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
