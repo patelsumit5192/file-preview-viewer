@@ -91,14 +91,14 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
   }),
   csv: () => {
     const csvContent = `ID,Product Name,Category,Quantity,Price,Revenue
-101,Universal Viewer SDK,Software,150,$49.99,$7498.50
-102,Cloud Sync Add-on,Services,80,$19.99,$1599.20
-103,Enterprise Support,Services,15,$499.00,$7485.00
-104,React Adapter Pro,Software,220,$29.99,$6597.80
-105,Angular Ivy Plugin,Software,190,$29.99,$5698.10
-106,Vue 3 Wrapper,Software,175,$29.99,$5248.25
-107,3D STL Model Suite,Software,65,$79.00,$5135.00
-108,Audio Studio Engine,Software,310,$25.00,$7750.00`;
+101,Enterprise Cloud Server 4U,Hardware,15,$4299.00,$64485.00
+102,Ultra-Wide 4K IPS Monitor 38",Displays,45,$899.50,$40477.50
+103,Managed Kubernetes Cluster,Cloud Services,12,$1250.00,$15000.00
+104,High-Speed NVMe Storage 4TB,Storage,110,$289.99,$31898.90
+105,Ergonomic Mechanical Keyboard,Peripherals,210,$149.00,$31290.00
+106,Noise-Canceling Studio Headset,Audio,95,$199.95,$18995.25
+107,Smart 100W USB-C Docking Station,Accessories,160,$129.99,$20798.40
+108,Precision Optical CAD Mouse,Peripherals,185,$89.50,$16557.50`;
     return {
       name: 'sales-report.csv',
       ext: '.csv',
@@ -111,42 +111,36 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     data: getSampleUrl('project-files.zip')
   }),
   markdown: () => {
-    const mdContent = `# Universal File Preview — @files-preview-app/preview-file
+    const mdContent = `# Distributed Event Streaming & Consensus Platform
 
-> A single, all-in-one client-side file preview library for **React, Angular, Vue, and Vanilla JS**.
+> High-throughput, distributed event streaming architecture designed for sub-millisecond replication, fault-tolerant event sourcing, and high-availability enterprise workloads.
 
-## ✨ Key Features
-- 🔒 **100% Client-Side**: No cloud servers or Google/Office iframes. Complete data privacy.
-- 🆓 **100% Free**: Zero paywalls, MIT & Apache-2.0 permissive licenses.
-- 🎛️ **Full Toolbar**: Zoom, Rotate, Page Jump, Thumbnails, Print, and Download.
-- ⚡ **Instant Preview**: Fast startup engine with async background rendering.
+## 🚀 Architecture Overview
+- **Zero-Copy Network I/O**: Direct page cache kernel transfers for ultra-low latency.
+- **Raft Distributed Consensus**: Strong consistency across leader and follower quorums.
+- **Multi-Partition Parallelism**: Horizontal scaling with dynamic consumer rebalancing.
+- **End-to-End Cryptographic Integrity**: TLS 1.3 encryption and SHA-256 payload verification.
 
-### 📋 Supported Formats (Locked & Completed)
-| Format Category | File Extensions | Engine / Strategy |
-|---|---|---|
-| PDF Documents | \`.pdf\` | PDF.js + Multi-Page Pagination |
-| Spreadsheets (Modern & Macro) | \`.xlsx\`, \`.xlsm\`, \`.xlsb\`, \`.xltx\`, \`.xltm\` | SheetJS + Styled Grid |
-| Legacy Spreadsheets | \`.xls\` | SheetJS BIFF8 Binary Engine |
-| OpenDocument Spreadsheets | \`.ods\`, \`.ots\` | ODF XML Table Parser |
-| Delimited Data Tables | \`.csv\`, \`.tsv\` | Fast CSV Parser + Dynamic Grid |
-| Plain Text & Configs | \`.txt\`, \`.log\`, \`.conf\`, \`.ini\`, \`.env\` | Code / Monospace Viewer |
-| Rich Text Documents | \`.rtf\` | RTF Tokenizer & Canvas Flow |
-| Formatted Markdown | \`.md\`, \`.markdown\` | marked + Sanitized HTML5 |
-| Sandboxed Webpages | \`.html\`, \`.htm\` | Secure IFrame Sandbox |
-| Source Code & Scripts | \`.ts\`, \`.js\`, \`.json\`, \`.css\`, \`.xml\`, \`.py\`, \`.java\` | Prism Syntax Highlighting |
-| 3D CAD & Mesh Models | \`.stl\`, \`.obj\` | Three.js WebGL Orbit Controls |
-| High-Resolution Images | \`.jpg\`, \`.jpeg\`, \`.png\`, \`.gif\`, \`.webp\`, \`.svg\`, \`.bmp\`, \`.ico\` | Native Image + Panzoom Engine |
-| Audio Media | \`.mp3\`, \`.wav\`, \`.flac\`, \`.aac\`, \`.m4a\`, \`.wma\`, \`.opus\`, \`.weba\` | Vinyl Audio Player + Waveform Visualizer |
-| Video Media | \`.mp4\`, \`.webm\`, \`.ogg\`, \`.mov\` | Responsive HTML5 Video Player |
-| Compressed Archives | \`.zip\` | In-Browser Zip Explorer |
+### 📊 System Performance Benchmarks
+| Cluster Topology | Node Count | Throughput (msg/sec) | P99 Latency | Durability Level |
+|---|---|---|---|---|
+| Edge Cluster | 3 Nodes | 125,000 / sec | 1.2 ms | In-Memory Replicated |
+| Enterprise Production | 7 Nodes | 850,000 / sec | 2.4 ms | Disk Sync & Quorum Ack |
+| Global Multi-Region | 15 Nodes | 2,400,000 / sec | 4.8 ms | Cross-Region Geo-Replicated |
 
-\`\`\`typescript
-// Quick import in any framework
-import { FilePreview } from '@files-preview-app/preview-file/react';
+### 🛠️ Configuration Example
+\`\`\`yaml
+cluster:
+  name: production-us-east
+  partitions: 64
+  replication_factor: 3
+  retention:
+    hours: 168
+    bytes_per_partition: 50GiB
 \`\`\`
 `;
     return {
-      name: 'README.md',
+      name: 'architecture.md',
       ext: '.md',
       data: new Blob([mdContent], { type: 'text/markdown' })
     };
@@ -202,88 +196,122 @@ import { FilePreview } from '@files-preview-app/preview-file/react';
     data: getSampleUrl('pyramid.obj')
   }),
   code: () => {
-    const tsCode = `import { FilePreviewViewer, type PreviewPlugin, type RenderContext, type PreviewInstance } from '@files-preview-app/preview-file';
+    const tsCode = `/**
+ * High-Performance Least-Recently-Used (LRU) Cache Implementation
+ * Provides O(1) amortized read, write, and eviction operations.
+ */
 
-export interface ViewerConfigurationOptions {
-  theme?: 'light' | 'dark';
-  fitMode?: 'width' | 'page';
-  showToolbar?: boolean;
-  toolbarPosition?: 'top' | 'bottom';
-  showThumbnails?: boolean;
-  customPlugins?: PreviewPlugin[];
-  onError?: (error: Error) => void;
-  onPageChange?: (page: number, total: number) => void;
-  onZoomChange?: (scale: number) => void;
+export interface CacheNode<K, V> {
+  key: K;
+  value: V;
+  prev: CacheNode<K, V> | null;
+  next: CacheNode<K, V> | null;
+  expiresAt?: number;
 }
 
-/**
- * Universal File Preview Service — 100% Client-Side Universal Document Viewer
- * High-performance preview engine supporting over 50 document, spreadsheet, code, and multimedia formats.
- */
-export class DocumentPreviewService {
-  private viewer: FilePreviewViewer;
-  private currentInstance: PreviewInstance | null = null;
-  private activeContainerId: string = '';
+export interface LRUCacheOptions {
+  maxSize: number;
+  defaultTtlMs?: number;
+  onEvict?: <K, V>(key: K, value: V) => void;
+}
 
-  constructor(options?: { autoRegisterDefaults?: boolean }) {
-    this.viewer = new FilePreviewViewer(options);
+export class LRUCache<K, V> {
+  private readonly maxSize: number;
+  private readonly defaultTtlMs: number;
+  private readonly map = new Map<K, CacheNode<K, V>>();
+  private head: CacheNode<K, V> | null = null;
+  private tail: CacheNode<K, V> | null = null;
+  private hits = 0;
+  private misses = 0;
+
+  constructor(options: LRUCacheOptions) {
+    this.maxSize = Math.max(1, options.maxSize);
+    this.defaultTtlMs = options.defaultTtlMs ?? 0;
   }
 
-  /**
-   * Initializes and renders a file preview inside the targeted DOM container element.
-   * Automatically calculates initial fit-to-width scaling and attaches interactive controls.
-   */
-  public async loadDocument(
-    targetContainerId: string,
-    fileSource: string | File | Blob | ArrayBuffer,
-    config: ViewerConfigurationOptions = {}
-  ): Promise<PreviewInstance> {
-    const container = document.getElementById(targetContainerId);
-    if (!container) {
-      throw new Error(\`[DocumentPreviewService] Target container element with ID "\${targetContainerId}" was not found in the DOM.\`);
+  public get(key: K): V | undefined {
+    const node = this.map.get(key);
+    if (!node) {
+      this.misses++;
+      return undefined;
+    }
+    if (node.expiresAt && Date.now() > node.expiresAt) {
+      this.delete(key);
+      this.misses++;
+      return undefined;
+    }
+    this.hits++;
+    this.moveToHead(node);
+    return node.value;
+  }
+
+  public set(key: K, value: V, ttlMs?: number): void {
+    const existing = this.map.get(key);
+    const expiresAt = (ttlMs ?? this.defaultTtlMs) > 0 ? Date.now() + (ttlMs ?? this.defaultTtlMs) : undefined;
+
+    if (existing) {
+      existing.value = value;
+      existing.expiresAt = expiresAt;
+      this.moveToHead(existing);
+      return;
     }
 
-    this.activeContainerId = targetContainerId;
+    const node: CacheNode<K, V> = { key, value, prev: null, next: this.head, expiresAt };
+    if (this.head) this.head.prev = node;
+    this.head = node;
+    if (!this.tail) this.tail = node;
 
-    try {
-      this.currentInstance = await this.viewer.preview(container, fileSource, {
-        theme: config.theme ?? 'light',
-        fitMode: config.fitMode ?? 'width',
-        showToolbar: config.showToolbar ?? true,
-        toolbarPosition: config.toolbarPosition ?? 'top',
-        showThumbnails: config.showThumbnails ?? false,
-      });
-
-      console.log(\`[DocumentPreviewService] Document loaded successfully into #\${targetContainerId}.\`);
-      return this.currentInstance;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      console.error(\`[DocumentPreviewService] Failed to load document preview: \${err.message}\`, err);
-      config.onError?.(err);
-      throw err;
+    this.map.set(key, node);
+    if (this.map.size > this.maxSize) {
+      this.evict();
     }
   }
 
-  public zoomIn(): void {
-    this.currentInstance?.zoomIn?.();
+  public delete(key: K): boolean {
+    const node = this.map.get(key);
+    if (!node) return false;
+    this.removeNode(node);
+    this.map.delete(key);
+    return true;
   }
 
-  public zoomOut(): void {
-    this.currentInstance?.zoomOut?.();
+  private moveToHead(node: CacheNode<K, V>): void {
+    if (node === this.head) return;
+    this.removeNode(node);
+    node.prev = null;
+    node.next = this.head;
+    if (this.head) this.head.prev = node;
+    this.head = node;
   }
 
-  public resetZoom(): void {
-    this.currentInstance?.resetZoom?.();
+  private removeNode(node: CacheNode<K, V>): void {
+    if (node.prev) node.prev.next = node.next;
+    if (node.next) node.next.prev = node.prev;
+    if (node === this.head) this.head = node.next;
+    if (node === this.tail) this.tail = node.prev;
   }
 
-  public destroy(): void {
-    this.viewer.destroy();
-    this.currentInstance = null;
+  private evict(): void {
+    if (!this.tail) return;
+    const evicted = this.tail;
+    this.removeNode(evicted);
+    this.map.delete(evicted.key);
+  }
+
+  public getStats() {
+    const total = this.hits + this.misses;
+    return {
+      size: this.map.size,
+      maxSize: this.maxSize,
+      hits: this.hits,
+      misses: this.misses,
+      hitRate: total > 0 ? (this.hits / total).toFixed(4) : '0.0000'
+    };
   }
 }
 `;
     return {
-      name: 'preview-service.ts',
+      name: 'lru-cache.ts',
       ext: '.ts',
       data: new Blob([tsCode], { type: 'text/typescript' })
     };
@@ -300,10 +328,10 @@ export class DocumentPreviewService {
       <circle cx="200" cy="120" r="50" fill="#ffffff" opacity="0.9" />
       <polygon points="185,100 225,120 185,140" fill="#3b82f6" />
       <text x="200" y="220" font-family="-apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">
-        Universal File Preview
+        Cloud Infrastructure
       </text>
       <text x="200" y="245" font-family="-apple-system, sans-serif" font-size="13" fill="#e0e7ff" text-anchor="middle">
-        Vector SVG Graphics
+        Distributed Systems Architecture
       </text>
     </svg>`;
     return {

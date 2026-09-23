@@ -1,6 +1,6 @@
 {
   "name": "@files-preview-app/preview-file",
-  "version": "1.3.17",
+  "version": "1.3.18",
   "description": "Universal file preview library for Web, React, Angular, and Vue. 100% client-side with zero cloud dependency. Preview PDF, Word, Excel, PowerPoint, CSV, ZIP, Markdown, 3D Models (STL/OBJ), Images, Video, Audio, and Code with built-in toolbar.",
   "keywords": [
     "file-preview",
