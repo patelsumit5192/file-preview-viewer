@@ -27,8 +27,8 @@ if (isFullscreen) {
 
 let currentTheme: 'light' | 'dark' = 'light';
 let isFileNameVisible = true;
-let activeFileExt = '.docx';
-let activeFileName = 'document.docx';
+let activeFileExt = '.pdf';
+let activeFileName = 'sample.pdf';
 let currentTab: 'react' | 'angular' | 'vue' | 'vanilla' = 'react';
 let lastLoadedSource: string | File | Blob = '';
 
@@ -54,36 +54,6 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.pdf',
     data: getSampleUrl('sample.pdf')
   }),
-  docx: () => ({
-    name: 'document.docx',
-    ext: '.docx',
-    data: getSampleUrl('document.docx')
-  }),
-  docm: () => ({
-    name: 'document.docm',
-    ext: '.docm',
-    data: getSampleUrl('document.docm')
-  }),
-  doc: () => ({
-    name: 'document.doc',
-    ext: '.doc',
-    data: getSampleUrl('document.doc')
-  }),
-  dot: () => ({
-    name: 'document.dot',
-    ext: '.dot',
-    data: getSampleUrl('document.dot')
-  }),
-  dotx: () => ({
-    name: 'document.dotx',
-    ext: '.dotx',
-    data: getSampleUrl('document.dotx')
-  }),
-  dotm: () => ({
-    name: 'document.dotm',
-    ext: '.dotm',
-    data: getSampleUrl('document.dotm')
-  }),
   txt: () => ({
     name: 'document.txt',
     ext: '.txt',
@@ -104,11 +74,6 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.xls',
     data: getSampleUrl('spreadsheet.xls')
   }),
-  odt: () => ({
-    name: 'document.odt',
-    ext: '.odt',
-    data: getSampleUrl('document.odt')
-  }),
   ods: () => ({
     name: 'spreadsheet.ods',
     ext: '.ods',
@@ -124,16 +89,6 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.jpg',
     data: getSampleUrl('photo.jpg')
   }),
-  pptx: () => ({
-    name: 'presentation.pptx',
-    ext: '.pptx',
-    data: getSampleUrl('presentation.pptx')
-  }),
-  ppt: () => ({
-    name: 'presentation.ppt',
-    ext: '.ppt',
-    data: getSampleUrl('presentation.ppt')
-  }),
   csv: () => {
     const csvContent = `ID,Product Name,Category,Quantity,Price,Revenue
 101,Universal Viewer SDK,Software,150,$49.99,$7498.50
@@ -143,7 +98,7 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
 105,Angular Ivy Plugin,Software,190,$29.99,$5698.10
 106,Vue 3 Wrapper,Software,175,$29.99,$5248.25
 107,3D STL Model Suite,Software,65,$79.00,$5135.00
-108,PowerPoint Deck Pack,Templates,310,$15.00,$4650.00`;
+108,Audio Studio Engine,Software,310,$25.00,$7750.00`;
     return {
       name: 'sales-report.csv',
       ext: '.csv',
@@ -166,18 +121,24 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
 - 🎛️ **Full Toolbar**: Zoom, Rotate, Page Jump, Thumbnails, Print, and Download.
 - ⚡ **Instant Preview**: Fast startup engine with async background rendering.
 
-### 📋 Supported Format Summary
-| Format | Extension | Engine |
+### 📋 Supported Formats (Locked & Completed)
+| Format Category | File Extensions | Engine / Strategy |
 |---|---|---|
-| PDF | \`.pdf\` | PDF.js |
-| Word | \`.docx\` | docx-preview |
-| Excel | \`.xlsx\` | exceljs |
-| PowerPoint | \`.pptx\` | pptx-browser |
-| Archive | \`.zip\` | fflate |
-| 3D Model | \`.stl\`, \`.obj\` | Three.js |
-| Markdown | \`.md\` | marked |
-| Images | \`.jpg\`, \`.png\`, \`.webp\`, \`.svg\` | Native + Panzoom |
-| Audio/Video | \`.mp3\`, \`.mp4\`, \`.wav\`, \`.webm\` | Native HTML5 Media |
+| PDF Documents | \`.pdf\` | PDF.js + Multi-Page Pagination |
+| Spreadsheets (Modern & Macro) | \`.xlsx\`, \`.xlsm\`, \`.xlsb\`, \`.xltx\`, \`.xltm\` | SheetJS + Styled Grid |
+| Legacy Spreadsheets | \`.xls\` | SheetJS BIFF8 Binary Engine |
+| OpenDocument Spreadsheets | \`.ods\`, \`.ots\` | ODF XML Table Parser |
+| Delimited Data Tables | \`.csv\`, \`.tsv\` | Fast CSV Parser + Dynamic Grid |
+| Plain Text & Configs | \`.txt\`, \`.log\`, \`.conf\`, \`.ini\`, \`.env\` | Code / Monospace Viewer |
+| Rich Text Documents | \`.rtf\` | RTF Tokenizer & Canvas Flow |
+| Formatted Markdown | \`.md\`, \`.markdown\` | marked + Sanitized HTML5 |
+| Sandboxed Webpages | \`.html\`, \`.htm\` | Secure IFrame Sandbox |
+| Source Code & Scripts | \`.ts\`, \`.js\`, \`.json\`, \`.css\`, \`.xml\`, \`.py\`, \`.java\` | Prism Syntax Highlighting |
+| 3D CAD & Mesh Models | \`.stl\`, \`.obj\` | Three.js WebGL Orbit Controls |
+| High-Resolution Images | \`.jpg\`, \`.jpeg\`, \`.png\`, \`.gif\`, \`.webp\`, \`.svg\`, \`.bmp\`, \`.ico\` | Native Image + Panzoom Engine |
+| Audio Media | \`.mp3\`, \`.wav\`, \`.flac\`, \`.aac\`, \`.m4a\`, \`.wma\`, \`.opus\`, \`.weba\` | Vinyl Audio Player + Waveform Visualizer |
+| Video Media | \`.mp4\`, \`.webm\`, \`.ogg\`, \`.mov\` | Responsive HTML5 Video Player |
+| Compressed Archives | \`.zip\` | In-Browser Zip Explorer |
 
 \`\`\`typescript
 // Quick import in any framework
@@ -375,46 +336,6 @@ export class DocumentPreviewService {
     name: 'video.mp4',
     ext: '.mp4',
     data: getSampleUrl('video.mp4')
-  }),
-  'up-ts-docx': () => ({
-    name: 'TS-FL00009494-v3.docx',
-    ext: '.docx',
-    data: getUploadedUrl('TS-FL00009494-v3.docx')
-  }),
-  'up-1mb-docx': () => ({
-    name: 'file-sample_1MB-FL00009489-v4.docx',
-    ext: '.docx',
-    data: getUploadedUrl('file-sample_1MB-FL00009489-v4.docx')
-  }),
-  'up-1mb-doc': () => ({
-    name: 'file-sample_1MB-FL00009488-v5.doc',
-    ext: '.doc',
-    data: getUploadedUrl('file-sample_1MB-FL00009488-v5.doc')
-  }),
-  'up-500kb-rtf': () => ({
-    name: 'file-sample_500kB-FL00009482-v4.rtf',
-    ext: '.rtf',
-    data: getUploadedUrl('file-sample_500kB-FL00009482-v4.rtf')
-  }),
-  'up-long-txt': () => ({
-    name: 'long-doc-FL00001679-v1.txt',
-    ext: '.txt',
-    data: getUploadedUrl('long-doc-FL00001679-v1.txt')
-  }),
-  'up-1mb-odt': () => ({
-    name: 'file-sample_1MB-FL00009487-v4.odt',
-    ext: '.odt',
-    data: getUploadedUrl('file-sample_1MB-FL00009487-v4.odt')
-  }),
-  'up-pdf-3p': () => ({
-    name: 'ExtractedPages_2222-FL00009508-v6.pdf',
-    ext: '.pdf',
-    data: getUploadedUrl('ExtractedPages_2222-FL00009508-v6.pdf')
-  }),
-  'up-pdf-16p': () => ({
-    name: 'short-stories-for-children-FL00009511-v4.pdf',
-    ext: '.pdf',
-    data: getUploadedUrl('short-stories-for-children-ingles-primaria-continuemos-estudiando-FL00009511-v4.pdf')
   })
 };
 

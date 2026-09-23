@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>@files-preview-app/preview-file — Live Interactive Demo</title>
-  <meta name="description" content="Universal client-side file preview for PDF, Word, Excel, PowerPoint, and 50+ formats. React, Angular, Vue, and Vanilla JS. 100% free, MIT licensed." />
+  <meta name="description" content="Universal client-side file preview for PDF, Excel, Rich Text, Markdown, 3D Models, Audio, Video, Archives, and 80+ formats. React, Angular, Vue, and Vanilla JS. 100% free, MIT licensed." />
   <script>
     window.__consoleLogs = [];
     const origLog = console.log, origWarn = console.warn, origErr = console.error;
@@ -25,7 +25,7 @@
       <div class="brand">
         <span class="brand-icon">👁️</span>
         <span class="brand-title">preview-file</span>
-        <span class="badge">v1.3.14</span>
+        <span class="badge">v1.3.15</span>
       </div>
       <div class="header-actions">
         <a href="https://www.npmjs.com/package/@files-preview-app/preview-file" target="_blank" class="nav-btn npm-btn">
@@ -51,40 +51,11 @@
           </div>
         </div>
 
-
-        <div class="section-title">TEST WITH INSTANT SAMPLES</div>
+        <div class="section-title">LOCKED FORMAT SAMPLES (100% COMPLETE)</div>
         <div class="sample-grid">
           <button class="sample-btn" data-sample="pdf">
             <span class="sample-icon">📄</span>
-            <span class="sample-label">PDF Document</span>
-          </button>
-          <button class="sample-btn" data-sample="docx">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">Word (.docx)</span>
-          </button>
-          <button class="sample-btn" data-sample="docm">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">Macro Word (.docm)</span>
-          </button>
-          <button class="sample-btn" data-sample="doc">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Legacy Word (.doc)</span>
-          </button>
-          <button class="sample-btn" data-sample="dot">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Word Template (.dot)</span>
-          </button>
-          <button class="sample-btn" data-sample="dotx">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">Word Template (.dotx)</span>
-          </button>
-          <button class="sample-btn" data-sample="dotm">
-            <span class="sample-icon">📝</span>
-            <span class="sample-label">Macro Template (.dotm)</span>
-          </button>
-          <button class="sample-btn" data-sample="txt">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">Plain Text (.txt)</span>
+            <span class="sample-label">PDF (.pdf)</span>
           </button>
           <button class="sample-btn" data-sample="xlsx">
             <span class="sample-icon">📊</span>
@@ -98,73 +69,65 @@
             <span class="sample-icon">📈</span>
             <span class="sample-label">Legacy Excel (.xls)</span>
           </button>
-          <button class="sample-btn" data-sample="pptx">
-            <span class="sample-icon">📽️</span>
-            <span class="sample-label">PowerPoint (.pptx)</span>
-          </button>
-          <button class="sample-btn" data-sample="ppt">
-            <span class="sample-icon">📽️</span>
-            <span class="sample-label">Legacy PPT (.ppt)</span>
+          <button class="sample-btn" data-sample="ods">
+            <span class="sample-icon">📑</span>
+            <span class="sample-label">OpenSheet (.ods)</span>
           </button>
           <button class="sample-btn" data-sample="csv">
             <span class="sample-icon">📈</span>
-            <span class="sample-label">CSV Table</span>
+            <span class="sample-label">CSV Table (.csv)</span>
           </button>
-          <button class="sample-btn" data-sample="zip">
-            <span class="sample-icon">📦</span>
-            <span class="sample-label">ZIP Archive</span>
-          </button>
-          <button class="sample-btn" data-sample="markdown">
-            <span class="sample-icon">📑</span>
-            <span class="sample-label">Rich Markdown</span>
-          </button>
-          <button class="sample-btn" data-sample="3d">
-            <span class="sample-icon">🧊</span>
-            <span class="sample-label">3D Model (STL)</span>
-          </button>
-          <button class="sample-btn" data-sample="obj">
-            <span class="sample-icon">🔺</span>
-            <span class="sample-label">3D Model (OBJ)</span>
-          </button>
-          <button class="sample-btn" data-sample="code">
-            <span class="sample-icon">💻</span>
-            <span class="sample-label">Code (TypeScript)</span>
-          </button>
-          <button class="sample-btn" data-sample="svg">
-            <span class="sample-icon">🖼️</span>
-            <span class="sample-label">Vector (SVG)</span>
+          <button class="sample-btn" data-sample="txt">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">Plain Text (.txt)</span>
           </button>
           <button class="sample-btn" data-sample="rtf">
             <span class="sample-icon">📝</span>
             <span class="sample-label">Rich Text (.rtf)</span>
           </button>
-          <button class="sample-btn" data-sample="odt">
-            <span class="sample-icon">📄</span>
-            <span class="sample-label">OpenDoc (.odt)</span>
-          </button>
-          <button class="sample-btn" data-sample="ods">
+          <button class="sample-btn" data-sample="markdown">
             <span class="sample-icon">📑</span>
-            <span class="sample-label">OpenSheet (.ods)</span>
+            <span class="sample-label">Markdown (.md)</span>
           </button>
           <button class="sample-btn" data-sample="html">
             <span class="sample-icon">🌐</span>
             <span class="sample-label">Webpage (.html)</span>
           </button>
+          <button class="sample-btn" data-sample="code">
+            <span class="sample-icon">💻</span>
+            <span class="sample-label">Code (.ts)</span>
+          </button>
+          <button class="sample-btn" data-sample="3d">
+            <span class="sample-icon">🧊</span>
+            <span class="sample-label">3D Model (.stl)</span>
+          </button>
+          <button class="sample-btn" data-sample="obj">
+            <span class="sample-icon">🔺</span>
+            <span class="sample-label">3D Model (.obj)</span>
+          </button>
           <button class="sample-btn" data-sample="photo">
             <span class="sample-icon">📷</span>
-            <span class="sample-label">Photo (JPEG)</span>
+            <span class="sample-label">Photo (.jpg)</span>
+          </button>
+          <button class="sample-btn" data-sample="svg">
+            <span class="sample-icon">🖼️</span>
+            <span class="sample-label">Vector (.svg)</span>
           </button>
           <button class="sample-btn" data-sample="audio">
             <span class="sample-icon">🎵</span>
-            <span class="sample-label">Audio (MP3)</span>
+            <span class="sample-label">Audio (.mp3)</span>
           </button>
           <button class="sample-btn" data-sample="wav">
             <span class="sample-icon">🔊</span>
-            <span class="sample-label">Audio (WAV)</span>
+            <span class="sample-label">Audio (.wav)</span>
           </button>
           <button class="sample-btn" data-sample="video">
             <span class="sample-icon">🎬</span>
-            <span class="sample-label">Video (MP4)</span>
+            <span class="sample-label">Video (.mp4)</span>
+          </button>
+          <button class="sample-btn" data-sample="zip">
+            <span class="sample-icon">📦</span>
+            <span class="sample-label">ZIP Archive (.zip)</span>
           </button>
         </div>
 

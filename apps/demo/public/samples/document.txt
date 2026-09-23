@@ -1,10 +1,10 @@
-﻿================================================================================
+================================================================================
                     UNIVERSAL DOCUMENT PREVIEW SPECIFICATION
 ================================================================================
 
 Document: Project Overview & Technical Requirements
-Author: Engineering Team
-Version: 1.2.7
+Author: Core Engineering Team
+Version: 1.3.15
 Date: September 2026
 
 1. INTRODUCTION
@@ -14,18 +14,27 @@ directly inside the web browser. No external cloud servers, third-party iframe
 viewers, or proprietary backend converters are used.
 
 All rendering is performed locally using modular TypeScript plugins running on
-the user's device. This ensures complete data privacy and sub-second rendering
-performance for files of all sizes.
+the user's device. This ensures complete data privacy, zero data egress, and
+sub-second rendering performance across all supported file categories.
 
-2. SUPPORTED DOCUMENT EXTENSIONS
+2. COMPLETED & LOCKED FORMAT EXTENSIONS (80+ FORMATS)
 --------------------------------------------------------------------------------
-The preview system natively supports all standard office and document types:
+The preview system natively supports 13 fully completed format categories:
 
   * PDF Documents:             .pdf
-  * Microsoft Word:            .doc, .docx, .docm, .dot, .dotx, .dotm
+  * Modern Spreadsheets:       .xlsx, .xlsm, .xlsb, .xltx, .xltm
+  * Legacy Spreadsheets:       .xls
+  * OpenDocument Sheets:       .ods, .ots
+  * Delimited Data Tables:     .csv, .tsv
   * Rich Text Format:          .rtf
-  * OpenDocument Text:         .odt
-  * Plain Text & Data:         .txt, .csv, .tsv, .log
+  * Markdown Documents:        .md, .markdown
+  * Sandboxed Webpages:        .html, .htm
+  * Source Code & Configs:     .ts, .js, .json, .css, .xml, .py, .java, .txt
+  * 3D CAD & Mesh Models:      .stl, .obj
+  * High-Res Images & Vectors: .jpg, .jpeg, .png, .gif, .webp, .svg, .bmp, .ico
+  * Audio Media & Streams:     .mp3, .wav, .flac, .aac, .m4a, .wma, .opus, .weba
+  * Video Media:               .mp4, .webm, .ogg, .mov
+  * Compressed Archives:       .zip
 
 
 ================================================================================
@@ -34,36 +43,41 @@ The preview system natively supports all standard office and document types:
 
 3. CORE RENDERING ARCHITECTURE
 --------------------------------------------------------------------------------
-Each file format utilizes a dedicated, highly optimized preview plugin:
+Each file category utilizes a dedicated, highly optimized preview plugin:
 
   - PDF Plugin:
     Utilizes Mozilla's PDF.js library with HTML5 Canvas output. Features
-    dual-axis containment scaling, high-DPI retina display support, and
-    interactive page navigation.
+    dual-axis containment scaling, high-DPI retina display support, page-by-page
+    virtualization, and interactive thumbnail sidebar navigation.
 
-  - DOCX Plugin:
-    Features high-fidelity OpenXML layout extraction with section break
-    detection, embedded picture resolution, and graceful binary fallback.
-
-  - DOC & Legacy Word Plugin:
-    Direct binary parsing of the Compound File Binary Format (CFBF / OLE2).
-    Extracts text streams from the WordDocument stream and Piece Tables,
-    reconstructing headings, lists, and formatted paragraphs.
+  - Spreadsheet Plugin:
+    High-performance SheetJS engine with multi-sheet tab navigation, styled
+    header grids, formatted cell values, formula results, and responsive scrolling.
 
   - RTF Plugin:
-    Parses Rich Text Format control words, font tables, and style definitions,
-    rendering discrete pages with full page-by-page navigation.
+    High-fidelity Rich Text Format tokenizer and parser. Converts font tables,
+    color palettes, text formatting, and paragraph alignments into clean layout.
 
-  - OpenDocument Plugin:
-    Extracts content.xml, styles.xml, and embedded media from ODF packages,
-    respecting page dimensions and page-break markers.
+  - 3D Model Plugin:
+    Three.js WebGL engine supporting ASCII/binary STL geometry and Wavefront OBJ
+    meshes. Features automatic model centering, ambient lighting, directional
+    shadows, and smooth interactive OrbitControls.
+
+  - Audio & Media Player Plugin:
+    Modern vinyl disc playback interface with spinning record animation, 16-bar
+    reactive waveform visualizer, audio metadata header, and native controls.
+
+  - Code & Text Plugin:
+    Monospace code presentation with syntax detection, numbered gutter,
+    line wrapping controls, and lightweight virtualized DOM rendering.
 
 4. USER CONTROLS & CAPABILITIES
 --------------------------------------------------------------------------------
 All documents benefit from a standardized toolbar with:
   [ < 1 / N > ]  Page navigation and jump
-  [ Zoom +/- ]   High-precision zoom scaling
-  [ Fit ]        Dual-axis auto-fit to visible viewport
+  [ Zoom +/- ]   High-precision zoom scaling with mouse-wheel support
+  [ Fit ]        Dual-axis auto-fit to visible viewport (Fit-to-Width & Fit-to-Page)
   [ Rotate ]     90-degree clockwise orientation toggle
-  [ Download ]   Instant client-side file save
-  [ Print ]      Direct browser printing
+  [ Download ]   Instant client-side file save with original filename
+  [ Print ]      Direct browser printing with print CSS stylesheet
+  [ Full Window] Detached standalone preview in dedicated browser window
