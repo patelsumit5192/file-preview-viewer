@@ -47,6 +47,14 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy HTML',
@@ -127,6 +135,12 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
       fitToPage: () => {
         scale = 1.0;
         iframe.style.transform = 'scale(1)';
+      },
+      resetZoom: () => {
+        scale = 1.0;
+        iframe.style.transform = 'scale(1)';
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
       },
       copy: () => {
         navigator.clipboard.writeText(rawHtml);

@@ -76,6 +76,7 @@ export interface PreviewInstance {
   setZoom?(level: number): void;
   fitToPage?(): void;
   fitToWidth?(): void;
+  resetZoom?(): void;
 
   // --- Pagination / Navigation ---
   goToPage?(page: number): void;
@@ -160,6 +161,7 @@ export interface ToolbarConfig {
   fitToPage?: boolean;
   fitWidth?: boolean;
   zoomReset?: boolean;
+  resetZoom?: boolean;
   /** View controls */
   rotate?: boolean;
   rotateCW?: boolean;

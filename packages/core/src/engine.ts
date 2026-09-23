@@ -132,6 +132,9 @@ export class FilePreviewViewer {
       this.activeInstance = instance;
       (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();
       (instance as any).toggleThumbnails = () => this.toggleThumbnails();
+      if (!instance.resetZoom && instance.fitToPage) {
+        (instance as any).resetZoom = () => instance.fitToPage?.();
+      }
 
       // FAST STARTUP: Hide loading immediately once the instance is mounted!
       this.hideLoading();
@@ -454,6 +457,17 @@ export class FilePreviewViewer {
    */
   fitToPage(): void {
     this.activeInstance?.fitToPage?.();
+  }
+
+  /**
+   * Reset zoom level to initial/default fit state.
+   */
+  resetZoom(): void {
+    if (this.activeInstance?.resetZoom) {
+      this.activeInstance.resetZoom();
+    } else if (this.activeInstance?.fitToPage) {
+      this.activeInstance.fitToPage();
+    }
   }
 
   /**

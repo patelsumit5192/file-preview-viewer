@@ -33,6 +33,9 @@ const ICON_MAP: Record<string, string> = {
   'external-window': icons.ICON_EXTERNAL_WINDOW,
   'openWindow': icons.ICON_EXTERNAL_WINDOW,
   'openSeparateWindow': icons.ICON_EXTERNAL_WINDOW,
+  'reset-zoom': icons.ICON_RESET_ZOOM,
+  'zoom-reset': icons.ICON_RESET_ZOOM,
+  'resetZoom': icons.ICON_RESET_ZOOM,
 };
 
 export class ToolbarController {
@@ -70,6 +73,10 @@ export class ToolbarController {
       this.config.fitToPage = false;
       this.config.fitWidth = false;
     }
+    if (actionId === 'reset-zoom' || actionId === 'zoom-reset' || actionId === 'resetZoom') {
+      this.config.resetZoom = false;
+      this.config.zoomReset = false;
+    }
     if (actionId === 'rotate-cw' || actionId === 'rotate' || actionId === 'rotateCW') this.config.rotate = false;
     if (actionId === 'fullscreen') this.config.fullscreen = false;
     if (actionId === 'download') this.config.download = false;
@@ -95,6 +102,10 @@ export class ToolbarController {
       this.config.fitToPage = true;
       this.config.fitWidth = true;
     }
+    if (actionId === 'reset-zoom' || actionId === 'zoom-reset' || actionId === 'resetZoom') {
+      this.config.resetZoom = true;
+      this.config.zoomReset = true;
+    }
     if (actionId === 'rotate-cw' || actionId === 'rotate' || actionId === 'rotateCW') this.config.rotate = true;
     if (actionId === 'fullscreen') this.config.fullscreen = true;
     if (actionId === 'download') this.config.download = true;
@@ -115,6 +126,7 @@ export class ToolbarController {
     if (actionId === 'zoomIn') return 'zoom-in';
     if (actionId === 'zoomOut') return 'zoom-out';
     if (actionId === 'fitPage' || actionId === 'fitToPage' || actionId === 'fitWidth') return 'fit-page';
+    if (actionId === 'resetZoom' || actionId === 'zoomReset') return 'reset-zoom';
     if (actionId === 'rotateCW') return 'rotate-cw';
     if (actionId === 'rotateCCW') return 'rotate-ccw';
     if (actionId === 'openWindow' || actionId === 'openSeparateWindow') return 'open-window';
@@ -164,6 +176,12 @@ export class ToolbarController {
     if (
       (id === 'fit-page' || id === 'fit-width' || id === 'fit-slide') &&
       (c.fitPage === false || c.fitToPage === false || c.fitWidth === false || c['fit-page'] === false || c['fit-width'] === false)
+    ) {
+      return false;
+    }
+    if (
+      (id === 'reset-zoom' || id === 'zoom-reset') &&
+      (c.resetZoom === false || c.zoomReset === false || c['reset-zoom'] === false || c['zoom-reset'] === false)
     ) {
       return false;
     }

@@ -99,6 +99,14 @@ export class PdfPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'fit-width',
         icon: 'fit-width',
         label: 'Fit to Width',
@@ -396,6 +404,14 @@ export class PdfPlugin implements PreviewPlugin {
       fitToPage: () => {
         fitMode = 'page';
         zoomScale = 1.0;
+        renderPage(currentPage);
+      },
+      resetZoom: () => {
+        fitMode = 'page';
+        zoomScale = 1.0;
+        rotation = 0;
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         renderPage(currentPage);
       },
       fitToWidth: () => {

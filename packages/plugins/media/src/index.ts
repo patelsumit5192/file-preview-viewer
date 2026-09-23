@@ -65,6 +65,16 @@ export class MediaPlugin implements PreviewPlugin {
           }
         },
         {
+          id: 'reset-zoom',
+          icon: 'reset-zoom',
+          label: 'Reset Zoom',
+          type: 'button',
+          group: 'zoom',
+          execute: () => {
+            instance.resetZoom?.();
+          }
+        },
+        {
           id: 'rotate-cw',
           icon: 'rotate-cw',
           label: 'Rotate',
@@ -249,6 +259,13 @@ export class MediaPlugin implements PreviewPlugin {
       fitToPage: isImage ? () => {
         currentZoom = 1.0;
         rotation = 0;
+        applyTransform();
+      } : undefined,
+      resetZoom: isImage ? () => {
+        currentZoom = 1.0;
+        rotation = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
         applyTransform();
       } : undefined,
       rotateCW: isImage || isVideo ? () => {

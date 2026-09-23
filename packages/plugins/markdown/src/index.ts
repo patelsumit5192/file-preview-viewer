@@ -50,6 +50,14 @@ export class MarkdownPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Markdown',
@@ -215,6 +223,12 @@ export class MarkdownPlugin implements PreviewPlugin {
       fitToPage: () => {
         fontSize = 15;
         wrapper.style.fontSize = '15px';
+      },
+      resetZoom: () => {
+        fontSize = 15;
+        wrapper.style.fontSize = '15px';
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
       },
       download: () => {
         downloadFile(ctx.buffer, ctx.metadata.name || 'document.md', 'text/markdown');

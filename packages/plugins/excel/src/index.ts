@@ -90,6 +90,16 @@ export class ExcelPlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.resetZoom?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -304,6 +314,12 @@ export class ExcelPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         scale = calculateFitScale();
+        applyTransform();
+      },
+      resetZoom: () => {
+        scale = calculateFitScale();
+        contentArea.scrollTop = 0;
+        contentArea.scrollLeft = 0;
         applyTransform();
       },
       rotateCW: () => {},

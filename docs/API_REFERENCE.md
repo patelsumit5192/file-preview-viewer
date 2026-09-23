@@ -128,6 +128,7 @@ const options: PreviewViewerOptions = {
 | `zoomIn` | — | Show Zoom In (`+`) button. | `true` |
 | `zoomOut` | — | Show Zoom Out (`-`) button. | `true` |
 | `fitPage` | `fitToPage`, `fitWidth` | Show Fit to Page / Fit to Width button. | `true` (where supported) |
+| `resetZoom` | `zoomReset` | Show Reset Zoom button to restore original/fit-to-page zoom level. | `true` (where supported) |
 | `rotate` | `rotateCW`, `rotateCCW` | Show Rotate Clockwise button. | `true` (where supported) |
 | `fullscreen` | — | Show Fullscreen expand/collapse button. | `true` |
 | `download` | — | Show Download file button. | `true` |
@@ -160,6 +161,7 @@ Available on `FilePreviewViewer` instances (or via `ref.current.getViewer()` in 
 | `toggleThumbnails()` | None | `void` | Opens or closes the thumbnail sidebar panel. |
 | `toggleFullscreen()` | None | `void` | Toggles browser fullscreen on the viewer container. |
 | `fitToPage()` | None | `void` | Programmatically triggers fit-to-page calculation on active document. |
+| `resetZoom()` | None | `void` | Programmatically resets zoom level and scroll position to default fit-to-page state. |
 | `zoomIn()` | None | `void` | Programmatically zooms in. |
 | `zoomOut()` | None | `void` | Programmatically zooms out. |
 | `setZoom(level)` | `level: number` | `void` | Programmatically sets exact zoom scale (e.g., `1.5`). |
@@ -194,6 +196,7 @@ When a file is rendered, `viewer.preview()` resolves with a `PreviewInstance`. Y
 | `getZoom()` | None | `number` | Gets current zoom number (1.0 = 100%). |
 | `setZoom(level)` | `level: number` | `void` | Sets absolute zoom scale. |
 | `fitToPage()` | None | `void` | Fits page or table to container width. |
+| `resetZoom()` | None | `void` | Resets zoom and container scroll offset to default fit-to-page state. |
 | `fitToWidth()` | None | `void` | Fits content width to container. |
 | `goToPage(page)` | `page: number` | `void` | Jumps to specific page/sheet (1-indexed). |
 | `getPageCount()` | None | `number` | Total number of pages, sheets, or slides. |

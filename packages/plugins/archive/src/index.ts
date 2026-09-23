@@ -50,10 +50,18 @@ export class ArchivePlugin implements PreviewPlugin {
       {
         id: 'fit-page',
         icon: 'fit-page',
-        label: 'Reset Zoom',
+        label: 'Fit to Page',
         type: 'button',
         group: 'zoom',
         execute: () => instance.fitToPage?.()
+      },
+      {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
       },
       {
         id: 'download',
@@ -223,7 +231,13 @@ export class ArchivePlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         scale = 1.0;
-        wrapper.style.transform = `scale(1)`;
+        wrapper.style.transform = 'scale(1)';
+      },
+      resetZoom: () => {
+        scale = 1.0;
+        wrapper.style.transform = 'scale(1)';
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
       },
       download: () => {
         downloadFile(ctx.buffer, ctx.metadata.name || 'archive.zip', 'application/zip');

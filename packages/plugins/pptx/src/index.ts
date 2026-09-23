@@ -90,6 +90,14 @@ export class PptxPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -219,6 +227,13 @@ export class PptxPlugin implements PreviewPlugin {
       fitToPage: () => {
         scale = calculateFitScale();
         rotation = 0;
+        applyTransform();
+      },
+      resetZoom: () => {
+        scale = calculateFitScale();
+        rotation = 0;
+        wrapper.scrollTop = 0;
+        wrapper.scrollLeft = 0;
         applyTransform();
       },
       rotateCW: () => {

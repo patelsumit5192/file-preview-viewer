@@ -55,6 +55,16 @@ export class CsvPlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.resetZoom?.();
+        }
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download',
@@ -280,6 +290,12 @@ export class CsvPlugin implements PreviewPlugin {
       },
       fitToPage: () => {
         scale = calculateFitScale();
+        applyScale();
+      },
+      resetZoom: () => {
+        scale = calculateFitScale();
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         applyScale();
       },
       rotateCW: () => {},

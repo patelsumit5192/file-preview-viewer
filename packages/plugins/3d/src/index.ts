@@ -50,6 +50,14 @@ export class ThreeDPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Toggle Wireframe',
@@ -217,6 +225,7 @@ export class ThreeDPlugin implements PreviewPlugin {
         controls.update();
       },
       fitToPage: fitCamera,
+      resetZoom: fitCamera,
       rotateCW: () => {
         isWireframe = !isWireframe;
         materials.forEach(m => {

@@ -87,6 +87,16 @@ export class CodePlugin implements PreviewPlugin {
         }
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => {
+          instance.resetZoom?.();
+        }
+      },
+      {
         id: 'copy',
         icon: 'copy',
         label: 'Copy Content',
@@ -403,6 +413,15 @@ export class CodePlugin implements PreviewPlugin {
         fontSize = 13;
         rotation = 0;
         zoomLevel = isTxt ? calculateTxtFit() : 1;
+        updateTransform();
+      },
+      resetZoom: () => {
+        isUserZoomed = false;
+        fontSize = 13;
+        rotation = 0;
+        zoomLevel = isTxt ? calculateTxtFit() : 1;
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         updateTransform();
       },
       rotateCW: () => {

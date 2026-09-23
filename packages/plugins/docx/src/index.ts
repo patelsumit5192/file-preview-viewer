@@ -82,6 +82,14 @@ export class DocxPlugin implements PreviewPlugin {
         execute: () => instance.fitToPage?.()
       },
       {
+        id: 'reset-zoom',
+        icon: 'reset-zoom',
+        label: 'Reset Zoom',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.resetZoom?.()
+      },
+      {
         id: 'rotate-cw',
         icon: 'rotate-cw',
         label: 'Rotate',
@@ -452,6 +460,14 @@ export class DocxPlugin implements PreviewPlugin {
         isUserZoomed = false;
         scale = calculateFitScale('page');
         rotation = 0;
+        applyTransform();
+      },
+      resetZoom: () => {
+        isUserZoomed = false;
+        scale = calculateFitScale('page');
+        rotation = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
         applyTransform();
       },
       rotateCW: () => {
