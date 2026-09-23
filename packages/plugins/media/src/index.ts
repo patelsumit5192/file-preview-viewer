@@ -235,13 +235,30 @@ export class MediaPlugin implements PreviewPlugin {
       video.src = url;
       video.controls = true;
       video.playsInline = true;
-      video.style.maxWidth = '90%';
-      video.style.maxHeight = '90%';
       video.style.borderRadius = '8px';
       video.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)';
       video.style.backgroundColor = '#000000';
+      video.style.objectFit = 'contain';
+      video.style.transition = 'transform 0.2s ease';
       element = video;
       mediaElement = video;
+
+      const onMeta = () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          naturalW = video.videoWidth;
+          naturalH = video.videoHeight;
+        }
+        updateBaseDimensions();
+        applyTransform();
+      };
+
+      if (video.readyState >= 1 && video.videoWidth > 0) {
+        naturalW = video.videoWidth;
+        naturalH = video.videoHeight;
+      } else {
+        video.addEventListener('loadedmetadata', onMeta, { once: true });
+        video.addEventListener('canplay', onMeta, { once: true });
+      }
     } else if (isAudio) {
       const audio = document.createElement('audio');
       audio.src = url;
@@ -288,11 +305,19 @@ export class MediaPlugin implements PreviewPlugin {
     let isUserZoomed = false;
 
     const updateBaseDimensions = () => {
-      if (!isImage) return;
-      const img = element as HTMLImageElement;
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        naturalW = img.naturalWidth;
-        naturalH = img.naturalHeight;
+      if (!isImage && !isVideo) return;
+      if (isImage) {
+        const img = element as HTMLImageElement;
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          naturalW = img.naturalWidth;
+          naturalH = img.naturalHeight;
+        }
+      } else if (isVideo) {
+        const vid = element as HTMLVideoElement;
+        if (vid.videoWidth > 0 && vid.videoHeight > 0) {
+          naturalW = vid.videoWidth;
+          naturalH = vid.videoHeight;
+        }
       }
 
       const availW = Math.max(100, ctx.container.clientWidth - 32);
@@ -309,7 +334,7 @@ export class MediaPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
-      if (isImage) {
+      if (isImage || isVideo) {
         if (!isUserZoomed) {
           updateBaseDimensions();
         }
@@ -322,10 +347,10 @@ export class MediaPlugin implements PreviewPlugin {
         sizer.style.height = `${boxH}px`;
         sizer.style.margin = boxH < availH ? 'auto 0' : '0';
 
-        const imgW = isRotated90 ? boxH : boxW;
-        const imgH = isRotated90 ? boxW : boxH;
-        element.style.width = `${imgW}px`;
-        element.style.height = `${imgH}px`;
+        const elW = isRotated90 ? boxH : boxW;
+        const elH = isRotated90 ? boxW : boxH;
+        element.style.width = `${elW}px`;
+        element.style.height = `${elH}px`;
         element.style.maxWidth = 'none';
         element.style.maxHeight = 'none';
         element.style.transform = rotation ? `rotate(${rotation}deg)` : 'none';
@@ -335,6 +360,9 @@ export class MediaPlugin implements PreviewPlugin {
         element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
       }
     };
+
+    updateBaseDimensions();
+    applyTransform();
 
     if (isImage) {
       const img = element as HTMLImageElement;
@@ -386,7 +414,7 @@ export class MediaPlugin implements PreviewPlugin {
         currentZoom = level;
         applyTransform();
       } : undefined,
-      fitToPage: isImage ? () => {
+      fitToPage: isImage || isVideo ? () => {
         isUserZoomed = false;
         fitMode = 'page';
         currentZoom = 1.0;
@@ -396,7 +424,7 @@ export class MediaPlugin implements PreviewPlugin {
         updateBaseDimensions();
         applyTransform();
       } : undefined,
-      fitToWidth: isImage ? () => {
+      fitToWidth: isImage || isVideo ? () => {
         isUserZoomed = false;
         fitMode = 'width';
         currentZoom = 1.0;
@@ -406,7 +434,7 @@ export class MediaPlugin implements PreviewPlugin {
         updateBaseDimensions();
         applyTransform();
       } : undefined,
-      resetZoom: isImage ? () => {
+      resetZoom: isImage || isVideo ? () => {
         isUserZoomed = false;
         fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
         currentZoom = 1.0;
