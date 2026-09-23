@@ -293,6 +293,38 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.transition = 'transform 0.15s ease';
       pre.style.flexShrink = '0';
     } else {
+      // Ensure syntax highlighting styles exist
+      if (typeof document !== 'undefined' && !document.getElementById('fp-code-syntax-styles')) {
+        const style = document.createElement('style');
+        style.id = 'fp-code-syntax-styles';
+        style.textContent = `
+          .fp-code-scroll-wrapper .hljs-keyword { color: #569cd6; font-weight: normal; }
+          .fp-code-scroll-wrapper .hljs-built_in { color: #4ec9b0; }
+          .fp-code-scroll-wrapper .hljs-type { color: #4ec9b0; }
+          .fp-code-scroll-wrapper .hljs-literal { color: #569cd6; }
+          .fp-code-scroll-wrapper .hljs-number { color: #b5cea8; }
+          .fp-code-scroll-wrapper .hljs-regexp { color: #d16969; }
+          .fp-code-scroll-wrapper .hljs-string { color: #ce9178; }
+          .fp-code-scroll-wrapper .hljs-subst { color: #d4d4d4; }
+          .fp-code-scroll-wrapper .hljs-symbol { color: #569cd6; }
+          .fp-code-scroll-wrapper .hljs-class { color: #4ec9b0; }
+          .fp-code-scroll-wrapper .hljs-function { color: #dcdcaa; }
+          .fp-code-scroll-wrapper .hljs-title { color: #dcdcaa; }
+          .fp-code-scroll-wrapper .hljs-params { color: #9cdcfe; }
+          .fp-code-scroll-wrapper .hljs-comment { color: #6a9955; font-style: italic; }
+          .fp-code-scroll-wrapper .hljs-doctag { color: #608b4e; }
+          .fp-code-scroll-wrapper .hljs-meta { color: #9cdcfe; }
+          .fp-code-scroll-wrapper .hljs-section { color: #569cd6; }
+          .fp-code-scroll-wrapper .hljs-tag { color: #569cd6; }
+          .fp-code-scroll-wrapper .hljs-name { color: #569cd6; }
+          .fp-code-scroll-wrapper .hljs-attr { color: #9cdcfe; }
+          .fp-code-scroll-wrapper .hljs-attribute { color: #9cdcfe; }
+          .fp-code-scroll-wrapper .hljs-variable { color: #9cdcfe; }
+          .fp-code-scroll-wrapper .hljs-punctuation { color: #d4d4d4; }
+        `;
+        document.head.appendChild(style);
+      }
+
       ctx.container.style.backgroundColor = '#1e1e1e';
       ctx.container.style.color = '#d4d4d4';
 
@@ -303,28 +335,40 @@ export class CodePlugin implements PreviewPlugin {
       scrollWrapper.style.height = 'max-content';
       scrollWrapper.style.display = 'flex';
       scrollWrapper.style.alignItems = 'flex-start';
-      scrollWrapper.style.padding = '16px';
+      scrollWrapper.style.padding = '16px 16px 16px 0';
       scrollWrapper.style.boxSizing = 'border-box';
 
-      const lineCount = (fullText.split(/\r?\n/).length) || 1;
+      const rawLines = fullText.split(/\r?\n/);
+      if (rawLines.length > 1 && rawLines[rawLines.length - 1] === '') {
+        rawLines.pop();
+      }
+      const lineCount = Math.max(1, rawLines.length);
       const gutterLines: string[] = [];
       for (let i = 1; i <= lineCount; i++) {
         gutterLines.push(String(i));
       }
+
       lineGutter.className = 'fp-code-gutter';
       lineGutter.style.userSelect = 'none';
       lineGutter.style.textAlign = 'right';
-      lineGutter.style.paddingRight = '16px';
-      lineGutter.style.marginRight = '16px';
+      lineGutter.style.padding = '0 16px';
+      lineGutter.style.margin = '0 16px 0 0';
       lineGutter.style.borderRight = '1px solid #333333';
       lineGutter.style.color = '#858585';
       lineGutter.style.fontFamily = "Consolas, Menlo, Monaco, 'Courier New', monospace";
       lineGutter.style.fontSize = `${fontSize}px`;
       lineGutter.style.lineHeight = '1.6';
+      lineGutter.style.whiteSpace = 'pre';
       lineGutter.style.flexShrink = '0';
+      lineGutter.style.position = 'sticky';
+      lineGutter.style.left = '0';
+      lineGutter.style.backgroundColor = '#1e1e1e';
+      lineGutter.style.zIndex = '2';
+      lineGutter.style.boxSizing = 'border-box';
       lineGutter.textContent = gutterLines.join('\n');
 
       pre.style.margin = '0';
+      pre.style.padding = '0 16px 0 0';
       pre.style.fontFamily = "Consolas, Menlo, Monaco, 'Courier New', monospace";
       pre.style.fontSize = `${fontSize}px`;
       pre.style.lineHeight = '1.6';
@@ -332,6 +376,12 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.wordBreak = 'normal';
       pre.style.overflowWrap = 'normal';
       pre.style.flex = '1';
+
+      code.style.display = 'block';
+      code.style.fontFamily = 'inherit';
+      code.style.fontSize = 'inherit';
+      code.style.lineHeight = 'inherit';
+      code.style.whiteSpace = 'inherit';
     }
 
     const ext = (ctx.metadata.extension || '').replace('.', '');

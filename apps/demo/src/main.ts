@@ -12,6 +12,7 @@ const snippetCodeEl = document.getElementById('snippet-code') as HTMLElement;
 const dropzone = document.getElementById('dropzone') as HTMLElement;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
+const headerThumbnailsBtn = document.getElementById('header-thumbnails-btn');
 
 // URL parameter routing & fullscreen standalone window handling (defined early to prevent TDZ)
 const urlParams = new URLSearchParams(window.location.search);
@@ -411,7 +412,7 @@ async function loadFile(source: string | File | Blob | ArrayBuffer, name: string
   fileMetaEl.textContent = 'Rendering...';
 
   try {
-    await viewer.preview(viewport, source as any, {
+    const inst = await viewer.preview(viewport, source as any, {
       theme: currentTheme,
       showToolbar: true,
       showFileName: isFileNameVisible,
@@ -422,8 +423,14 @@ async function loadFile(source: string | File | Blob | ArrayBuffer, name: string
         extension: activeFileExt
       }
     });
-    fileMetaEl.textContent = `Ready · ${activeFileExt.toUpperCase()} format`;
+    const cleanExt = activeFileExt.replace('.', '').toUpperCase();
+    fileMetaEl.textContent = `Ready · ${cleanExt} format`;
     updateSnippet();
+
+    const pageCount = (inst as any)?.getPageCount?.() ?? 1;
+    if (headerThumbnailsBtn) {
+      headerThumbnailsBtn.style.display = pageCount > 1 ? 'inline-flex' : 'none';
+    }
   } catch (err: any) {
     fileMetaEl.textContent = `Preview error: ${err.message}`;
   }
@@ -544,7 +551,6 @@ if (openWindowHeaderBtn) {
 }
 
 // Wire up "Thumbnails" button in preview header
-const headerThumbnailsBtn = document.getElementById('header-thumbnails-btn');
 if (headerThumbnailsBtn) {
   headerThumbnailsBtn.addEventListener('click', () => {
     viewer.toggleThumbnails();
