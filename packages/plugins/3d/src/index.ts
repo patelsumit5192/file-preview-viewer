@@ -123,8 +123,7 @@ export class ThreeDPlugin implements PreviewPlugin {
     scrollWrapper.style.width = 'max-content';
     scrollWrapper.style.height = 'max-content';
     scrollWrapper.style.display = 'flex';
-    scrollWrapper.style.flexDirection = 'column';
-    scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
     scrollWrapper.style.justifyContent = 'flex-start';
     scrollWrapper.style.boxSizing = 'border-box';
 
@@ -135,7 +134,7 @@ export class ThreeDPlugin implements PreviewPlugin {
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
     sizer.style.alignItems = 'center';
-    sizer.style.margin = 'auto 0';
+    sizer.style.margin = 'auto';
 
     // 2. Setup Scene, Camera, Renderer
     const scene = new THREE.Scene();
@@ -252,7 +251,9 @@ export class ThreeDPlugin implements PreviewPlugin {
 
       sizer.style.width = `${boxW}px`;
       sizer.style.height = `${boxH}px`;
-      sizer.style.margin = boxH < container.clientHeight ? 'auto 0' : '0';
+      const marginV = boxH < container.clientHeight ? 'auto' : '0';
+      const marginH = boxW < container.clientWidth ? 'auto' : '0';
+      sizer.style.margin = `${marginV} ${marginH}`;
 
       renderer.domElement.style.width = `${boxW}px`;
       renderer.domElement.style.height = `${boxH}px`;
@@ -313,6 +314,12 @@ export class ThreeDPlugin implements PreviewPlugin {
         if (currentZoom <= 1.0) {
           isUserZoomed = false;
         }
+        applyZoom();
+      },
+      getZoom: () => currentZoom,
+      setZoom: (level: number) => {
+        isUserZoomed = level !== 1.0;
+        currentZoom = Math.max(0.2, Math.min(5.0, level));
         applyZoom();
       },
       fitToPage: () => {
