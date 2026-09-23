@@ -72,6 +72,16 @@ export class ThreeDPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.download?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => {
+          (instance as any).openInSeparateWindow?.();
+        }
       }
     ];
   }
@@ -163,15 +173,30 @@ export class ThreeDPlugin implements PreviewPlugin {
       meshGroup.add(obj);
     }
 
+    // Center meshGroup at origin
+    const initialBox = new THREE.Box3().setFromObject(meshGroup);
+    const center = initialBox.getCenter(new THREE.Vector3());
+    meshGroup.position.sub(center);
+
     scene.add(meshGroup);
 
     // 6. Compute bounding box to frame camera nicely
     const box = new THREE.Box3().setFromObject(meshGroup);
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const radius = Math.max(sphere.radius, 10);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 10;
+
+    // Position grid right beneath the model base
+    grid.position.y = -size.y / 2;
+    const gridScale = Math.max(0.1, maxDim / 50);
+    grid.scale.set(gridScale, 1, gridScale);
+
+    // Compute camera distance using FOV trigonometry for perfect fit
+    const fovRad = camera.fov * (Math.PI / 180);
+    let cameraDistance = (maxDim / 2) / Math.tan(fovRad / 2);
+    cameraDistance = Math.max(cameraDistance * 1.5, 2);
 
     const fitCamera = () => {
-      camera.position.set(radius * 1.5, radius * 1.2, radius * 2);
+      camera.position.set(cameraDistance * 0.8, cameraDistance * 0.6, cameraDistance);
       camera.lookAt(0, 0, 0);
       controls.target.set(0, 0, 0);
       controls.update();
@@ -225,6 +250,7 @@ export class ThreeDPlugin implements PreviewPlugin {
         controls.update();
       },
       fitToPage: fitCamera,
+      fitToWidth: fitCamera,
       resetZoom: fitCamera,
       rotateCW: () => {
         isWireframe = !isWireframe;

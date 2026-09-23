@@ -708,7 +708,7 @@ Each file format plugin adheres to the universal standard while honoring the nat
 | Format Category | Extensions | Page Navigation (`goToPage`) | Thumbnails Sidebar (`toggleThumbnails`) | Rotate (`rotateCW`) | Auto Fit-to-Width | Copy (`copy`) | Download & Print | Separate Full Window | Status |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **PDF** | `.pdf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Fit to Page / Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Spreadsheets** | `.xlsx`, `.xls`, `.ods` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Spreadsheets & Excel Extended** | `.xlsx`, `.xls`, `.ods`, `.xlsm`, `.xlsb`, `.xltx`, `.xltm` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **CSV Table** | `.csv`, `.tsv` | ❌ (Continuous single load) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Plain Text** | `.txt` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (Document) | ✅ Auto-fit width | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported | **LOCKED** 🔒 |
@@ -720,4 +720,4 @@ Each file format plugin adheres to the universal standard while honoring the nat
 | **Word Documents** | `.docx`, `.doc`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Video Media** | `.mp4`, `.webm`, `.m4v`, `.ogv`, `.ogg`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.3gp`, `.mpg`, `.mpeg` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ✅ Auto Fit-to-Width (Responsive) | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Audio Media** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma`, `.opus`, `.weba` | ❌ (Seek bar) | ❌ | ❌ | ✅ Centered Player (Responsive) | ❌ | ✅ Supported | ✅ Supported | Available |
-| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view | ❌ | ✅ Supported | ✅ Supported | Available |
+| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view & Fit-to-Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |

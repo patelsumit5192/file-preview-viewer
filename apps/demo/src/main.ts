@@ -94,6 +94,11 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.xlsx',
     data: getSampleUrl('financial-report.xlsx')
   }),
+  xlsm: () => ({
+    name: 'budget-forecast.xlsm',
+    ext: '.xlsm',
+    data: getSampleUrl('budget-forecast.xlsm')
+  }),
   xls: () => ({
     name: 'spreadsheet.xls',
     ext: '.xls',
@@ -230,6 +235,11 @@ import { FilePreview } from '@files-preview-app/preview-file/react';
       data: new Blob([buffer], { type: 'model/stl' })
     };
   },
+  obj: () => ({
+    name: 'pyramid.obj',
+    ext: '.obj',
+    data: getSampleUrl('pyramid.obj')
+  }),
   code: () => {
     const tsCode = `import { FilePreviewViewer, type PreviewPlugin, type RenderContext, type PreviewInstance } from '@files-preview-app/preview-file';
 
