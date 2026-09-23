@@ -714,8 +714,10 @@ Each file format plugin adheres to the universal standard while honoring the nat
 | **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported | **LOCKED** 🔒 |
 | **Rich Text** | `.rtf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Auto-fit width / page | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Images & Vector** | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`, `.tiff`, `.tif`, `.avif` | ❌ (Single image) | ❌ | ✅ CW & CCW (90°/180°/270°) | ✅ Auto Fit-to-Width & Reset Zoom | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Code (190+ Langs)** | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.py`, `.java`, `.c`, `.cpp`, `.h`, `.cs`, `.go`, `.rs`, `.sql`, `.php`, `.json`, `.yaml`, `.yml`, `.sh`, `.bash`, `.css`, `.scss`, `.less`, `.xml`, `.toml`, `.ini`, `.env` | ❌ (Single file / Multi-page for page-split) | ❌ | ❌ (Code editor) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Clean Code (No line numbers) | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **HTML Webpages** | `.html`, `.htm`, `.xhtml` | ❌ (Single document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy HTML | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Rich Markdown** | `.md`, `.markdown`, `.mdown`, `.mkd` | ❌ (Continuous document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy Markdown | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Word Documents** | `.docx`, `.doc`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Presentations** | `.pptx`, `.ppt`, `.odp` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ | ✅ Fit to slide | ❌ | ✅ Supported | ✅ Supported | Available |
 | **Media** | `.mp4`, `.webm`, `.mp3` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ❌ | ❌ | ✅ Supported | ✅ Supported | Available |
 | **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view | ❌ | ✅ Supported | ✅ Supported | Available |
-| **Code** | `.js`, `.ts`, `.py`, etc. | ❌ (Single file) | ❌ | ❌ | ❌ | ✅ Supported | ✅ Supported | ✅ Supported | Available |

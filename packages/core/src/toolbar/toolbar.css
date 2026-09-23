@@ -316,7 +316,7 @@
 .fp-content {
   flex: 1;
   position: relative;
-  overflow: auto;
+  overflow: auto !important;
   display: flex;
   flex-direction: column;
   align-items: stretch;

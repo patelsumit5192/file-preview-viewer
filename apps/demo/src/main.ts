@@ -230,25 +230,88 @@ import { FilePreview } from '@files-preview-app/preview-file/react';
     };
   },
   code: () => {
-    const tsCode = `import { FilePreviewViewer } from '@files-preview-app/preview-file';
+    const tsCode = `import { FilePreviewViewer, type PreviewPlugin, type RenderContext, type PreviewInstance } from '@files-preview-app/preview-file';
 
-export async function initViewer(containerId: string, url: string) {
-  const container = document.getElementById(containerId);
-  if (!container) throw new Error('Container element not found');
+export interface ViewerConfigurationOptions {
+  theme?: 'light' | 'dark';
+  fitMode?: 'width' | 'page';
+  showToolbar?: boolean;
+  toolbarPosition?: 'top' | 'bottom';
+  showThumbnails?: boolean;
+  customPlugins?: PreviewPlugin[];
+  onError?: (error: Error) => void;
+  onPageChange?: (page: number, total: number) => void;
+  onZoomChange?: (scale: number) => void;
+}
 
-  const viewer = new FilePreviewViewer();
-  const instance = await viewer.preview(container, url, {
-    theme: 'light',
-    showToolbar: true,
-    toolbarPosition: 'top',
-  });
+/**
+ * Universal File Preview Service — 100% Client-Side Universal Document Viewer
+ * High-performance preview engine supporting over 50 document, spreadsheet, code, and multimedia formats.
+ */
+export class DocumentPreviewService {
+  private viewer: FilePreviewViewer;
+  private currentInstance: PreviewInstance | null = null;
+  private activeContainerId: string = '';
 
-  console.log('Preview initialized successfully!');
-  return instance;
+  constructor(options?: { autoRegisterDefaults?: boolean }) {
+    this.viewer = new FilePreviewViewer(options);
+  }
+
+  /**
+   * Initializes and renders a file preview inside the targeted DOM container element.
+   * Automatically calculates initial fit-to-width scaling and attaches interactive controls.
+   */
+  public async loadDocument(
+    targetContainerId: string,
+    fileSource: string | File | Blob | ArrayBuffer,
+    config: ViewerConfigurationOptions = {}
+  ): Promise<PreviewInstance> {
+    const container = document.getElementById(targetContainerId);
+    if (!container) {
+      throw new Error(\`[DocumentPreviewService] Target container element with ID "\${targetContainerId}" was not found in the DOM.\`);
+    }
+
+    this.activeContainerId = targetContainerId;
+
+    try {
+      this.currentInstance = await this.viewer.preview(container, fileSource, {
+        theme: config.theme ?? 'light',
+        fitMode: config.fitMode ?? 'width',
+        showToolbar: config.showToolbar ?? true,
+        toolbarPosition: config.toolbarPosition ?? 'top',
+        showThumbnails: config.showThumbnails ?? false,
+      });
+
+      console.log(\`[DocumentPreviewService] Document loaded successfully into #\${targetContainerId}.\`);
+      return this.currentInstance;
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error(\`[DocumentPreviewService] Failed to load document preview: \${err.message}\`, err);
+      config.onError?.(err);
+      throw err;
+    }
+  }
+
+  public zoomIn(): void {
+    this.currentInstance?.zoomIn?.();
+  }
+
+  public zoomOut(): void {
+    this.currentInstance?.zoomOut?.();
+  }
+
+  public resetZoom(): void {
+    this.currentInstance?.resetZoom?.();
+  }
+
+  public destroy(): void {
+    this.viewer.destroy();
+    this.currentInstance = null;
+  }
 }
 `;
     return {
-      name: 'viewer-service.ts',
+      name: 'preview-service.ts',
       ext: '.ts',
       data: new Blob([tsCode], { type: 'text/typescript' })
     };

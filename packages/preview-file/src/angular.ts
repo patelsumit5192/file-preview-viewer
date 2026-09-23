@@ -26,7 +26,7 @@ import {
   selector: 'fp-file-preview',
   standalone: true,
   imports: [CommonModule],
-  template: `<div #container [style.width]="'100%'" [style.height]="'100%'"></div>`,
+  template: `<div #container [style.width]="'100%'" [style.height]="'100%'" [style.position]="'relative'" [style.overflow]="'hidden'"></div>`,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {

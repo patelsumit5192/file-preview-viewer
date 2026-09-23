@@ -698,6 +698,49 @@ export class FilePreviewViewer {
       this.wrapperEl.parentNode.removeChild(this.wrapperEl);
     }
 
+    // Ensure essential core layout styles are injected into document.head so scrollbars ALWAYS work
+    if (typeof document !== 'undefined' && !document.getElementById('fp-core-injected-styles')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'fp-core-injected-styles';
+      styleEl.textContent = `
+        .fp-viewer {
+          display: flex !important;
+          flex-direction: column !important;
+          width: 100% !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          position: relative !important;
+          box-sizing: border-box !important;
+        }
+        .fp-body {
+          display: flex !important;
+          flex: 1 1 0% !important;
+          min-height: 0 !important;
+          min-width: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          position: relative !important;
+          box-sizing: border-box !important;
+        }
+        .fp-content {
+          flex: 1 1 0% !important;
+          position: relative !important;
+          overflow: auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          justify-content: flex-start !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          box-sizing: border-box !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
     // Create wrapper structure
     const themeClass = options.theme === 'dark' ? 'fp-theme-dark' : '';
     const toolbarPos = options.toolbarPosition ?? 'top';
@@ -705,6 +748,12 @@ export class FilePreviewViewer {
     this.wrapperEl = document.createElement('div');
     this.wrapperEl.className = `fp-viewer ${themeClass} ${options.className ?? ''}`.trim();
     this.wrapperEl.tabIndex = 0; // allow keyboard focus
+    this.wrapperEl.style.display = 'flex';
+    this.wrapperEl.style.flexDirection = 'column';
+    this.wrapperEl.style.width = '100%';
+    this.wrapperEl.style.height = '100%';
+    this.wrapperEl.style.overflow = 'hidden';
+    this.wrapperEl.style.position = 'relative';
 
     // Toolbar container
     const toolbarEl = document.createElement('div');
@@ -713,6 +762,18 @@ export class FilePreviewViewer {
     // Content area (where the plugin renders)
     this.contentEl = document.createElement('div');
     this.contentEl.className = 'fp-content';
+    this.contentEl.style.flex = '1 1 0%';
+    this.contentEl.style.position = 'relative';
+    this.contentEl.style.overflow = 'auto';
+    this.contentEl.style.display = 'flex';
+    this.contentEl.style.flexDirection = 'column';
+    this.contentEl.style.alignItems = 'stretch';
+    this.contentEl.style.justifyContent = 'flex-start';
+    this.contentEl.style.width = '100%';
+    this.contentEl.style.height = '100%';
+    this.contentEl.style.minWidth = '0';
+    this.contentEl.style.minHeight = '0';
+    this.contentEl.style.boxSizing = 'border-box';
 
     // Thumbnail panel
     const thumbnailEl = document.createElement('div');
@@ -721,6 +782,13 @@ export class FilePreviewViewer {
     // Assemble
     const bodyEl = document.createElement('div');
     bodyEl.className = 'fp-body';
+    bodyEl.style.display = 'flex';
+    bodyEl.style.flex = '1 1 0%';
+    bodyEl.style.minHeight = '0';
+    bodyEl.style.minWidth = '0';
+    bodyEl.style.width = '100%';
+    bodyEl.style.overflow = 'hidden';
+    bodyEl.style.position = 'relative';
     bodyEl.appendChild(thumbnailEl);
     bodyEl.appendChild(this.contentEl);
 

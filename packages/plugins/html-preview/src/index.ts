@@ -39,14 +39,6 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         execute: () => instance.zoomIn?.()
       },
       {
-        id: 'fit-page',
-        icon: 'fit-page',
-        label: 'Fit to Page',
-        type: 'button',
-        group: 'zoom',
-        execute: () => instance.fitToPage?.()
-      },
-      {
         id: 'reset-zoom',
         icon: 'reset-zoom',
         label: 'Reset Zoom',
@@ -61,6 +53,14 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         type: 'button',
         group: 'zoom',
         execute: () => instance.fitToWidth?.()
+      },
+      {
+        id: 'fit-page',
+        icon: 'fit-page',
+        label: 'Fit to Page',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToPage?.()
       },
       {
         id: 'copy',
@@ -85,6 +85,14 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     ];
   }
@@ -97,35 +105,48 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
       ADD_ATTR: ['target', 'rel']
     });
 
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-html-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'flex-start';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.boxSizing = 'border-box';
+
     const sizer = document.createElement('div');
     sizer.className = 'fp-html-sizer';
     sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
 
     const iframe = document.createElement('iframe');
     iframe.className = 'fp-html-iframe';
     iframe.style.border = 'none';
     iframe.style.backgroundColor = '#ffffff';
     iframe.style.transformOrigin = 'top left';
-    iframe.style.transition = 'transform 0.2s ease';
+    iframe.style.transition = 'transform 0.15s ease';
     // Sandbox without allow-scripts ensures no malicious JS can execute
     iframe.sandbox.add('allow-same-origin');
 
     sizer.appendChild(iframe);
+    scrollWrapper.appendChild(sizer);
 
     ctx.container.style.overflow = 'auto';
     ctx.container.style.width = '100%';
     ctx.container.style.height = '100%';
     ctx.container.innerHTML = '';
-    ctx.container.appendChild(sizer);
+    ctx.container.appendChild(scrollWrapper);
 
     // Set sanitized content via srcdoc
     iframe.srcdoc = sanitized;
 
     let scale = 1.0;
+    let baseW = Math.max(600, ctx.container.clientWidth || 800);
+    let baseH = Math.max(400, ctx.container.clientHeight || 600);
 
     const applyTransform = () => {
-      const baseW = Math.max(600, ctx.container.clientWidth || 800);
-      const baseH = Math.max(400, ctx.container.clientHeight || 600);
       const scaledW = Math.round(baseW * scale);
       const scaledH = Math.round(baseH * scale);
 
@@ -141,12 +162,26 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
       iframe.style.transformOrigin = 'top left';
     };
 
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          if (Math.abs(scale - 1.0) < 0.05) {
+            baseW = Math.max(600, ctx.container.clientWidth || 800);
+            baseH = Math.max(400, ctx.container.clientHeight || 600);
+            applyTransform();
+          }
+        })
+      : null;
+    ro?.observe(ctx.container);
+
     requestAnimationFrame(() => {
+      baseW = Math.max(600, ctx.container.clientWidth || 800);
+      baseH = Math.max(400, ctx.container.clientHeight || 600);
       applyTransform();
     });
 
     const cleanup = () => {
-      sizer.remove();
+      ro?.disconnect();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -155,11 +190,11 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
-        scale += 0.1;
+        scale = Math.min(3.5, scale + 0.15);
         applyTransform();
       },
       zoomOut: () => {
-        scale = Math.max(0.2, scale - 0.1);
+        scale = Math.max(0.25, scale - 0.15);
         applyTransform();
       },
       getZoom: () => scale,
@@ -181,8 +216,11 @@ export class HtmlPreviewPlugin implements PreviewPlugin {
         ctx.container.scrollLeft = 0;
         applyTransform();
       },
+      openInSeparateWindow: () => {
+        (ctx as any)?.openInSeparateWindow?.();
+      },
       copy: () => {
-        navigator.clipboard.writeText(rawHtml);
+        navigator.clipboard?.writeText(rawHtml);
       },
       download: () => {
         const blob = new Blob([ctx.buffer], { type: 'text/html' });

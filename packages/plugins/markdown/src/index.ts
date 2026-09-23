@@ -28,7 +28,7 @@ export class MarkdownPlugin implements PreviewPlugin {
       {
         id: 'zoom-out',
         icon: 'zoom-out',
-        label: 'Decrease Font',
+        label: 'Zoom Out',
         type: 'button',
         group: 'zoom',
         execute: () => instance.zoomOut?.()
@@ -36,18 +36,10 @@ export class MarkdownPlugin implements PreviewPlugin {
       {
         id: 'zoom-in',
         icon: 'zoom-in',
-        label: 'Increase Font',
+        label: 'Zoom In',
         type: 'button',
         group: 'zoom',
         execute: () => instance.zoomIn?.()
-      },
-      {
-        id: 'fit-page',
-        icon: 'fit-page',
-        label: 'Default Size',
-        type: 'button',
-        group: 'zoom',
-        execute: () => instance.fitToPage?.()
       },
       {
         id: 'reset-zoom',
@@ -64,6 +56,14 @@ export class MarkdownPlugin implements PreviewPlugin {
         type: 'button',
         group: 'zoom',
         execute: () => instance.fitToWidth?.()
+      },
+      {
+        id: 'fit-page',
+        icon: 'fit-page',
+        label: 'Fit to Page',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToPage?.()
       },
       {
         id: 'copy',
@@ -88,6 +88,14 @@ export class MarkdownPlugin implements PreviewPlugin {
         type: 'button',
         group: 'actions',
         execute: () => instance.print?.()
+      },
+      {
+        id: 'open-window',
+        icon: 'open-window',
+        label: 'Open in Separate Full Window',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openInSeparateWindow?.()
       }
     ];
   }
@@ -106,36 +114,60 @@ export class MarkdownPlugin implements PreviewPlugin {
       USE_PROFILES: { html: true }
     });
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'fp-markdown-wrapper';
-    wrapper.style.cssText = `
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      padding: 32px 40px;
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-markdown-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.alignItems = 'flex-start';
+    scrollWrapper.style.padding = '24px 16px';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-markdown-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'flex-start';
+
+    const docCard = document.createElement('div');
+    docCard.className = 'fp-markdown-doc-card';
+    docCard.style.cssText = `
+      width: 860px;
+      min-height: 600px;
+      padding: 40px 48px;
       box-sizing: border-box;
       line-height: 1.6;
       font-size: 15px;
       color: var(--fp-text, #24292f);
       background: var(--fp-bg, #ffffff);
+      border-radius: 6px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      transform-origin: top center;
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
     `;
 
-    wrapper.innerHTML = `
+    docCard.innerHTML = `
       <style>
-        .fp-markdown-wrapper h1, .fp-markdown-wrapper h2, .fp-markdown-wrapper h3,
-        .fp-markdown-wrapper h4, .fp-markdown-wrapper h5, .fp-markdown-wrapper h6 {
+        .fp-markdown-doc-card h1, .fp-markdown-doc-card h2, .fp-markdown-doc-card h3,
+        .fp-markdown-doc-card h4, .fp-markdown-doc-card h5, .fp-markdown-doc-card h6 {
           margin-top: 24px;
           margin-bottom: 16px;
           font-weight: 600;
           line-height: 1.25;
           color: var(--fp-text, #1f2328);
         }
-        .fp-markdown-wrapper h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid var(--fp-border, #d0d7de); }
-        .fp-markdown-wrapper h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--fp-border, #d0d7de); }
-        .fp-markdown-wrapper h3 { font-size: 1.25em; }
-        .fp-markdown-wrapper p { margin-top: 0; margin-bottom: 16px; }
-        .fp-markdown-wrapper table {
+        .fp-markdown-doc-card h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid var(--fp-border, #d0d7de); }
+        .fp-markdown-doc-card h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--fp-border, #d0d7de); }
+        .fp-markdown-doc-card h3 { font-size: 1.25em; }
+        .fp-markdown-doc-card p { margin-top: 0; margin-bottom: 16px; }
+        .fp-markdown-doc-card table {
           border-spacing: 0;
           border-collapse: collapse;
           margin-top: 0;
@@ -143,20 +175,20 @@ export class MarkdownPlugin implements PreviewPlugin {
           width: 100%;
           overflow: auto;
         }
-        .fp-markdown-wrapper table th, .fp-markdown-wrapper table td {
+        .fp-markdown-doc-card table th, .fp-markdown-doc-card table td {
           padding: 6px 13px;
           border: 1px solid var(--fp-border, #d0d7de);
         }
-        .fp-markdown-wrapper table tr:nth-child(2n) {
+        .fp-markdown-doc-card table tr:nth-child(2n) {
           background-color: var(--fp-toolbar-bg, #f6f8fa);
         }
-        .fp-markdown-wrapper blockquote {
+        .fp-markdown-doc-card blockquote {
           margin: 0 0 16px 0;
           padding: 0 1em;
           color: var(--fp-text-muted, #59636e);
           border-left: 0.25em solid var(--fp-border, #d0d7de);
         }
-        .fp-markdown-wrapper pre {
+        .fp-markdown-doc-card pre {
           padding: 16px;
           overflow: auto;
           font-size: 85%;
@@ -165,7 +197,7 @@ export class MarkdownPlugin implements PreviewPlugin {
           border-radius: 6px;
           border: 1px solid var(--fp-border, #d0d7de);
         }
-        .fp-markdown-wrapper code {
+        .fp-markdown-doc-card code {
           padding: 0.2em 0.4em;
           margin: 0;
           font-size: 85%;
@@ -173,16 +205,16 @@ export class MarkdownPlugin implements PreviewPlugin {
           border-radius: 4px;
           font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
         }
-        .fp-markdown-wrapper pre code {
+        .fp-markdown-doc-card pre code {
           padding: 0;
           background: transparent;
         }
-        .fp-markdown-wrapper ul, .fp-markdown-wrapper ol {
+        .fp-markdown-doc-card ul, .fp-markdown-doc-card ol {
           padding-left: 2em;
           margin-top: 0;
           margin-bottom: 16px;
         }
-        .fp-markdown-wrapper hr {
+        .fp-markdown-doc-card hr {
           height: 0.25em;
           padding: 0;
           margin: 24px 0;
@@ -190,24 +222,70 @@ export class MarkdownPlugin implements PreviewPlugin {
           border: 0;
         }
       </style>
-      <div class="fp-markdown-content" style="max-width: 860px; margin: 0 auto;">
+      <div class="fp-markdown-body">
         ${cleanHtml}
       </div>
     `;
 
     // Apply syntax highlighting to pre code blocks
-    wrapper.querySelectorAll('pre code').forEach((block) => {
+    docCard.querySelectorAll('pre code').forEach((block) => {
       hljs.highlightElement(block as HTMLElement);
     });
 
+    sizer.appendChild(docCard);
+    scrollWrapper.appendChild(sizer);
+
     ctx.container.innerHTML = '';
     ctx.container.style.overflow = 'auto';
-    ctx.container.appendChild(wrapper);
+    ctx.container.style.backgroundColor = '#f1f5f9';
+    ctx.container.appendChild(scrollWrapper);
 
-    let fontSize = 15;
+    let scale = 1.0;
+    let isUserZoomed = false;
+
+    const calculateFitScale = () => {
+      const availW = Math.max(280, ctx.container.clientWidth - 48);
+      // Fit 860px card to container width if container is smaller than 900px
+      if (availW < 860) {
+        return Math.max(0.35, availW / 860);
+      }
+      return 1.0;
+    };
+
+    const applyTransform = () => {
+      const baseW = 860;
+      const baseH = docCard.offsetHeight || 600;
+      const scaledW = Math.round(baseW * scale);
+      const scaledH = Math.round(baseH * scale);
+
+      sizer.style.width = `${scaledW}px`;
+      sizer.style.height = `${scaledH}px`;
+
+      docCard.style.width = `${baseW}px`;
+      docCard.style.transform = `scale(${scale})`;
+      docCard.style.transformOrigin = (scaledW > (ctx.container.clientWidth - 32)) ? 'top left' : 'top center';
+    };
+
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          if (!isUserZoomed) {
+            scale = calculateFitScale();
+            applyTransform();
+          }
+        })
+      : null;
+    ro?.observe(ctx.container);
+
+    requestAnimationFrame(() => {
+      if (!isUserZoomed) {
+        scale = calculateFitScale();
+      }
+      applyTransform();
+    });
 
     const cleanup = () => {
-      wrapper.remove();
+      ro?.disconnect();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -216,31 +294,40 @@ export class MarkdownPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
-        fontSize = Math.min(28, fontSize + 2);
-        wrapper.style.fontSize = `${fontSize}px`;
+        isUserZoomed = true;
+        scale = Math.min(3.5, scale + 0.15);
+        applyTransform();
       },
       zoomOut: () => {
-        fontSize = Math.max(10, fontSize - 2);
-        wrapper.style.fontSize = `${fontSize}px`;
+        isUserZoomed = true;
+        scale = Math.max(0.25, scale - 0.15);
+        applyTransform();
       },
-      getZoom: () => fontSize / 15,
+      getZoom: () => scale,
       setZoom: (level: number) => {
-        fontSize = Math.round(15 * level);
-        wrapper.style.fontSize = `${fontSize}px`;
+        isUserZoomed = true;
+        scale = level;
+        applyTransform();
       },
       fitToPage: () => {
-        fontSize = 15;
-        wrapper.style.fontSize = '15px';
+        isUserZoomed = false;
+        scale = calculateFitScale();
+        applyTransform();
       },
       fitToWidth: () => {
-        fontSize = 15;
-        wrapper.style.fontSize = '15px';
+        isUserZoomed = false;
+        scale = calculateFitScale();
+        applyTransform();
       },
       resetZoom: () => {
-        fontSize = 15;
-        wrapper.style.fontSize = '15px';
+        isUserZoomed = false;
+        scale = calculateFitScale();
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
+        applyTransform();
+      },
+      openInSeparateWindow: () => {
+        (ctx as any)?.openInSeparateWindow?.();
       },
       download: () => {
         downloadFile(ctx.buffer, ctx.metadata.name || 'document.md', 'text/markdown');

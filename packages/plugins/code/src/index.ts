@@ -9,9 +9,36 @@ import type {
 import hljs from 'highlight.js';
 
 const CODE_EXTENSIONS = [
-  '.txt', '.json', '.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.scss', '.less',
-  '.md', '.xml', '.yml', '.yaml', '.sh', '.bash', '.py', 
-  '.java', '.c', '.cpp', '.h', '.cs', '.go', '.rs', '.sql', '.php'
+  '.txt', '.log', '.ini', '.cfg', '.conf', '.env',
+  '.json', '.jsonc', '.json5',
+  '.js', '.mjs', '.cjs', '.jsx',
+  '.ts', '.mts', '.cts', '.tsx',
+  '.html', '.htm', '.xhtml',
+  '.css', '.scss', '.sass', '.less',
+  '.md', '.markdown',
+  '.xml', '.svg', '.xaml',
+  '.yml', '.yaml', '.toml',
+  '.sh', '.bash', '.zsh', '.fish', '.bat', '.cmd', '.ps1',
+  '.py', '.pyw',
+  '.java', '.class',
+  '.c', '.cpp', '.cc', '.cxx', '.h', '.hpp', '.hxx',
+  '.cs', '.csx',
+  '.go',
+  '.rs',
+  '.sql',
+  '.php', '.phtml',
+  '.rb',
+  '.swift',
+  '.kt', '.kts',
+  '.scala',
+  '.r',
+  '.lua',
+  '.pl', '.pm',
+  '.dart',
+  '.graphql', '.gql',
+  '.proto',
+  '.diff', '.patch',
+  '.dockerfile', '.properties', '.gradle'
 ];
 
 export class CodePlugin implements PreviewPlugin {
@@ -35,35 +62,37 @@ export class CodePlugin implements PreviewPlugin {
     const totalPages = instance.getPageCount?.() ?? 1;
     const actions: ToolbarAction[] = [];
 
-    actions.push({
-      id: 'thumbnails',
-      icon: 'thumbnails',
-      label: 'Page Thumbnails',
-      type: 'button',
-      group: 'navigation',
-      execute: () => (instance as any).toggleThumbnails?.()
-    });
+    if (totalPages > 1) {
+      actions.push({
+        id: 'thumbnails',
+        icon: 'thumbnails',
+        label: 'Page Thumbnails',
+        type: 'button',
+        group: 'navigation',
+        execute: () => (instance as any).toggleThumbnails?.()
+      });
 
-    actions.push({
-      id: 'page-nav',
-      icon: '',
-      label: 'Page Navigation',
-      type: 'page-nav',
-      group: 'navigation',
-      value: instance.getCurrentPage?.() ?? 1,
-      max: totalPages,
-      execute: (action: unknown, page?: unknown) => {
-        const cur = instance.getCurrentPage?.() ?? 1;
-        const max = instance.getPageCount?.() ?? 1;
-        if (action === 'prev') {
-          if (cur > 1) instance.goToPage?.(cur - 1);
-        } else if (action === 'next') {
-          if (cur < max) instance.goToPage?.(cur + 1);
-        } else if (typeof page === 'number') {
-          instance.goToPage?.(page);
+      actions.push({
+        id: 'page-nav',
+        icon: '',
+        label: 'Page Navigation',
+        type: 'page-nav',
+        group: 'navigation',
+        value: instance.getCurrentPage?.() ?? 1,
+        max: totalPages,
+        execute: (action: unknown, page?: unknown) => {
+          const cur = instance.getCurrentPage?.() ?? 1;
+          const max = instance.getPageCount?.() ?? 1;
+          if (action === 'prev') {
+            if (cur > 1) instance.goToPage?.(cur - 1);
+          } else if (action === 'next') {
+            if (cur < max) instance.goToPage?.(cur + 1);
+          } else if (typeof page === 'number') {
+            instance.goToPage?.(page);
+          }
         }
-      }
-    });
+      });
+    }
 
     actions.push(
       {
@@ -212,11 +241,6 @@ export class CodePlugin implements PreviewPlugin {
     const totalPages = Math.max(1, rawPages.length);
     let currentPage = 1;
     
-    const container = document.createElement('div');
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.overflow = 'auto';
-    
     let fontSize = 13;
     let rotation = 0;
     let zoomLevel = 1;
@@ -225,10 +249,12 @@ export class CodePlugin implements PreviewPlugin {
     const code = document.createElement('code');
     const sizer = document.createElement('div');
     const scrollWrapper = document.createElement('div');
+    const lineGutter = document.createElement('div');
+
+    ctx.container.style.overflow = 'auto';
 
     if (isTxt) {
-      container.style.overflow = 'auto';
-      container.style.backgroundColor = '#f1f5f9';
+      ctx.container.style.backgroundColor = '#f1f5f9';
 
       scrollWrapper.className = 'fp-code-scroll-wrapper';
       scrollWrapper.style.minWidth = '100%';
@@ -267,19 +293,45 @@ export class CodePlugin implements PreviewPlugin {
       pre.style.transition = 'transform 0.15s ease';
       pre.style.flexShrink = '0';
     } else {
-      container.style.overflow = 'auto';
-      container.style.backgroundColor = '#1e1e1e';
-      container.style.color = '#d4d4d4';
-      container.style.padding = '16px';
-      container.style.boxSizing = 'border-box';
+      ctx.container.style.backgroundColor = '#1e1e1e';
+      ctx.container.style.color = '#d4d4d4';
+
+      scrollWrapper.className = 'fp-code-scroll-wrapper';
+      scrollWrapper.style.minWidth = '100%';
+      scrollWrapper.style.minHeight = '100%';
+      scrollWrapper.style.width = 'max-content';
+      scrollWrapper.style.height = 'max-content';
+      scrollWrapper.style.display = 'flex';
+      scrollWrapper.style.alignItems = 'flex-start';
+      scrollWrapper.style.padding = '16px';
+      scrollWrapper.style.boxSizing = 'border-box';
+
+      const lineCount = (fullText.split(/\r?\n/).length) || 1;
+      const gutterLines: string[] = [];
+      for (let i = 1; i <= lineCount; i++) {
+        gutterLines.push(String(i));
+      }
+      lineGutter.className = 'fp-code-gutter';
+      lineGutter.style.userSelect = 'none';
+      lineGutter.style.textAlign = 'right';
+      lineGutter.style.paddingRight = '16px';
+      lineGutter.style.marginRight = '16px';
+      lineGutter.style.borderRight = '1px solid #333333';
+      lineGutter.style.color = '#858585';
+      lineGutter.style.fontFamily = "Consolas, Menlo, Monaco, 'Courier New', monospace";
+      lineGutter.style.fontSize = `${fontSize}px`;
+      lineGutter.style.lineHeight = '1.6';
+      lineGutter.style.flexShrink = '0';
+      lineGutter.textContent = gutterLines.join('\n');
 
       pre.style.margin = '0';
-      pre.style.fontFamily = 'Consolas, Menlo, Monaco, monospace';
+      pre.style.fontFamily = "Consolas, Menlo, Monaco, 'Courier New', monospace";
       pre.style.fontSize = `${fontSize}px`;
-      pre.style.lineHeight = '1.5';
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.style.wordBreak = 'break-all';
-      pre.style.transformOrigin = 'top left';
+      pre.style.lineHeight = '1.6';
+      pre.style.whiteSpace = 'pre';
+      pre.style.wordBreak = 'normal';
+      pre.style.overflowWrap = 'normal';
+      pre.style.flex = '1';
     }
 
     const ext = (ctx.metadata.extension || '').replace('.', '');
@@ -303,18 +355,21 @@ export class CodePlugin implements PreviewPlugin {
     renderCodePage(rawPages[0] || (isTxt ? '' : fullText));
     
     pre.appendChild(code);
+    ctx.container.innerHTML = '';
     if (isTxt) {
       sizer.appendChild(pre);
       scrollWrapper.appendChild(sizer);
-      container.appendChild(scrollWrapper);
+      ctx.container.appendChild(scrollWrapper);
     } else {
-      container.appendChild(pre);
+      scrollWrapper.appendChild(lineGutter);
+      scrollWrapper.appendChild(pre);
+      ctx.container.appendChild(scrollWrapper);
     }
 
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       renderCodePage(rawPages[currentPage - 1] || (isTxt ? '' : fullText));
-      container.scrollTop = 0;
+      ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
@@ -322,11 +377,9 @@ export class CodePlugin implements PreviewPlugin {
       showPage(1);
     }
 
-    ctx.container.appendChild(container);
-
     const calculateTxtFit = () => {
       // Minimal side margins (16px on each side, safe from vertical scrollbar)
-      const availW = Math.max(280, container.clientWidth - 32);
+      const availW = Math.max(280, ctx.container.clientWidth - 32);
       return Math.max(0.4, Math.min(3.0, availW / 816));
     };
 
@@ -347,6 +400,7 @@ export class CodePlugin implements PreviewPlugin {
       } else {
         pre.style.transform = `rotate(${rotation}deg)`;
         pre.style.fontSize = `${fontSize}px`;
+        lineGutter.style.fontSize = `${fontSize}px`;
       }
     };
 
@@ -365,12 +419,12 @@ export class CodePlugin implements PreviewPlugin {
             }
           })
         : null;
-      resizeObserver?.observe(container);
+      resizeObserver?.observe(ctx.container);
     }
 
     const cleanup = () => {
       resizeObserver?.disconnect();
-      container.remove();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -424,7 +478,7 @@ export class CodePlugin implements PreviewPlugin {
         if (isTxt) {
           zoomLevel = Math.min(3.5, zoomLevel + 0.15);
         } else {
-          fontSize = Math.min(32, fontSize + 2);
+          fontSize = Math.min(48, fontSize + 2);
         }
         updateTransform();
       },
@@ -433,7 +487,7 @@ export class CodePlugin implements PreviewPlugin {
         if (isTxt) {
           zoomLevel = Math.max(0.1, zoomLevel - 0.15);
         } else {
-          fontSize = Math.max(8, fontSize - 2);
+          fontSize = Math.max(9, fontSize - 2);
         }
         updateTransform();
       },
@@ -466,8 +520,8 @@ export class CodePlugin implements PreviewPlugin {
         fontSize = 13;
         rotation = 0;
         zoomLevel = isTxt ? calculateTxtFit() : 1;
-        container.scrollTop = 0;
-        container.scrollLeft = 0;
+        ctx.container.scrollTop = 0;
+        ctx.container.scrollLeft = 0;
         updateTransform();
       },
       rotateCW: () => {
