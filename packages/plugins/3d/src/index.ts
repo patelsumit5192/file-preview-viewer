@@ -44,7 +44,7 @@ export class ThreeDPlugin implements PreviewPlugin {
       {
         id: 'fit-page',
         icon: 'fit-page',
-        label: 'Reset Camera View',
+        label: 'Fit to Page',
         type: 'button',
         group: 'zoom',
         execute: () => instance.fitToPage?.()
@@ -56,6 +56,14 @@ export class ThreeDPlugin implements PreviewPlugin {
         type: 'button',
         group: 'zoom',
         execute: () => instance.resetZoom?.()
+      },
+      {
+        id: 'fit-width',
+        icon: 'fit-width',
+        label: 'Fit to Width',
+        type: 'button',
+        group: 'zoom',
+        execute: () => instance.fitToWidth?.()
       },
       {
         id: 'rotate-cw',
@@ -89,32 +97,66 @@ export class ThreeDPlugin implements PreviewPlugin {
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const container = ctx.container;
     container.innerHTML = '';
-    container.style.overflow = 'hidden';
+    container.style.overflow = 'auto';
     container.style.position = 'relative';
     container.style.width = '100%';
     container.style.height = '100%';
+    container.style.padding = '0';
     container.style.background = '#1a1a1a';
 
-    const width = container.clientWidth || 800;
-    const height = container.clientHeight || 600;
+    let currentZoom = 1.0;
+    let isUserZoomed = false;
 
-    // 1. Setup Scene, Camera, Renderer
+    let baseW = Math.max(100, container.clientWidth || 800);
+    let baseH = Math.max(100, container.clientHeight || 600);
+
+    const updateBaseDimensions = () => {
+      baseW = Math.max(100, container.clientWidth || 800);
+      baseH = Math.max(100, container.clientHeight || 600);
+    };
+
+    // 1. Setup Scrollable Layout Structure
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'fp-3d-scroll-wrapper';
+    scrollWrapper.style.minWidth = '100%';
+    scrollWrapper.style.minHeight = '100%';
+    scrollWrapper.style.width = 'max-content';
+    scrollWrapper.style.height = 'max-content';
+    scrollWrapper.style.display = 'flex';
+    scrollWrapper.style.flexDirection = 'column';
+    scrollWrapper.style.alignItems = 'center';
+    scrollWrapper.style.justifyContent = 'flex-start';
+    scrollWrapper.style.boxSizing = 'border-box';
+
+    const sizer = document.createElement('div');
+    sizer.className = 'fp-3d-sizer';
+    sizer.style.position = 'relative';
+    sizer.style.flexShrink = '0';
+    sizer.style.display = 'flex';
+    sizer.style.justifyContent = 'center';
+    sizer.style.alignItems = 'center';
+    sizer.style.margin = 'auto 0';
+
+    // 2. Setup Scene, Camera, Renderer
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e1e24);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(45, baseW / baseH, 0.1, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(baseW, baseH);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
-    container.appendChild(renderer.domElement);
 
-    // 2. Setup OrbitControls
+    sizer.appendChild(renderer.domElement);
+    scrollWrapper.appendChild(sizer);
+    container.appendChild(scrollWrapper);
+
+    // 3. Setup OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // 3. Add Lights
+    // 4. Add Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
@@ -126,15 +168,14 @@ export class ThreeDPlugin implements PreviewPlugin {
     dirLight2.position.set(-100, -100, -100);
     scene.add(dirLight2);
 
-    // 4. Add Grid Helper
+    // 5. Add Grid Helper
     const grid = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
     scene.add(grid);
 
-    // 5. Load and center 3D Model
-    let meshGroup = new THREE.Group();
+    // 6. Load and center 3D Model
+    const meshGroup = new THREE.Group();
     let isWireframe = false;
     const ext = ctx.metadata.extension?.toLowerCase();
-
     const materials: THREE.Material[] = [];
 
     if (ext === '.stl') {
@@ -177,20 +218,17 @@ export class ThreeDPlugin implements PreviewPlugin {
     const initialBox = new THREE.Box3().setFromObject(meshGroup);
     const center = initialBox.getCenter(new THREE.Vector3());
     meshGroup.position.sub(center);
-
     scene.add(meshGroup);
 
-    // 6. Compute bounding box to frame camera nicely
+    // 7. Compute bounding box to frame camera nicely
     const box = new THREE.Box3().setFromObject(meshGroup);
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 10;
 
-    // Position grid right beneath the model base
     grid.position.y = -size.y / 2;
     const gridScale = Math.max(0.1, maxDim / 50);
     grid.scale.set(gridScale, 1, gridScale);
 
-    // Compute camera distance using FOV trigonometry for perfect fit
     const fovRad = camera.fov * (Math.PI / 180);
     let cameraDistance = (maxDim / 2) / Math.tan(fovRad / 2);
     cameraDistance = Math.max(cameraDistance * 1.5, 2);
@@ -204,7 +242,31 @@ export class ThreeDPlugin implements PreviewPlugin {
 
     fitCamera();
 
-    // 7. Animation Loop
+    // 8. Transform & Canvas Physical Sizing for Zoom & Scrollbars
+    const applyZoom = () => {
+      if (!isUserZoomed) {
+        updateBaseDimensions();
+      }
+      const boxW = Math.round(baseW * currentZoom);
+      const boxH = Math.round(baseH * currentZoom);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+      sizer.style.margin = boxH < container.clientHeight ? 'auto 0' : '0';
+
+      renderer.domElement.style.width = `${boxW}px`;
+      renderer.domElement.style.height = `${boxH}px`;
+      renderer.domElement.style.maxWidth = 'none';
+      renderer.domElement.style.maxHeight = 'none';
+
+      renderer.setSize(boxW, boxH, false);
+      camera.aspect = boxW / boxH;
+      camera.updateProjectionMatrix();
+    };
+
+    applyZoom();
+
+    // 9. Animation Loop
     let animId: number;
     const animate = () => {
       animId = requestAnimationFrame(animate);
@@ -213,13 +275,12 @@ export class ThreeDPlugin implements PreviewPlugin {
     };
     animate();
 
-    // 8. Handle Resize
+    // 10. Handle Resize
     const resizeObserver = new ResizeObserver(() => {
-      const newWidth = container.clientWidth || 800;
-      const newHeight = container.clientHeight || 600;
-      camera.aspect = newWidth / newHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
+      if (!isUserZoomed && currentZoom === 1.0) {
+        updateBaseDimensions();
+        applyZoom();
+      }
     });
     resizeObserver.observe(container);
 
@@ -234,6 +295,7 @@ export class ThreeDPlugin implements PreviewPlugin {
           (child as THREE.Mesh).geometry.dispose();
         }
       });
+      scrollWrapper.remove();
       container.innerHTML = '';
     };
 
@@ -242,16 +304,44 @@ export class ThreeDPlugin implements PreviewPlugin {
     return {
       destroy: cleanup,
       zoomIn: () => {
-        camera.position.multiplyScalar(0.85);
-        controls.update();
+        isUserZoomed = true;
+        currentZoom = Math.min(5.0, Number((currentZoom * 1.25).toFixed(2)));
+        applyZoom();
       },
       zoomOut: () => {
-        camera.position.multiplyScalar(1.15);
-        controls.update();
+        currentZoom = Math.max(0.2, Number((currentZoom / 1.25).toFixed(2)));
+        if (currentZoom <= 1.0) {
+          isUserZoomed = false;
+        }
+        applyZoom();
       },
-      fitToPage: fitCamera,
-      fitToWidth: fitCamera,
-      resetZoom: fitCamera,
+      fitToPage: () => {
+        isUserZoomed = false;
+        currentZoom = 1.0;
+        updateBaseDimensions();
+        applyZoom();
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
+        fitCamera();
+      },
+      fitToWidth: () => {
+        isUserZoomed = false;
+        currentZoom = 1.0;
+        updateBaseDimensions();
+        applyZoom();
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
+        fitCamera();
+      },
+      resetZoom: () => {
+        isUserZoomed = false;
+        currentZoom = 1.0;
+        updateBaseDimensions();
+        applyZoom();
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
+        fitCamera();
+      },
       rotateCW: () => {
         isWireframe = !isWireframe;
         materials.forEach(m => {
