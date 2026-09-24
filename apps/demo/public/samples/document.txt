@@ -4,7 +4,7 @@
 
 Document: Global Infrastructure Design & Disaster Recovery Standards
 Author: Cloud Systems Architecture Group
-Version: 1.0.1
+Version: 1.0.2
 Classification: Enterprise Standard
 
 1. EXECUTIVE SUMMARY

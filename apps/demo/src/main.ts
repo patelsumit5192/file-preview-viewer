@@ -54,6 +54,41 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.pdf',
     data: getSampleUrl('sample.pdf')
   }),
+  docx: () => ({
+    name: 'document.docx',
+    ext: '.docx',
+    data: getSampleUrl('document.docx')
+  }),
+  docm: () => ({
+    name: 'document.docm',
+    ext: '.docm',
+    data: getSampleUrl('document.docm')
+  }),
+  dotx: () => ({
+    name: 'document.dotx',
+    ext: '.dotx',
+    data: getSampleUrl('document.dotx')
+  }),
+  doc: () => ({
+    name: 'document.doc',
+    ext: '.doc',
+    data: getSampleUrl('document.doc')
+  }),
+  pptx: () => ({
+    name: 'presentation.pptx',
+    ext: '.pptx',
+    data: getSampleUrl('presentation.pptx')
+  }),
+  ppt: () => ({
+    name: 'presentation.ppt',
+    ext: '.ppt',
+    data: getSampleUrl('presentation.ppt')
+  }),
+  odt: () => ({
+    name: 'document.odt',
+    ext: '.odt',
+    data: getSampleUrl('document.odt')
+  }),
   txt: () => ({
     name: 'document.txt',
     ext: '.txt',

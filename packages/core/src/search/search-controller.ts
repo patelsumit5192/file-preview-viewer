@@ -316,6 +316,7 @@ export class SearchController {
     if (total > 0) {
       this.currentIndex = 0;
       marks[0].classList.add('fp-search-match-active');
+      this.ensureElementVisible(marks[0]);
       marks[0].scrollIntoView({
         behavior: 'smooth',
         block: 'center',
@@ -327,6 +328,23 @@ export class SearchController {
       this.currentIndex = -1;
       this.updateCount(0, 0);
       return { total: 0, current: 0 };
+    }
+  }
+
+  private ensureElementVisible(el: HTMLElement): void {
+    if (this.activeInstance?.goToPage) {
+      const pageSelector = 'section.docx, .fp-docx-page-card, .fp-doc-page-card, .fp-odt-page-card, .fp-odp-slide-card, .fp-rtf-page-card';
+      const pageContainer = el.closest(pageSelector);
+      if (pageContainer && pageContainer.parentElement) {
+        const pages = Array.from(pageContainer.parentElement.querySelectorAll(pageSelector));
+        const pageIdx = pages.indexOf(pageContainer as HTMLElement);
+        if (pageIdx !== -1) {
+          const targetPage = pageIdx + 1;
+          if (this.activeInstance.getCurrentPage?.() !== targetPage) {
+            this.activeInstance.goToPage(targetPage);
+          }
+        }
+      }
     }
   }
 
@@ -342,6 +360,7 @@ export class SearchController {
     const activeEl = this.matches[this.currentIndex];
     if (activeEl) {
       activeEl.classList.add('fp-search-match-active');
+      this.ensureElementVisible(activeEl);
       activeEl.scrollIntoView({
         behavior: 'smooth',
         block: 'center',

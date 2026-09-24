@@ -134,6 +134,14 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         execute: () => instance.print?.()
       },
       {
+        id: 'search',
+        icon: 'search',
+        label: 'Search / Find (Ctrl+F)',
+        type: 'button',
+        group: 'view',
+        execute: () => (instance as any).search?.()
+      },
+      {
         id: 'open-window',
         icon: 'open-window',
         label: 'Open in Separate Full Window',
