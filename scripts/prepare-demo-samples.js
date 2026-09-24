@@ -90,7 +90,7 @@ async function generateZip(destPath) {
   const fflate = await import('../packages/plugins/archive/node_modules/fflate/esm/browser.js');
   
   const files = {
-    'README.md': fflate.strToU8('# Project Preview Archive\n\nThis archive contains sample project files demonstrating @files-preview-app/preview-file.\n\n## Contents\n- `index.html`: Web interface\n- `styles.css`: Visual themes\n- `package.json`: Dependency manifests\n- `src/app.js`: Application logic\n'),
+    'README.md': fflate.strToU8('# Project Preview Archive\n\nThis archive contains sample project files demonstrating file-preview-viewer.\n\n## Contents\n- `index.html`: Web interface\n- `styles.css`: Visual themes\n- `package.json`: Dependency manifests\n- `src/app.js`: Application logic\n'),
     'package.json': fflate.strToU8(JSON.stringify({
       name: 'preview-sample-project',
       version: '1.0.0',

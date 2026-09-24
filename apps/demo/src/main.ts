@@ -1,5 +1,5 @@
-import { FilePreviewViewer, getTransferPayload } from '@files-preview-app/preview-file';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreviewViewer, getTransferPayload } from '@file-preview-viewer/viewer';
+import '@file-preview-viewer/viewer/styles.css';
 
 // Initialize the universal viewer
 const viewer = new FilePreviewViewer();
@@ -403,15 +403,15 @@ async function loadFile(source: string | File | Blob | ArrayBuffer, name: string
 // Update code snippet for active tab and file
 function updateSnippet() {
   const snippets: Record<string, string> = {
-    react: `import { FilePreview } from '@files-preview-app/preview-file/react';
-import '@files-preview-app/preview-file/styles.css';
+    react: `import { FilePreview } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
 
 <FilePreview
   src={file} // URL string, File, Blob, or ArrayBuffer (${activeFileExt})
   options={{ theme: '${currentTheme}', showToolbar: true }}
   onLoaded={(meta) => console.log('Loaded:', meta)}
 />`,
-    angular: `import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
+    angular: `import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
 
 <fp-file-preview
   [src]="fileSource" // ${activeFileName}
@@ -419,15 +419,15 @@ import '@files-preview-app/preview-file/styles.css';
   (loaded)="onLoaded($event)"
 />`,
     vue: `<script setup>
-import { FilePreview } from '@files-preview-app/preview-file/vue';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
 </script>
 
 <template>
   <FilePreview :src="file" :options="{ theme: '${currentTheme}', showToolbar: true }" />
 </template>`,
-    vanilla: `import { FilePreviewViewer } from '@files-preview-app/preview-file';
-import '@files-preview-app/preview-file/styles.css';
+    vanilla: `import { FilePreviewViewer } from '@file-preview-viewer/viewer';
+import '@file-preview-viewer/viewer/styles.css';
 
 const viewer = new FilePreviewViewer();
 await viewer.preview(document.getElementById('container'), fileSource, {

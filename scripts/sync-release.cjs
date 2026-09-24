@@ -127,13 +127,14 @@ async function main() {
   }
 
   // Step 8: Publish to NPM
-  console.log(`\n[sync-release] [4/6] Publishing @files-preview-app/preview-file@${newVersion} to NPM...`);
+  const pkgName = pkgData.name;
+  console.log(`\n[sync-release] [4/6] Publishing ${pkgName}@${newVersion} to NPM...`);
   run('npm publish --access public', PKG_DIR);
 
   // Step 9: Tag as latest explicitly
   console.log('\n[sync-release] [5/6] Updating latest dist-tag on NPM...');
   try {
-    run(`npm dist-tag add @files-preview-app/preview-file@${newVersion} latest`, PKG_DIR);
+    run(`npm dist-tag add ${pkgName}@${newVersion} latest`, PKG_DIR);
   } catch (err) {
     console.warn(`[sync-release] Note: dist-tag update response: ${err.message}`);
   }
@@ -156,8 +157,8 @@ async function main() {
   // Final verification from NPM
   console.log('\n[sync-release] Verifying published package from NPM registry...');
   try {
-    const liveVer = runCapture(`npm view @files-preview-app/preview-file@${newVersion} version`, ROOT_DIR);
-    console.log(`[sync-release] SUCCESS: @files-preview-app/preview-file@${liveVer} is LIVE on NPM!`);
+    const liveVer = runCapture(`npm view ${pkgName}@${newVersion} version`, ROOT_DIR);
+    console.log(`[sync-release] SUCCESS: ${pkgName}@${liveVer} is LIVE on NPM!`);
   } catch (e) {
     console.log(`[sync-release] Package is published and being propagated across NPM edge mirrors.`);
   }

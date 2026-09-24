@@ -1,11 +1,11 @@
-# @files-preview-app/preview-file
+# @file-preview-viewer/viewer
 
 <p align="center">
   <a href="https://patelsumit5192.github.io/preview-file/">
     <img src="https://img.shields.io/badge/Live%20Demo-Explore%20Online-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" />
   </a>
-  <a href="https://www.npmjs.com/package/@files-preview-app/preview-file">
-    <img src="https://img.shields.io/npm/v/@files-preview-app/preview-file.svg?style=for-the-badge&color=blue" alt="npm version" />
+  <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer">
+    <img src="https://img.shields.io/npm/v/@file-preview-viewer/viewer.svg?style=for-the-badge&color=blue" alt="npm version" />
   </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT" />
@@ -37,21 +37,21 @@ Try the interactive demo with instant sample files directly in your browser:
 Install the **single all-in-one package** in your project:
 
 ```bash
-npm install @files-preview-app/preview-file
+npm install @file-preview-viewer/viewer
 ```
 
 Or using Yarn, pnpm, or Bun:
 ```bash
-pnpm add @files-preview-app/preview-file
+pnpm add @file-preview-viewer/viewer
 # or
-yarn add @files-preview-app/preview-file
+yarn add @file-preview-viewer/viewer
 # or
-bun add @files-preview-app/preview-file
+bun add @file-preview-viewer/viewer
 ```
 
 Import the toolbar and viewer stylesheet in your global CSS or root component:
 ```css
-import '@files-preview-app/preview-file/styles.css';
+import '@file-preview-viewer/viewer/styles.css';
 ```
 
 ---
@@ -60,25 +60,25 @@ import '@files-preview-app/preview-file/styles.css';
 
 | Framework | Supported Versions | Package Entry Point | Integration Notes |
 |---|---|---|---|
-| **React** | `>=16.8.0` (React 17, 18, 19) | `@files-preview-app/preview-file/react` | Full Hooks, `forwardRef`, `FilePreviewHandle` |
-| **Next.js** | 13.x, 14.x, 15.x | `@files-preview-app/preview-file/react` | App Router (`'use client'`) & Pages Router |
-| **Angular** | `>=14.0.0` (Angular 15, 16, 17, 18, 19) | `@files-preview-app/preview-file/angular` | Standalone Component & NgModule, `@ViewChild` |
-| **Vue 3** | `>=3.0.0` (Vue 3.2, 3.3, 3.4, 3.5+) | `@files-preview-app/preview-file/vue` | Composition API (`<script setup>`) & Options API |
-| **Nuxt 3** | `>=3.0.0` | `@files-preview-app/preview-file/vue` | Wrapped inside `<ClientOnly>` component |
-| **Vanilla JS / TS** | ES2020+ | `@files-preview-app/preview-file` | Pure DOM API, Vite, Webpack, Rollup, Parcel, esbuild |
-| **Svelte / Solid** | All versions | `@files-preview-app/preview-file` | Direct DOM container attachment |
+| **React** | `>=16.8.0` (React 17, 18, 19) | `@file-preview-viewer/viewer/react` | Full Hooks, `forwardRef`, `FilePreviewHandle` |
+| **Next.js** | 13.x, 14.x, 15.x | `@file-preview-viewer/viewer/react` | App Router (`'use client'`) & Pages Router |
+| **Angular** | `>=14.0.0` (Angular 15, 16, 17, 18, 19) | `@file-preview-viewer/viewer/angular` | Standalone Component & NgModule, `@ViewChild` |
+| **Vue 3** | `>=3.0.0` (Vue 3.2, 3.3, 3.4, 3.5+) | `@file-preview-viewer/viewer/vue` | Composition API (`<script setup>`) & Options API |
+| **Nuxt 3** | `>=3.0.0` | `@file-preview-viewer/viewer/vue` | Wrapped inside `<ClientOnly>` component |
+| **Vanilla JS / TS** | ES2020+ | `@file-preview-viewer/viewer` | Pure DOM API, Vite, Webpack, Rollup, Parcel, esbuild |
+| **Svelte / Solid** | All versions | `@file-preview-viewer/viewer` | Direct DOM container attachment |
 
 ---
 
 ## 🚀 Framework Integration Guides
 
-### 1. React (`@files-preview-app/preview-file/react`)
+### 1. React (`@file-preview-viewer/viewer/react`)
 
 #### Basic Usage
 ```tsx
 import React, { useState } from 'react';
-import { FilePreview } from '@files-preview-app/preview-file/react';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
 
 export default function App() {
   const [file, setFile] = useState<File | string>(
@@ -116,8 +116,8 @@ export default function App() {
 #### Advanced React (Programmatic Controls via `ref`)
 ```tsx
 import React, { useRef, useState } from 'react';
-import { FilePreview, type FilePreviewHandle } from '@files-preview-app/preview-file/react';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview, type FilePreviewHandle } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
 
 export default function AdvancedViewer() {
   const previewRef = useRef<FilePreviewHandle>(null);
@@ -170,11 +170,11 @@ Because file previews use client-side DOM and canvas APIs, disable SSR using Nex
 'use client';
 
 import dynamic from 'next/dynamic';
-import '@files-preview-app/preview-file/styles.css';
+import '@file-preview-viewer/viewer/styles.css';
 
 // Disable SSR for the preview component
 const FilePreview = dynamic(
-  () => import('@files-preview-app/preview-file/react').then((mod) => mod.FilePreview),
+  () => import('@file-preview-viewer/viewer/react').then((mod) => mod.FilePreview),
   { ssr: false }
 );
 
@@ -192,13 +192,13 @@ export default function NextPreviewPage() {
 
 ---
 
-### 3. Angular (`@files-preview-app/preview-file/angular`)
+### 3. Angular (`@file-preview-viewer/viewer/angular`)
 
 #### Standalone Component (Angular 14, 15, 16, 17, 18, 19)
 ```typescript
 import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
+import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
 
 @Component({
   selector: 'app-document-viewer',
@@ -229,7 +229,7 @@ import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
       />
     </div>
   `,
-  styleUrls: ['@files-preview-app/preview-file/styles.css']
+  styleUrls: ['@file-preview-viewer/viewer/styles.css']
 })
 export class DocumentViewerComponent {
   @ViewChild('preview') previewComponent!: FilePreviewComponent;
@@ -283,7 +283,7 @@ export class DocumentViewerComponent {
 ```typescript
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
+import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
 import { AppComponent } from './app.component';
 
 @NgModule({
@@ -296,7 +296,7 @@ export class AppModule {}
 
 ---
 
-### 4. Vue 3 (`@files-preview-app/preview-file/vue`)
+### 4. Vue 3 (`@file-preview-viewer/viewer/vue`)
 
 #### Composition API (`<script setup>`)
 ```vue
@@ -331,8 +331,8 @@ export class AppModule {}
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { FilePreview } from '@files-preview-app/preview-file/vue';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
 
 const previewRef = ref<InstanceType<typeof FilePreview> | null>(null);
 const fileSource = ref<string | File>('https://example.com/archive.zip');
@@ -399,14 +399,14 @@ Wrap inside `<ClientOnly>` to avoid server-side rendering:
 </template>
 
 <script setup lang="ts">
-import { FilePreview } from '@files-preview-app/preview-file/vue';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
 </script>
 ```
 
 ---
 
-### 5. Vanilla JavaScript / TypeScript (`@files-preview-app/preview-file`)
+### 5. Vanilla JavaScript / TypeScript (`@file-preview-viewer/viewer`)
 
 Use directly with any build tool (Vite, Webpack, Rollup) or via `<script type="module">`:
 
@@ -417,7 +417,7 @@ Use directly with any build tool (Vite, Webpack, Rollup) or via `<script type="m
   <meta charset="UTF-8" />
   <title>Universal File Preview</title>
   <!-- Link Stylesheet -->
-  <link rel="stylesheet" href="node_modules/@files-preview-app/preview-file/dist/styles.css" />
+  <link rel="stylesheet" href="node_modules/@file-preview-viewer/viewer/dist/styles.css" />
   <style>
     #viewer-container {
       width: 100%;
@@ -438,7 +438,7 @@ Use directly with any build tool (Vite, Webpack, Rollup) or via `<script type="m
   <div id="viewer-container"></div>
 
   <script type="module">
-    import { FilePreviewViewer } from './node_modules/@files-preview-app/preview-file/dist/index.js';
+    import { FilePreviewViewer } from './node_modules/@file-preview-viewer/viewer/dist/index.js';
 
     const container = document.getElementById('viewer-container');
     const filePicker = document.getElementById('file-picker');

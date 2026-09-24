@@ -1,6 +1,6 @@
 # API Reference — Properties, Methods, Events & Framework Guide
 
-This document provides a comprehensive, exhaustive reference for all **properties**, **configuration options**, **methods**, and **lifecycle events** in `@files-preview-app/preview-file`, along with detailed guides on how to configure and invoke methods across **React**, **Vue 3**, **Angular**, and **Vanilla JavaScript / TypeScript**.
+This document provides a comprehensive, exhaustive reference for all **properties**, **configuration options**, **methods**, and **lifecycle events** in `@file-preview-viewer/viewer`, along with detailed guides on how to configure and invoke methods across **React**, **Vue 3**, **Angular**, and **Vanilla JavaScript / TypeScript**.
 
 ---
 
@@ -244,13 +244,13 @@ export type PreviewEvent =
 
 ## 7. Framework Method Configuration & Usage Guide
 
-### 7.1 React & Next.js (`@files-preview-app/preview-file/react`)
+### 7.1 React & Next.js (`@file-preview-viewer/viewer/react`)
 
 #### Import & Handle Types
 ```tsx
 import React, { useRef, useState } from 'react';
-import { FilePreview, type FilePreviewHandle } from '@files-preview-app/preview-file/react';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview, type FilePreviewHandle } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
 ```
 
 #### Calling Methods via `useRef<FilePreviewHandle>`
@@ -262,8 +262,8 @@ The `ref` provides three methods:
 #### Complete Working React Example
 ```tsx
 import React, { useRef, useState } from 'react';
-import { FilePreview, type FilePreviewHandle } from '@files-preview-app/preview-file/react';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview, type FilePreviewHandle } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
 
 export function DocumentViewer() {
   const previewRef = useRef<FilePreviewHandle>(null);
@@ -363,10 +363,10 @@ export function DocumentViewer() {
 'use client';
 
 import dynamic from 'next/dynamic';
-import '@files-preview-app/preview-file/styles.css';
+import '@file-preview-viewer/viewer/styles.css';
 
 const FilePreview = dynamic(
-  () => import('@files-preview-app/preview-file/react').then((m) => m.FilePreview),
+  () => import('@file-preview-viewer/viewer/react').then((m) => m.FilePreview),
   { ssr: false }
 );
 
@@ -381,7 +381,7 @@ export default function Page() {
 
 ---
 
-### 7.2 Vue 3 & Nuxt 3 (`@files-preview-app/preview-file/vue`)
+### 7.2 Vue 3 & Nuxt 3 (`@file-preview-viewer/viewer/vue`)
 
 #### Composition API (`<script setup lang="ts">`)
 The component template ref exposes:
@@ -432,8 +432,8 @@ The component template ref exposes:
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { FilePreview } from '@files-preview-app/preview-file/vue';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
 
 const previewRef = ref<InstanceType<typeof FilePreview> | null>(null);
 const fileSource = ref('/sample.docx');
@@ -520,14 +520,14 @@ function onRotate(data: any) {
 </template>
 
 <script setup lang="ts">
-import { FilePreview } from '@files-preview-app/preview-file/vue';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
 </script>
 ```
 
 ---
 
-### 7.3 Angular 14+ (`@files-preview-app/preview-file/angular`)
+### 7.3 Angular 14+ (`@file-preview-viewer/viewer/angular`)
 
 #### Standalone Component Example
 In Angular, use `@ViewChild('preview')` to reference `FilePreviewComponent`:
@@ -538,7 +538,7 @@ In Angular, use `@ViewChild('preview')` to reference `FilePreviewComponent`:
 ```typescript
 import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FilePreviewComponent } from '@files-preview-app/preview-file/angular';
+import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
 
 @Component({
   selector: 'app-preview-demo',
@@ -657,12 +657,12 @@ export class PreviewDemoComponent {
 
 ---
 
-### 7.4 Vanilla JavaScript / TypeScript (`@files-preview-app/preview-file`)
+### 7.4 Vanilla JavaScript / TypeScript (`@file-preview-viewer/viewer`)
 
 #### Direct DOM Usage
 ```typescript
-import { FilePreviewViewer } from '@files-preview-app/preview-file';
-import '@files-preview-app/preview-file/styles.css';
+import { FilePreviewViewer } from '@file-preview-viewer/viewer';
+import '@file-preview-viewer/viewer/styles.css';
 
 const container = document.getElementById('preview-container')!;
 

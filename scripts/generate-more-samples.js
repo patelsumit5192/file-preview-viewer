@@ -108,7 +108,7 @@ const odtContentXml = `<?xml version="1.0" encoding="UTF-8"?>
     <office:text>
       <text:h text:style-name="Title" text:outline-level="1">OpenDocument Text (.odt) Preview</text:h>
       <text:p text:style-name="SubTitle">Client-side OASIS OpenDocument renderer</text:p>
-      <text:p>This document demonstrates <text:span text:style-name="Highlight">native OpenDocument parsing</text:span> built directly into @files-preview-app/preview-file without any external cloud service.</text:p>
+      <text:p>This document demonstrates <text:span text:style-name="Highlight">native OpenDocument parsing</text:span> built directly into file-preview-viewer without any external cloud service.</text:p>
       <text:p>OpenDocument features supported:</text:p>
       <text:list>
         <text:list-item><text:p>Text styles and hierarchy (H1-H6, paragraphs)</text:p></text:list-item>

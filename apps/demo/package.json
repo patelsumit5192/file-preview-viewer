@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@files-preview-app/preview-file": "workspace:*"
+    "@file-preview-viewer/viewer": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

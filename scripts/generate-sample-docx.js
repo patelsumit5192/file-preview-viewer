@@ -97,7 +97,7 @@ const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>The @files-preview-app/preview-file library provides comprehensive, high-fidelity in-browser document previews for over 50 office, presentation, spreadsheet, and media extensions. All processing executes 100% on the client side with zero external server or cloud conversions.</w:t>
+        <w:t>The file-preview-viewer library provides comprehensive, high-fidelity in-browser document previews for over 50 office, presentation, spreadsheet, and media extensions. All processing executes 100% on the client side with zero external server or cloud conversions.</w:t>
       </w:r>
     </w:p>
 
@@ -174,7 +174,7 @@ const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>This file demonstrates full compatibility with Microsoft Word 2007-2024 (.docx), LibreOffice Writer, Google Docs, and the open-source @files-preview-app/preview-file renderer.</w:t>
+        <w:t>This file demonstrates full compatibility with Microsoft Word 2007-2024 (.docx), LibreOffice Writer, Google Docs, and the open-source file-preview-viewer renderer.</w:t>
       </w:r>
     </w:p>
   </w:body>

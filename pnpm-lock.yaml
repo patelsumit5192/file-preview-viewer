@@ -44,7 +44,7 @@ importers:
 
   apps/demo:
     dependencies:
-      '@files-preview-app/preview-file':
+      '@file-preview-viewer/viewer':
         specifier: workspace:*
         version: link:../../packages/preview-file
     devDependencies:
@@ -251,6 +251,9 @@ importers:
       dompurify:
         specifier: ^3.2.4
         version: 3.4.15
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*
