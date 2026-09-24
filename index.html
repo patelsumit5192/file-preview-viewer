@@ -17,7 +17,7 @@
     window.addEventListener('error', function(e) { window.__consoleLogs.push({ t: 'window.error', m: e.message + ' at ' + e.filename + ':' + e.lineno }); });
     window.addEventListener('unhandledrejection', function(e) { window.__consoleLogs.push({ t: 'unhandledrejection', m: (e.reason && e.reason.message) || String(e.reason) }); });
   </script>
-  <script type="module" crossorigin src="./assets/index-C-0sv4HR.js"></script>
+  <script type="module" crossorigin src="./assets/index-CmCDTvS6.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-BO-XrImy.css">
 </head>
 <body class="theme-light">
@@ -26,7 +26,7 @@
       <div class="brand">
         <span class="brand-icon">👁️</span>
         <span class="brand-title">@file-preview-viewer/viewer</span>
-        <span class="badge">v1.0.1</span>
+        <span class="badge">v1.0.2</span>
       </div>
       <div class="header-actions">
         <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer" target="_blank" class="nav-btn npm-btn">
@@ -57,6 +57,34 @@
           <button class="sample-btn" data-sample="pdf">
             <span class="sample-icon">📄</span>
             <span class="sample-label">PDF (.pdf)</span>
+          </button>
+          <button class="sample-btn" data-sample="docx">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">Word (.docx)</span>
+          </button>
+          <button class="sample-btn" data-sample="docm">
+            <span class="sample-icon">📝</span>
+            <span class="sample-label">Word Macro (.docm)</span>
+          </button>
+          <button class="sample-btn" data-sample="dotx">
+            <span class="sample-icon">📑</span>
+            <span class="sample-label">Word Template (.dotx)</span>
+          </button>
+          <button class="sample-btn" data-sample="doc">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">Legacy Word (.doc)</span>
+          </button>
+          <button class="sample-btn" data-sample="pptx">
+            <span class="sample-icon">📊</span>
+            <span class="sample-label">PowerPoint (.pptx)</span>
+          </button>
+          <button class="sample-btn" data-sample="ppt">
+            <span class="sample-icon">📽️</span>
+            <span class="sample-label">Legacy PPT (.ppt)</span>
+          </button>
+          <button class="sample-btn" data-sample="odt">
+            <span class="sample-icon">📄</span>
+            <span class="sample-label">OpenDoc Text (.odt)</span>
           </button>
           <button class="sample-btn" data-sample="xlsx">
             <span class="sample-icon">📊</span>
