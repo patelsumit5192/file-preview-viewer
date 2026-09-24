@@ -1,7 +1,7 @@
 # @file-preview-viewer/viewer
 
 <p align="center">
-  <a href="https://patelsumit5192.github.io/preview-file/">
+  <a href="https://patelsumit5192.github.io/file-preview-viewer/">
     <img src="https://img.shields.io/badge/Live%20Demo-Explore%20Online-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" />
   </a>
   <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer">
@@ -23,7 +23,7 @@
 ## 🌐 Live Interactive Demo
 
 Try the interactive demo with instant sample files directly in your browser:  
-👉 **[Launch Live Demo (GitHub Pages)](https://patelsumit5192.github.io/preview-file/)**
+👉 **[Launch Live Demo (GitHub Pages)](https://patelsumit5192.github.io/file-preview-viewer/)**
 
 - Instant samples for **PDF, DOCX, XLSX, PPTX, CSV, ZIP, Markdown, 3D STL, SVG, and Code**
 - Drag-and-drop your own files from your computer
@@ -699,7 +699,7 @@ Every file format is rendered 100% in the browser using permissive open-source e
 - 🌐 GitHub: [@patelsumit5192](https://github.com/patelsumit5192)
 - 📦 NPM: [patel.sumit51](https://www.npmjs.com/~patel.sumit51)
 - 💻 Repository: [https://github.com/patelsumit5192/file-preview-viewer](https://github.com/patelsumit5192/file-preview-viewer)
-- 🚀 Live Demo: [https://patelsumit5192.github.io/preview-file/](https://patelsumit5192.github.io/preview-file/)
+- 🚀 Live Demo: [https://patelsumit5192.github.io/file-preview-viewer/](https://patelsumit5192.github.io/file-preview-viewer/)
 
 ---
 
