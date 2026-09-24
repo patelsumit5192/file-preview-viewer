@@ -29,6 +29,9 @@ export {
 export { ToolbarController } from './toolbar/toolbar-controller';
 export { ThumbnailPanel } from './thumbnail/thumbnail-panel';
 
+// Search / Find
+export { SearchController, type SearchOptions, type SearchResult } from './search/search-controller';
+
 // Cross-window document transfer
 export { saveTransferPayload, getTransferPayload, type TransferPayload } from './transfer';
 

@@ -4,6 +4,7 @@ import { downloadFile } from './utils';
 import { saveTransferPayload } from './transfer';
 import { ToolbarController } from './toolbar/toolbar-controller';
 import { ThumbnailPanel } from './thumbnail/thumbnail-panel';
+import { SearchController, type SearchOptions, type SearchResult } from './search/search-controller';
 import type {
   FileSource,
   PreviewPlugin,
@@ -26,6 +27,7 @@ export class FilePreviewViewer {
   private eventEmitter = new EventEmitter();
   private toolbar: ToolbarController | null = null;
   private thumbnailPanel: ThumbnailPanel | null = null;
+  private searchController: SearchController | null = null;
   private wrapperEl: HTMLElement | null = null;
   private contentEl: HTMLElement | null = null;
   private currentBuffer: ArrayBuffer | null = null;
@@ -134,6 +136,8 @@ export class FilePreviewViewer {
       } as any);
 
       this.activeInstance = instance;
+      this.searchController?.setContentEl(this.contentEl);
+      this.searchController?.setInstance(instance);
       (instance as any).openInSeparateWindow = () => this.openInSeparateWindow();
       (instance as any).toggleThumbnails = () => this.toggleThumbnails();
       if (!instance.resetZoom) {
@@ -144,12 +148,31 @@ export class FilePreviewViewer {
       this.hideLoading();
       this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
 
-      // 8. Setup toolbar with plugin's actions + auto fullscreen and open-window buttons
+      // 8. Setup toolbar with plugin's actions + auto search, fullscreen and open-window buttons
       const isToolbarVisible = options.showToolbar !== false && options.toolbar !== false;
       if (isToolbarVisible && this.toolbar) {
         const toolbarConfig = this.extractToolbarConfig(options);
         this.toolbar.setConfig(toolbarConfig);
         const actions = matchedPlugin.getToolbarActions(instance);
+
+        const searchAction = actions.find(a => a.id === 'search' || a.id === 'find');
+        if (searchAction) {
+          searchAction.execute = () => {
+            this.toggleSearch();
+          };
+        } else if (instance.isSearchable !== false && matchedPlugin.id !== 'media' && matchedPlugin.id !== '3d') {
+          actions.push({
+            id: 'search',
+            icon: 'search',
+            label: 'Search / Find (Ctrl+F)',
+            type: 'button',
+            group: 'view',
+            execute: () => {
+              this.toggleSearch();
+            }
+          });
+        }
+
         const hasFullscreen = actions.some(a => a.id === 'fullscreen');
         if (!hasFullscreen && this.wrapperEl) {
           actions.push({
@@ -386,6 +409,7 @@ export class FilePreviewViewer {
     this.destroyInstance();
     this.toolbar?.destroy();
     this.thumbnailPanel?.destroy();
+    this.searchController?.destroy();
     this.eventEmitter.emit('destroy', null);
     this.eventEmitter.removeAll();
 
@@ -396,6 +420,7 @@ export class FilePreviewViewer {
     this.contentEl = null;
     this.toolbar = null;
     this.thumbnailPanel = null;
+    this.searchController = null;
     this.currentBuffer = null;
     this.currentMetadata = null;
     this.currentContainer = null;
@@ -607,6 +632,65 @@ export class FilePreviewViewer {
   }
 
   /**
+   * Open the in-document search / find bar.
+   */
+  openSearch(): void {
+    this.searchController?.open();
+  }
+
+  /**
+   * Close the in-document search / find bar and clear highlights.
+   */
+  closeSearch(): void {
+    this.searchController?.close();
+  }
+
+  /**
+   * Toggle the in-document search / find bar visibility.
+   */
+  toggleSearch(): void {
+    this.searchController?.toggle();
+  }
+
+  /**
+   * Programmatically search for a query string in the current document.
+   */
+  async search(query: string, options?: SearchOptions): Promise<SearchResult> {
+    if (!this.searchController) {
+      return { total: 0, current: 0 };
+    }
+    return this.searchController.search(query, options);
+  }
+
+  /**
+   * Navigate to the next search match.
+   */
+  async findNext(): Promise<void> {
+    await this.searchController?.next();
+  }
+
+  /**
+   * Navigate to the previous search match.
+   */
+  async findPrev(): Promise<void> {
+    await this.searchController?.prev();
+  }
+
+  /**
+   * Clear active search highlights and reset search state.
+   */
+  clearSearch(): void {
+    this.searchController?.clear();
+  }
+
+  /**
+   * Check if the search bar is currently open.
+   */
+  isSearchOpen(): boolean {
+    return this.searchController?.getIsOpen() ?? false;
+  }
+
+  /**
    * Set whether to display the file name / title bar above the toolbar.
    */
   setShowFileName(show: boolean): void {
@@ -671,6 +755,7 @@ export class FilePreviewViewer {
   }
 
   private destroyInstance(): void {
+    this.searchController?.clear();
     if (this.activeInstance) {
       this.activeInstance.destroy();
       this.activeInstance = null;
@@ -821,6 +906,15 @@ export class FilePreviewViewer {
       }, 260);
     });
 
+    this.searchController?.destroy();
+    this.searchController = new SearchController(this.wrapperEl, {
+      contentEl: this.contentEl,
+      instance: this.activeInstance,
+      onStateChange: (isOpen) => {
+        this.toolbar?.setActionActive('search', isOpen);
+      },
+    });
+
     // Enable keyboard shortcuts & drag/drop
     this.setupKeyboardShortcuts();
     this.setupDragAndDrop(container, options);
@@ -866,6 +960,20 @@ export class FilePreviewViewer {
     if (this.keyHandler) return;
 
     this.keyHandler = (e: KeyboardEvent) => {
+      // Global search shortcut: Ctrl+F / Cmd+F
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        this.toggleSearch();
+        return;
+      }
+
+      // Escape key to dismiss search bar
+      if (e.key === 'Escape' && this.searchController?.getIsOpen()) {
+        e.preventDefault();
+        this.closeSearch();
+        return;
+      }
+
       // Don't intercept when user is typing in form controls
       if (
         e.target instanceof HTMLInputElement ||

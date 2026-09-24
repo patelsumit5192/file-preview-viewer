@@ -121,6 +121,18 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
     return this.viewer;
   }
 
+  public openSearch(): void {
+    this.viewer?.openSearch();
+  }
+
+  public closeSearch(): void {
+    this.viewer?.closeSearch();
+  }
+
+  public toggleSearch(): void {
+    this.viewer?.toggleSearch();
+  }
+
   public destroy(): void {
     this.viewer?.destroy();
   }

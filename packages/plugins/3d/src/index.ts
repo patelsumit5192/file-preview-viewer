@@ -357,7 +357,8 @@ export class ThreeDPlugin implements PreviewPlugin {
       },
       download: () => {
         downloadFile(ctx.buffer, ctx.metadata.name || `model${ext || '.stl'}`);
-      }
+      },
+      isSearchable: false
     };
   }
 }

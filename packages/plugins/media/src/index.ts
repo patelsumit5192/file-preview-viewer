@@ -630,7 +630,8 @@ export class MediaPlugin implements PreviewPlugin {
       },
       print: isImage ? () => {
         window.print();
-      } : undefined
+      } : undefined,
+      isSearchable: false
     };
   }
 }

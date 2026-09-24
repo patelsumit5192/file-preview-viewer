@@ -131,6 +131,14 @@ export class PdfPlugin implements PreviewPlugin {
         execute: () => instance.rotateCCW?.()
       },
       {
+        id: 'search',
+        icon: 'search',
+        label: 'Search / Find (Ctrl+F)',
+        type: 'button',
+        group: 'actions',
+        execute: () => (instance as any).openSearch?.()
+      },
+      {
         id: 'download',
         icon: 'download',
         label: 'Download PDF',
@@ -217,6 +225,169 @@ export class PdfPlugin implements PreviewPlugin {
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let currentRenderTask: any = null;
     let textLayerDiv: HTMLElement | null = null;
+
+    const pageTextCache: Map<number, string> = new Map();
+    let activeSearchQuery = '';
+    let activeCaseSensitive = false;
+    let allMatches: Array<{ page: number; matchIndexOnPage: number }> = [];
+    let currentMatchIdx = -1;
+
+    const clearHighlights = () => {
+      if (!textLayerDiv) return;
+      const marks = textLayerDiv.querySelectorAll('mark.fp-search-match');
+      const parents = new Set<Node>();
+      marks.forEach((m) => {
+        const p = m.parentNode;
+        if (p) {
+          parents.add(p);
+          while (m.firstChild) {
+            p.insertBefore(m.firstChild, m);
+          }
+          p.removeChild(m);
+        }
+      });
+      parents.forEach((p) => p.normalize());
+    };
+
+    const applyHighlightsToCurrentPage = () => {
+      if (!textLayerDiv || !activeSearchQuery) return;
+      clearHighlights();
+
+      const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(escapeRegex(activeSearchQuery), activeCaseSensitive ? 'g' : 'gi');
+      const walker = document.createTreeWalker(textLayerDiv, NodeFilter.SHOW_TEXT);
+      const textNodes: Text[] = [];
+      let n = walker.nextNode();
+      while (n) {
+        textNodes.push(n as Text);
+        n = walker.nextNode();
+      }
+
+      const pageMarks: HTMLElement[] = [];
+      for (const textNode of textNodes) {
+        const val = textNode.nodeValue || '';
+        re.lastIndex = 0;
+        const matchesInNode: Array<{ start: number; end: number }> = [];
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(val)) !== null) {
+          matchesInNode.push({ start: m.index, end: m.index + m[0].length });
+        }
+
+        if (matchesInNode.length > 0) {
+          const nodeMarks: HTMLElement[] = [];
+          for (let i = matchesInNode.length - 1; i >= 0; i--) {
+            const { start, end } = matchesInNode[i];
+            textNode.splitText(end);
+            const matchTarget = textNode.splitText(start);
+            const mark = document.createElement('mark');
+            mark.className = 'fp-search-match';
+            mark.textContent = matchTarget.textContent;
+            matchTarget.parentNode?.replaceChild(mark, matchTarget);
+            nodeMarks.unshift(mark);
+          }
+          pageMarks.push(...nodeMarks);
+        }
+      }
+
+      if (currentMatchIdx >= 0 && currentMatchIdx < allMatches.length) {
+        const curMatch = allMatches[currentMatchIdx];
+        if (curMatch.page === currentPage && pageMarks.length > 0) {
+          const markIdx = Math.min(curMatch.matchIndexOnPage, pageMarks.length - 1);
+          const activeMark = pageMarks[markIdx];
+          if (activeMark) {
+            activeMark.classList.add('fp-search-match-active');
+            activeMark.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          }
+        }
+      }
+    };
+
+    const getPageText = async (p: number): Promise<string> => {
+      if (pageTextCache.has(p)) return pageTextCache.get(p)!;
+      try {
+        const page = await pdfDoc.getPage(p);
+        const tc = await page.getTextContent();
+        const text = (tc.items as any[]).map((it) => it.str || '').join(' ');
+        pageTextCache.set(p, text);
+        return text;
+      } catch {
+        return '';
+      }
+    };
+
+    const search = async (query: string, options?: { caseSensitive?: boolean }) => {
+      clearHighlights();
+      activeSearchQuery = (query || '').trim();
+      activeCaseSensitive = !!options?.caseSensitive;
+      allMatches = [];
+      currentMatchIdx = -1;
+
+      if (!activeSearchQuery) {
+        return { total: 0, current: 0 };
+      }
+
+      const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(escapeRegex(activeSearchQuery), activeCaseSensitive ? 'g' : 'gi');
+
+      for (let p = 1; p <= totalPages; p++) {
+        const text = await getPageText(p);
+        re.lastIndex = 0;
+        let matchCountOnPage = 0;
+        while (re.exec(text) !== null) {
+          allMatches.push({ page: p, matchIndexOnPage: matchCountOnPage });
+          matchCountOnPage++;
+        }
+      }
+
+      const total = allMatches.length;
+      if (total === 0) {
+        return { total: 0, current: 0 };
+      }
+
+      let targetIdx = allMatches.findIndex((m) => m.page >= currentPage);
+      if (targetIdx === -1) targetIdx = 0;
+      currentMatchIdx = targetIdx;
+
+      const targetMatch = allMatches[currentMatchIdx];
+      if (targetMatch.page !== currentPage) {
+        await renderPage(targetMatch.page);
+      } else {
+        applyHighlightsToCurrentPage();
+      }
+
+      return { total, current: currentMatchIdx + 1 };
+    };
+
+    const searchNext = async () => {
+      if (allMatches.length === 0) return { total: 0, current: 0 };
+      currentMatchIdx = (currentMatchIdx + 1) % allMatches.length;
+      const targetMatch = allMatches[currentMatchIdx];
+      if (targetMatch.page !== currentPage) {
+        await renderPage(targetMatch.page);
+      } else {
+        applyHighlightsToCurrentPage();
+      }
+      return { total: allMatches.length, current: currentMatchIdx + 1 };
+    };
+
+    const searchPrev = async () => {
+      if (allMatches.length === 0) return { total: 0, current: 0 };
+      currentMatchIdx = (currentMatchIdx - 1 + allMatches.length) % allMatches.length;
+      const targetMatch = allMatches[currentMatchIdx];
+      if (targetMatch.page !== currentPage) {
+        await renderPage(targetMatch.page);
+      } else {
+        applyHighlightsToCurrentPage();
+      }
+      return { total: allMatches.length, current: currentMatchIdx + 1 };
+    };
+
+    const clearSearch = () => {
+      activeSearchQuery = '';
+      allMatches = [];
+      currentMatchIdx = -1;
+      clearHighlights();
+    };
 
     const renderPage = async (pageNum: number) => {
       if (currentRenderTask) {
@@ -316,6 +487,10 @@ export class PdfPlugin implements PreviewPlugin {
           });
           await textLayer.render();
         }
+
+        if (activeSearchQuery) {
+          applyHighlightsToCurrentPage();
+        }
       } catch (err) {
         // Non-fatal text layer notice
         console.debug('[PdfPlugin] TextLayer notice:', err);
@@ -388,6 +563,7 @@ export class PdfPlugin implements PreviewPlugin {
       try {
         pdfDoc.destroy();
       } catch {}
+      clearSearch();
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -504,7 +680,12 @@ export class PdfPlugin implements PreviewPlugin {
           });
         }
         return thumbnails;
-      }
+      },
+      search,
+      searchNext,
+      searchPrev,
+      clearSearch,
+      isSearchable: true,
     };
 
     return instance;

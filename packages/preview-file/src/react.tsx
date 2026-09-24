@@ -38,6 +38,9 @@ export interface FilePreviewProps {
 export interface FilePreviewHandle {
   getInstance: () => PreviewInstance | null;
   getViewer: () => FilePreviewViewer | null;
+  openSearch: () => void;
+  closeSearch: () => void;
+  toggleSearch: () => void;
   destroy: () => void;
 }
 
@@ -66,6 +69,9 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
     useImperativeHandle(ref, () => ({
       getInstance: () => instanceRef.current,
       getViewer: () => viewerRef.current,
+      openSearch: () => viewerRef.current?.openSearch(),
+      closeSearch: () => viewerRef.current?.closeSearch(),
+      toggleSearch: () => viewerRef.current?.toggleSearch(),
       destroy: () => viewerRef.current?.destroy(),
     }));
 

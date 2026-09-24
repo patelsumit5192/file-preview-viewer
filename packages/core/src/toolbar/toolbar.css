@@ -585,3 +585,207 @@
   outline: none;
 }
 
+/* --- Search / Find Bar & Highlighting --- */
+.fp-search-bar {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--fp-toolbar-bg, #ffffff);
+  border: 1px solid var(--fp-toolbar-border, #cbd5e1);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: var(--fp-text-color, #0f172a);
+  animation: fp-search-appear 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+@keyframes fp-search-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.fp-theme-dark .fp-search-bar {
+  background: var(--fp-toolbar-bg, #1e293b);
+  border-color: var(--fp-toolbar-border, #334155);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+.fp-search-icon {
+  display: flex;
+  align-items: center;
+  color: var(--fp-btn-color, #64748b);
+  flex-shrink: 0;
+}
+
+.fp-search-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fp-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  width: 160px;
+  padding: 3px 2px;
+  font-family: inherit;
+}
+
+.fp-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.fp-theme-dark .fp-search-input::placeholder {
+  color: #64748b;
+}
+
+.fp-search-count {
+  font-size: 12px;
+  color: #64748b;
+  padding: 0 4px;
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: center;
+  user-select: none;
+}
+
+.fp-search-count.fp-search-no-match {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.fp-theme-dark .fp-search-count {
+  color: #94a3b8;
+}
+
+.fp-theme-dark .fp-search-count.fp-search-no-match {
+  color: #f87171;
+}
+
+.fp-search-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--fp-toolbar-border, #e2e8f0);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.fp-search-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fp-btn-color, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.fp-search-btn svg {
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.fp-search-btn:hover:not(:disabled) {
+  background: var(--fp-btn-hover-bg, #f1f5f9);
+  color: var(--fp-text-color, #0f172a);
+}
+
+.fp-theme-dark .fp-search-btn:hover:not(:disabled) {
+  background: var(--fp-btn-hover-bg, #334155);
+  color: #ffffff;
+}
+
+.fp-search-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+
+.fp-theme-dark .fp-search-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
+
+.fp-search-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Matching Text Highlights */
+mark.fp-search-match {
+  background-color: #fef08a !important;
+  color: #1e293b !important;
+  border-radius: 2px !important;
+  padding: 1px 0 !important;
+  box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.4) !important;
+}
+
+mark.fp-search-match.fp-search-match-active {
+  background-color: #f97316 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px #ea580c, 0 2px 8px rgba(249, 115, 22, 0.45) !important;
+  font-weight: 500 !important;
+}
+
+.fp-theme-dark mark.fp-search-match {
+  background-color: #854d0e !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.4) !important;
+}
+
+.fp-theme-dark mark.fp-search-match.fp-search-match-active {
+  background-color: #ea580c !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px #f97316, 0 2px 8px rgba(234, 88, 12, 0.5) !important;
+}
+
+/* Toast message for unsupported formats */
+.fp-search-toast {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 1050;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  animation: fp-toast-fade 2.4s ease forwards;
+}
+
+@keyframes fp-toast-fade {
+  0% { opacity: 0; transform: translateY(-6px); }
+  10% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+

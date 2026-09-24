@@ -105,6 +105,13 @@ export interface PreviewInstance {
   download?(): void;
   print?(): void;
 
+  // --- Search / Find ---
+  search?(query: string, options?: { caseSensitive?: boolean }): Promise<{ total: number; current: number }> | { total: number; current: number };
+  searchNext?(): Promise<{ total: number; current: number } | void> | { total: number; current: number } | void;
+  searchPrev?(): Promise<{ total: number; current: number } | void> | { total: number; current: number } | void;
+  clearSearch?(): void;
+  isSearchable?: boolean;
+
   // --- Extensibility ---
   [key: string]: unknown;
 }
@@ -174,6 +181,9 @@ export interface ToolbarConfig {
   openWindow?: boolean;
   openSeparateWindow?: boolean;
   copy?: boolean;
+  /** Search / Find in document */
+  search?: boolean;
+  find?: boolean;
   /** Media controls */
   play?: boolean;
   pause?: boolean;

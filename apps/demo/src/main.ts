@@ -521,6 +521,14 @@ if (headerThumbnailsBtn) {
   });
 }
 
+// Wire up "Find (Ctrl+F)" button in preview header
+const headerSearchBtn = document.getElementById('header-search-btn');
+if (headerSearchBtn) {
+  headerSearchBtn.addEventListener('click', () => {
+    viewer.toggleSearch();
+  });
+}
+
 // Wire up "Toggle File Name" button in preview header
 const toggleFileNameBtn = document.getElementById('toggle-filename-btn');
 const fileNameBtnText = document.getElementById('filename-btn-text');

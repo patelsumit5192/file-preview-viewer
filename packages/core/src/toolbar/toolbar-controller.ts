@@ -37,6 +37,10 @@ const ICON_MAP: Record<string, string> = {
   'zoom-reset': icons.ICON_RESET_ZOOM,
   'resetZoom': icons.ICON_RESET_ZOOM,
   'speed': icons.ICON_SPEED,
+  'search': icons.ICON_SEARCH,
+  'find': icons.ICON_SEARCH,
+  'chevron-up': icons.ICON_CHEVRON_UP,
+  'chevron-down': icons.ICON_CHEVRON_DOWN,
 };
 
 export class ToolbarController {
@@ -87,6 +91,7 @@ export class ToolbarController {
       this.config.openSeparateWindow = false;
     }
     if (actionId === 'copy') this.config.copy = false;
+    if (actionId === 'search' || actionId === 'find') this.config.search = false;
     if (actionId === 'page-nav' || actionId === 'pageNav' || actionId === 'pagination') {
       this.config.pageNav = false;
       this.config.pagination = false;
@@ -116,6 +121,7 @@ export class ToolbarController {
       this.config.openSeparateWindow = true;
     }
     if (actionId === 'copy') this.config.copy = true;
+    if (actionId === 'search' || actionId === 'find') this.config.search = true;
     if (actionId === 'page-nav' || actionId === 'pageNav' || actionId === 'pagination') {
       this.config.pageNav = true;
       this.config.pagination = true;
@@ -236,6 +242,7 @@ export class ToolbarController {
       return false;
     }
     if (id === 'speed' && c.speed === false) return false;
+    if ((id === 'search' || id === 'find') && (c.search === false || c.find === false || c['search'] === false)) return false;
 
     return true;
   }
