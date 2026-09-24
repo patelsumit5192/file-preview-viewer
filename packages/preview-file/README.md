@@ -10,7 +10,7 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT" />
   </a>
-  <a href="https://github.com/patelsumit5192/preview-file">
+  <a href="https://github.com/patelsumit5192/file-preview-viewer">
     <img src="https://img.shields.io/badge/GitHub-Repo-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
   </a>
 </p>
@@ -760,7 +760,7 @@ Every file format is rendered 100% in the browser using permissive open-source e
 **Sumit Patel**
 - 🌐 GitHub: [@patelsumit5192](https://github.com/patelsumit5192)
 - 📦 NPM: [patel.sumit51](https://www.npmjs.com/~patel.sumit51)
-- 💻 Repository: [https://github.com/patelsumit5192/preview-file](https://github.com/patelsumit5192/preview-file)
+- 💻 Repository: [https://github.com/patelsumit5192/file-preview-viewer](https://github.com/patelsumit5192/file-preview-viewer)
 - 🚀 Live Demo: [https://patelsumit5192.github.io/preview-file/](https://patelsumit5192.github.io/preview-file/)
 
 ---

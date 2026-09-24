@@ -43,10 +43,10 @@
   "author": "Sumit Patel",
   "repository": {
     "type": "git",
-    "url": "https://github.com/patelsumit5192/preview-file.git"
+    "url": "https://github.com/patelsumit5192/file-preview-viewer.git"
   },
-  "homepage": "https://github.com/patelsumit5192/preview-file#readme",
+  "homepage": "https://github.com/patelsumit5192/file-preview-viewer#readme",
   "bugs": {
-    "url": "https://github.com/patelsumit5192/preview-file/issues"
+    "url": "https://github.com/patelsumit5192/file-preview-viewer/issues"
   }
 }
