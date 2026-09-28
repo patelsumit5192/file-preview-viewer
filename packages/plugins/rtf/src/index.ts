@@ -860,9 +860,9 @@ export class RtfPlugin implements PreviewPlugin {
         applyTransform();
       },
       resetZoom: () => {
-        isUserZoomed = false;
-        fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
-        scale = calculateFitScale(fitMode);
+        isUserZoomed = true;
+        fitMode = 'width';
+        scale = 1.0;
         rotation = 0;
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;

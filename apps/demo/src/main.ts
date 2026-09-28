@@ -69,6 +69,11 @@ const samples: Record<string, () => { name: string; ext: string; data: string | 
     ext: '.dotx',
     data: getSampleUrl('document.dotx')
   }),
+  dotm: () => ({
+    name: 'document.dotm',
+    ext: '.dotm',
+    data: getSampleUrl('document.dotm')
+  }),
   doc: () => ({
     name: 'document.doc',
     ext: '.doc',
