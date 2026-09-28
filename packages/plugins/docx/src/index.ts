@@ -145,7 +145,7 @@ export class DocxPlugin implements PreviewPlugin {
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-docx-wrapper';
-    wrapper.style.transformOrigin = 'center center';
+    wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
     wrapper.style.padding = '0';
     wrapper.style.maxWidth = 'none';
@@ -163,7 +163,7 @@ export class DocxPlugin implements PreviewPlugin {
     sizer.style.flexShrink = '0';
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
-    sizer.style.alignItems = 'center';
+    sizer.style.alignItems = 'flex-start';
 
     const scrollWrapper = document.createElement('div');
     scrollWrapper.className = 'fp-docx-scroll-wrapper';
@@ -185,16 +185,11 @@ export class DocxPlugin implements PreviewPlugin {
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(scrollWrapper);
 
-    // Inject override styles so docx-preview pages match our modern light theme
     const styleOverride = document.createElement('style');
     styleOverride.textContent = `
       .fp-docx-wrapper .docx-wrapper {
         background: transparent !important;
         padding: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        box-sizing: border-box !important;
       }
       .fp-docx-wrapper section.docx {
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
@@ -209,35 +204,43 @@ export class DocxPlugin implements PreviewPlugin {
     let renderedSuccessfully = false;
     const createdBlobUrls: string[] = [];
 
-    // Step 1: Try high-fidelity docx-preview
-    // IMPORTANT: Pass wrapper as styleContainer (param 3) instead of ctx.container.
-    // docx-preview calls removeAllElements(styleContainer), which previously deleted wrapper from ctx.container!
-    try {
+    const tryRender = async (ignoreFonts: boolean) => {
       await docx.renderAsync(ctx.buffer, wrapper, wrapper, {
         inWrapper: true,
         ignoreWidth: false,
         ignoreHeight: false,
-        ignoreFonts: true, // Avoid crashes on embedded obfuscated fonts
+        ignoreFonts,
         breakPages: true,
         experimental: true,
-        ignoreLastRenderedPageBreak: false, // Honor Word's exact page breaks!
+        ignoreLastRenderedPageBreak: false,
         renderHeaders: true,
         renderFooters: true,
         renderFootnotes: true,
         renderEndnotes: true,
         useBase64URL: true,
+        renderChanges: false,
+        renderComments: false,
+        renderAltChunks: true,
+        trimXmlDeclaration: true,
       });
+    };
 
-      // Ensure wrapper remains attached to sizer
+    try {
+      try {
+        await tryRender(false);
+      } catch (fontErr) {
+        console.warn('[DocxPlugin] render failed with ignoreFonts: false, retrying with true', fontErr);
+        wrapper.innerHTML = '';
+        await tryRender(true);
+      }
+
       if (!sizer.contains(wrapper)) {
         sizer.appendChild(wrapper);
       }
 
-      // Check if visible content was actually produced
       if (wrapper.children.length > 0 && (wrapper.textContent?.trim().length ?? 0) > 0) {
         renderedSuccessfully = true;
 
-        // Inject DrawingML charts that docx-preview drops
         try {
           const unzipped = unzipSync(new Uint8Array(ctx.buffer));
           const chartKeys = Object.keys(unzipped)
@@ -272,7 +275,6 @@ export class DocxPlugin implements PreviewPlugin {
       console.warn('[DocxPlugin] docx-preview failed, triggering native fallback:', err);
     }
 
-    // Step 2: Graceful Native Fallback (100% client-side guarantee)
     if (!renderedSuccessfully) {
       try {
         wrapper.innerHTML = '';
@@ -304,111 +306,71 @@ export class DocxPlugin implements PreviewPlugin {
     let sections = Array.from(wrapper.querySelectorAll<HTMLElement>('section.docx'));
     const cards = Array.from(wrapper.querySelectorAll<HTMLElement>('.fp-docx-page-card'));
 
-    // Check EVERY section and split any section containing multi-page content
-    if (sections.length > 0 && cards.length === 0) {
-      const finalSections: HTMLElement[] = [];
-
-      for (const singleSec of sections) {
-        const contentContainer = (singleSec.querySelector('article') as HTMLElement) || singleSec;
-        const children = Array.from(contentContainer.children) as HTMLElement[];
-
-        // Measure page height (A4 is ~1122px, US Letter is ~1056px)
-        const pageH = singleSec.offsetHeight > 1300 ? 1122 : Math.max(1056, singleSec.offsetHeight);
-        const secH = singleSec.scrollHeight || singleSec.offsetHeight;
-
-        if (secH > pageH * 1.25 && children.length > 1) {
-          // Record heights while elements are in DOM
-          const childHeights = children.map(c => {
-            const rectH = c.getBoundingClientRect().height;
-            const offH = c.offsetHeight;
-            const textLen = c.textContent?.trim().length || 0;
-            const estH = Math.max(24, Math.ceil(textLen / 80) * 22 + 16);
-            return Math.max(rectH, offH, estH);
-          });
-
-          const parent = singleSec.parentElement || wrapper;
-          const headerEl = singleSec.querySelector('header');
-          const footerEl = singleSec.querySelector('footer');
-
-          contentContainer.innerHTML = '';
-          singleSec.style.minHeight = `${pageH}px`;
-          singleSec.style.boxSizing = 'border-box';
-
-          let curContent = contentContainer;
-          let curSec = singleSec;
-          let curH = 0;
-          const maxH = pageH - 140; // Printable area between margins/padding
-
-          finalSections.push(singleSec);
-
-          for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            const chH = childHeights[i];
-
-            curContent.appendChild(child);
-            curH += chH;
-
-            if (curH >= maxH && i < children.length - 1) {
-              const nextSec = document.createElement('section');
-              nextSec.className = singleSec.className;
-              nextSec.style.cssText = singleSec.style.cssText;
-              nextSec.style.minHeight = `${pageH}px`;
-              nextSec.style.boxSizing = 'border-box';
-              nextSec.style.backgroundColor = '#ffffff';
-              nextSec.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
-              nextSec.style.borderRadius = '4px';
-              nextSec.style.marginBottom = '24px';
-
-              if (headerEl) {
-                nextSec.appendChild(headerEl.cloneNode(true));
-              }
-
-              const nextArticle = document.createElement('article');
-              if (contentContainer.tagName.toLowerCase() === 'article') {
-                nextArticle.style.cssText = contentContainer.style.cssText;
-              }
-              nextSec.appendChild(nextArticle);
-
-              if (footerEl) {
-                nextSec.appendChild(footerEl.cloneNode(true));
-              }
-
-              if (curSec.nextSibling) {
-                parent.insertBefore(nextSec, curSec.nextSibling);
-              } else {
-                parent.appendChild(nextSec);
-              }
-
-              finalSections.push(nextSec);
-              curSec = nextSec;
-              curContent = nextArticle;
-              curH = 0;
-            }
-          }
-        } else {
-          finalSections.push(singleSec);
-        }
-      }
-      sections = finalSections;
-    }
+    // Trust docx-preview's native pagination (breakPages: true + ignoreLastRenderedPageBreak: false).
+    // Do NOT perform post-render DOM splitting — it destroys image positions, breaks tables,
+    // and separates inline content from its parent elements.
 
     const pageElements: HTMLElement[] = sections.length > 0 ? sections : cards;
     const totalPages = Math.max(1, pageElements.length);
     let currentPage = 1;
 
+    const firstSection = wrapper.querySelector('section.docx') as HTMLElement;
+    if (firstSection) {
+      const actualW = firstSection.offsetWidth || firstSection.scrollWidth;
+      if (actualW > 0) {
+        wrapper.style.width = `${actualW}px`;
+      }
+    }
+
+    let isScrollingProgrammatically = false;
+    let scrollTimeout: any = null;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (isScrollingProgrammatically) return;
+      
+      let maxRatio = 0;
+      let mostVisible = currentPage;
+      
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+          maxRatio = entry.intersectionRatio;
+          const idx = pageElements.indexOf(entry.target as HTMLElement);
+          if (idx !== -1) {
+            mostVisible = idx + 1;
+          }
+        }
+      });
+      
+      if (mostVisible !== currentPage && maxRatio > 0.1) {
+        currentPage = mostVisible;
+        ctx.emit('page-change', { page: currentPage, total: totalPages });
+      }
+    }, {
+      root: ctx.container,
+      threshold: [0.1, 0.3, 0.5, 0.7, 0.9]
+    });
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      pageElements.forEach(el => observer.observe(el));
+    }
+
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      if (pageElements.length > 1) {
-        pageElements.forEach((sec, idx) => {
-          sec.style.display = (idx + 1 === currentPage) ? '' : 'none';
-        });
+      const target = pageElements[currentPage - 1];
+      if (target) {
+        isScrollingProgrammatically = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          isScrollingProgrammatically = false;
+        }, 1000);
       }
-      ctx.container.scrollTop = 0;
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
     if (totalPages > 1) {
-      showPage(1);
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
     }
 
     scale = 1.0;
@@ -417,11 +379,10 @@ export class DocxPlugin implements PreviewPlugin {
     let isUserZoomed = false;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
-      const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
+      const activeEl = pageElements[0] || wrapper;
       const elW = activeEl.offsetWidth || 816;
       const elH = activeEl.offsetHeight || 1056;
       
-      // Minimal side margins (16px on each side, safe from vertical scrollbar)
       const availW = Math.max(280, ctx.container.clientWidth - 32);
       const availH = Math.max(280, ctx.container.clientHeight - 32);
       const sW = availW / elW;
@@ -434,20 +395,19 @@ export class DocxPlugin implements PreviewPlugin {
     };
 
     const applyTransform = () => {
-      const activeEl = pageElements[currentPage - 1] || wrapper.querySelector('section.docx') as HTMLElement || wrapper;
+      const activeEl = pageElements[0] || wrapper;
       const elW = activeEl.offsetWidth || 816;
-      const elH = activeEl.offsetHeight || 1056;
+      const totalH = wrapper.offsetHeight || 1056;
+      
       const isRotated90 = (rotation % 180 !== 0);
-      const boxW = Math.round((isRotated90 ? elH : elW) * scale);
-      const boxH = Math.round((isRotated90 ? elW : elH) * scale);
+      const boxW = Math.round((isRotated90 ? totalH : elW) * scale);
+      const boxH = Math.round((isRotated90 ? elW : totalH) * scale);
 
       sizer.style.width = `${boxW}px`;
       sizer.style.height = `${boxH}px`;
 
-      wrapper.style.width = `${elW}px`;
-      wrapper.style.height = `${elH}px`;
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'center center';
+      wrapper.style.transformOrigin = 'top center';
     };
 
     let resizeObserver: ResizeObserver | null = null;
@@ -470,6 +430,7 @@ export class DocxPlugin implements PreviewPlugin {
     }, 40);
 
     const cleanup = () => {
+      if (typeof IntersectionObserver !== 'undefined') observer.disconnect();
       resizeObserver?.disconnect();
       resizeObserver = null;
       for (const url of createdBlobUrls) {
@@ -552,7 +513,6 @@ export class DocxPlugin implements PreviewPlugin {
   }
 
   private renderXmlFallback(ctx: RenderContext, wrapper: HTMLElement, createdBlobUrls: string[]): void {
-    // Check if the file is actually a legacy binary CFBF .doc file renamed to .docx
     const magic = new Uint8Array(ctx.buffer.slice(0, 8));
     if (magic[0] === 0xD0 && magic[1] === 0xCF && magic[2] === 0x11 && magic[3] === 0xE0) {
       this.renderBinaryDocFallback(ctx, wrapper);
@@ -568,7 +528,6 @@ export class DocxPlugin implements PreviewPlugin {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlStr, 'application/xml');
 
-    // Parse image relationships if present
     const imageMap: Record<string, string> = {};
     const relsKey = Object.keys(unzipped).find(k => k.replace(/^[./\\]+/, '').toLowerCase() === 'word/_rels/document.xml.rels');
     if (relsKey && unzipped[relsKey]) {
@@ -601,13 +560,12 @@ export class DocxPlugin implements PreviewPlugin {
       }
     }
 
-    // Parse page dimensions
     const sectPrs = Array.from(doc.getElementsByTagNameNS('*', 'sectPr'));
     const lastSectPr = sectPrs[sectPrs.length - 1];
     
-    let defaultW = 12240; // US Letter 8.5"
-    let defaultH = 15840; // US Letter 11"
-    let margins = { top: 1440, right: 1440, bottom: 1440, left: 1440 }; // 1" margins
+    let defaultW = 12240;
+    let defaultH = 15840;
+    let margins = { top: 1440, right: 1440, bottom: 1440, left: 1440 };
     
     if (lastSectPr) {
       const pgSz = lastSectPr.getElementsByTagNameNS('*', 'pgSz')[0];
@@ -638,7 +596,6 @@ export class DocxPlugin implements PreviewPlugin {
       card.style.position = 'relative';
       card.style.marginBottom = '24px';
       
-      // Convert twips to px (1 twip = 1/1440 inch, 1 inch = 96px => /15)
       card.style.width = `${defaultW / 15}px`;
       card.style.height = `${defaultH / 15}px`;
       card.style.padding = `${margins.top / 15}px ${margins.right / 15}px ${margins.bottom / 15}px ${margins.left / 15}px`;
@@ -732,16 +689,8 @@ export class DocxPlugin implements PreviewPlugin {
   private extractParagraphChunks(pElement: Element, imageMap: Record<string, string> = {}): string[] {
     const chunks: string[] = [''];
     let currentChunkIndex = 0;
-
-    // Check for inline drawings in this paragraph
-    const drawings = Array.from(pElement.getElementsByTagNameNS('*', 'drawing'));
-    for (const drawing of drawings) {
-      const blip = drawing.getElementsByTagNameNS('*', 'blip')[0];
-      const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
-      if (rId && imageMap[rId]) {
-        chunks[currentChunkIndex] += `<div style="text-align:center; margin: 12px 0;"><img src="${imageMap[rId]}" style="max-width: 100%; height: auto; border-radius: 4px;" /></div>`;
-      }
-    }
+    // Track rendered image rIds to avoid duplicates
+    const renderedImages = new Set<string>();
 
     const runs = Array.from(pElement.getElementsByTagNameNS('*', 'r'));
     if (runs.length === 0 && !chunks[currentChunkIndex]) {
@@ -750,13 +699,47 @@ export class DocxPlugin implements PreviewPlugin {
     }
 
     for (const r of runs) {
-      const blip = r.getElementsByTagNameNS('*', 'blip')[0] || r.getElementsByTagNameNS('*', 'imagedata')[0];
-      const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
-      if (rId && imageMap[rId]) {
-        chunks[currentChunkIndex] += `<img src="${imageMap[rId]}" style="max-width: 100%; height: auto; display: inline-block; margin: 4px;" />`;
+      // Find images: check for drawings (inline/anchor) and direct blip/imagedata within the run
+      const drawings = Array.from(r.getElementsByTagNameNS('*', 'drawing'));
+      const directBlip = r.getElementsByTagNameNS('*', 'blip')[0] || r.getElementsByTagNameNS('*', 'imagedata')[0];
+
+      // Process drawing elements first (they contain positioning and size info)
+      for (const drawing of drawings) {
+        const blip = drawing.getElementsByTagNameNS('*', 'blip')[0];
+        const rId = blip?.getAttribute('r:embed') || blip?.getAttribute('r:id');
+        if (rId && imageMap[rId] && !renderedImages.has(rId)) {
+          renderedImages.add(rId);
+          // Try to read image dimensions from extent element (EMUs: 1 inch = 914400 EMUs)
+          const extent = drawing.getElementsByTagNameNS('*', 'ext')[0] || drawing.getElementsByTagNameNS('*', 'extent')[0];
+          let imgStyle = 'max-width: 100%; height: auto; display: inline-block; margin: 4px;';
+          if (extent) {
+            const cx = parseInt(extent.getAttribute('cx') || '0', 10);
+            const cy = parseInt(extent.getAttribute('cy') || '0', 10);
+            if (cx > 0 && cy > 0) {
+              const widthPx = Math.round(cx / 9525); // EMU to px (96 DPI)
+              const heightPx = Math.round(cy / 9525);
+              imgStyle = `width: ${widthPx}px; height: ${heightPx}px; max-width: 100%; display: inline-block; margin: 4px;`;
+            }
+          }
+          // Check if this is an anchor (floating) or inline drawing
+          const isAnchor = drawing.getElementsByTagNameNS('*', 'anchor').length > 0;
+          if (isAnchor) {
+            chunks[currentChunkIndex] += `<div style="text-align:center; margin: 12px 0;"><img src="${imageMap[rId]}" style="${imgStyle}" /></div>`;
+          } else {
+            chunks[currentChunkIndex] += `<img src="${imageMap[rId]}" style="${imgStyle}" />`;
+          }
+        }
       }
 
-      // Check for breaks <w:br/>
+      // Fallback: direct blip/imagedata not inside a drawing
+      if (directBlip && drawings.length === 0) {
+        const rId = directBlip.getAttribute('r:embed') || directBlip.getAttribute('r:id');
+        if (rId && imageMap[rId] && !renderedImages.has(rId)) {
+          renderedImages.add(rId);
+          chunks[currentChunkIndex] += `<img src="${imageMap[rId]}" style="max-width: 100%; height: auto; display: inline-block; margin: 4px;" />`;
+        }
+      }
+
       const brs = Array.from(r.getElementsByTagNameNS('*', 'br'));
       for (const br of brs) {
         const type = br.getAttribute('w:type') || br.getAttribute('type');
@@ -768,7 +751,6 @@ export class DocxPlugin implements PreviewPlugin {
         }
       }
 
-      // Check for tabs <w:tab/>
       const tabs = r.getElementsByTagNameNS('*', 'tab');
       if (tabs.length > 0) {
         chunks[currentChunkIndex] += '&emsp;';
@@ -862,7 +844,6 @@ export class DocxPlugin implements PreviewPlugin {
   }
 
   private parseAndRenderChartSvg(xmlStr: string, width = 500, height = 260): string {
-    // Extract categories
     const catMatches = [...xmlStr.matchAll(/<c:cat>[\s\S]*?<c:strCache>([\s\S]*?)<\/c:strCache>/g)];
     let categories: string[] = [];
     if (catMatches.length > 0) {
@@ -872,7 +853,6 @@ export class DocxPlugin implements PreviewPlugin {
       categories = ['Category 1', 'Category 2', 'Category 3', 'Category 4'];
     }
 
-    // Extract series
     const defaultColors = ['#004586', '#ff420e', '#ffd320', '#579d1c', '#7e0021', '#83caff'];
     const sers = [...xmlStr.matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)];
     const series: { title: string; color: string; values: number[] }[] = [];
@@ -966,4 +946,3 @@ export function docxPlugin(): DocxPlugin {
 }
 
 export default DocxPlugin;
-

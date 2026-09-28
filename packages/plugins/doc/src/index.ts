@@ -170,7 +170,7 @@ export class DocPlugin implements PreviewPlugin {
     sizer.style.flexShrink = '0';
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
-    sizer.style.alignItems = 'center';
+    sizer.style.alignItems = 'flex-start';
 
     scrollWrapper.appendChild(sizer);
     container.appendChild(scrollWrapper);
@@ -223,6 +223,18 @@ export class DocPlugin implements PreviewPlugin {
 
     const pageCards: HTMLElement[] = [];
 
+    // Wrapper div holds all page cards for consistent zoom/transform
+    const pagesWrapper = document.createElement('div');
+    pagesWrapper.className = 'fp-doc-pages-wrapper';
+    pagesWrapper.style.display = 'flex';
+    pagesWrapper.style.flexDirection = 'column';
+    pagesWrapper.style.alignItems = 'center';
+    pagesWrapper.style.gap = '24px';
+    pagesWrapper.style.transformOrigin = 'top center';
+    pagesWrapper.style.transition = 'transform 0.15s ease';
+    pagesWrapper.style.width = '816px';
+    pagesWrapper.style.flexShrink = '0';
+
     for (let i = 0; i < totalPages; i++) {
       const pageCard = document.createElement('div');
       pageCard.className = 'fp-doc-page-card';
@@ -233,9 +245,6 @@ export class DocPlugin implements PreviewPlugin {
       pageCard.style.borderRadius = '4px';
       pageCard.style.padding = '72px 56px';
       pageCard.style.boxSizing = 'border-box';
-      pageCard.style.display = i === 0 ? 'block' : 'none';
-      pageCard.style.transformOrigin = 'center center';
-      pageCard.style.transition = 'transform 0.15s ease';
       pageCard.style.fontFamily = 'Calibri, "Segoe UI", Arial, sans-serif';
       pageCard.style.color = '#1e293b';
       pageCard.style.flexShrink = '0';
@@ -252,47 +261,64 @@ export class DocPlugin implements PreviewPlugin {
         pageCard.innerHTML = this.formatDocToHtml(rawPages[i], ctx.metadata.name || 'Document');
       }
 
-      sizer.appendChild(pageCard);
+      pagesWrapper.appendChild(pageCard);
       pageCards.push(pageCard);
     }
 
+    sizer.appendChild(pagesWrapper);
     let rotation = 0;
 
     const applyTransform = () => {
-      const activeCard = pageCards[currentPage - 1];
-      if (activeCard) {
-        const baseW = 816;
-        const baseH = activeCard.offsetHeight || 1056;
-        const isRotated90 = (rotation % 180 !== 0);
-        const boxW = Math.round((isRotated90 ? baseH : baseW) * scale);
-        const boxH = Math.round((isRotated90 ? baseW : baseH) * scale);
-
-        sizer.style.width = `${boxW}px`;
-        sizer.style.height = `${boxH}px`;
-
-        activeCard.style.width = `${baseW}px`;
-        activeCard.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-        activeCard.style.transformOrigin = 'center center';
+      const baseW = 816;
+      // Calculate total height of all pages plus gaps
+      let totalH = 0;
+      for (const card of pageCards) {
+        totalH += card.offsetHeight || 1056;
       }
+      totalH += Math.max(0, pageCards.length - 1) * 24; // gap between pages
+
+      const isRotated90 = (rotation % 180 !== 0);
+      const boxW = Math.round((isRotated90 ? totalH : baseW) * scale);
+      const boxH = Math.round((isRotated90 ? baseW : totalH) * scale);
+
+      sizer.style.width = `${boxW}px`;
+      sizer.style.height = `${boxH}px`;
+
+      pagesWrapper.style.width = `${baseW}px`;
+      pagesWrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      pagesWrapper.style.transformOrigin = 'top center';
     };
 
-    const showPage = (pageNum: number) => {
+    // Use IntersectionObserver to track which page is visible during scrolling
+    let intersectionObserver: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      intersectionObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+              const idx = pageCards.indexOf(entry.target as HTMLElement);
+              if (idx >= 0 && idx + 1 !== currentPage) {
+                currentPage = idx + 1;
+                ctx.emit('page-change', { page: currentPage, total: totalPages });
+              }
+            }
+          }
+        },
+        { root: container, threshold: [0.3, 0.5] }
+      );
+      for (const card of pageCards) {
+        intersectionObserver.observe(card);
+      }
+    }
+
+    const scrollToPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      pageCards.forEach((card, idx) => {
-        if (idx + 1 === currentPage) {
-          card.style.display = 'block';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-      applyTransform();
-      container.scrollTop = 0;
+      const targetCard = pageCards[currentPage - 1];
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
-
-    if (totalPages > 1) {
-      showPage(1);
-    }
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let isUserZoomed = false;
@@ -316,8 +342,11 @@ export class DocPlugin implements PreviewPlugin {
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
           if (!isUserZoomed) {
-            scale = calculateFitScale(fitMode);
-            applyTransform();
+            const newFit = calculateFitScale(fitMode);
+            if (Math.abs(scale - newFit) > 0.015) {
+              scale = newFit;
+              applyTransform();
+            }
           }
         })
       : null;
@@ -330,6 +359,8 @@ export class DocPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
+      intersectionObserver = null;
       container.remove();
       ctx.container.innerHTML = '';
     };
@@ -340,7 +371,7 @@ export class DocPlugin implements PreviewPlugin {
       destroy: cleanup,
       getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
-      goToPage: (page: number) => showPage(page),
+      goToPage: (page: number) => scrollToPage(page),
       zoomIn: () => {
         isUserZoomed = true;
         scale += 0.15;
