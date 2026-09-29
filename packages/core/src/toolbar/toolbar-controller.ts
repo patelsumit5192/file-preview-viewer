@@ -281,6 +281,10 @@ export class ToolbarController {
     this.el.style.display = 'none';
   }
 
+  isVisible(): boolean {
+    return this.el.style.display !== 'none';
+  }
+
   destroy(): void {
     this.el.innerHTML = '';
   }

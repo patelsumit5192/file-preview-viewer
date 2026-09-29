@@ -1,4 +1,4 @@
-﻿// @vitest-environment happy-dom
+// @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
 import { ToolbarController } from '../toolbar/toolbar-controller';
 import { FilePreviewViewer } from '../engine';
@@ -197,4 +197,46 @@ describe('ToolbarController & Configurable Features', () => {
 
     viewer.destroy();
   });
+
+  it('hides toolbar when showToolbar is set to false in options', async () => {
+    const viewer = new FilePreviewViewer();
+    const container = document.createElement('div');
+
+    const mockPlugin: PreviewPlugin = {
+      id: 'test-plugin-no-toolbar',
+      name: 'Test Plugin',
+      extensions: ['.notoolbar'],
+      mimeTypes: ['application/notoolbar'],
+      supports: () => true,
+      getToolbarActions: () => [
+        { id: 'zoom-in', icon: 'zoom-in', label: 'Zoom In', type: 'button', execute: vi.fn() }
+      ],
+      render: async () => ({ destroy: vi.fn() })
+    };
+
+    viewer.registerPlugin(mockPlugin);
+
+    await viewer.preview(container, new ArrayBuffer(8), {
+      showToolbar: false,
+      metadata: { name: 'file.notoolbar', extension: '.notoolbar' }
+    });
+
+    const toolbarEl = container.querySelector('.fp-toolbar-container') as HTMLElement;
+    expect(toolbarEl).not.toBeNull();
+    expect(toolbarEl.style.display).toBe('none');
+    expect(viewer.isToolbarVisible()).toBe(false);
+
+    // Toggle on
+    viewer.setShowToolbar(true);
+    expect(toolbarEl.style.display).toBe('block');
+    expect(viewer.isToolbarVisible()).toBe(true);
+
+    // Toggle off
+    viewer.toggleToolbar();
+    expect(toolbarEl.style.display).toBe('none');
+    expect(viewer.isToolbarVisible()).toBe(false);
+
+    viewer.destroy();
+  });
 });
+

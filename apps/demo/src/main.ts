@@ -27,6 +27,7 @@ if (isFullscreen) {
 
 let currentTheme: 'light' | 'dark' = 'light';
 let isFileNameVisible = true;
+let isToolbarVisible = true;
 let activeFileExt = '.pdf';
 let activeFileName = 'sample.pdf';
 let currentTab: 'react' | 'angular' | 'vue' | 'vanilla' = 'react';
@@ -418,7 +419,7 @@ async function loadFile(source: string | File | Blob | ArrayBuffer, name: string
   try {
     const inst = await viewer.preview(viewport, source as any, {
       theme: currentTheme,
-      showToolbar: true,
+      showToolbar: isToolbarVisible,
       showFileName: isFileNameVisible,
       toolbarPosition: 'top',
       _isSeparateWindow: isFullscreen,
@@ -448,14 +449,22 @@ import '@file-preview-viewer/viewer/styles.css';
 
 <FilePreview
   src={file} // URL string, File, Blob, or ArrayBuffer (${activeFileExt})
-  options={{ theme: '${currentTheme}', showToolbar: true }}
+  options={{
+    theme: '${currentTheme}',
+    showToolbar: ${isToolbarVisible},
+    showFileName: ${isFileNameVisible}
+  }}
   onLoaded={(meta) => console.log('Loaded:', meta)}
 />`,
     angular: `import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
 
 <fp-file-preview
   [src]="fileSource" // ${activeFileName}
-  [options]="{ theme: '${currentTheme}', showToolbar: true }"
+  [options]="{
+    theme: '${currentTheme}',
+    showToolbar: ${isToolbarVisible},
+    showFileName: ${isFileNameVisible}
+  }"
   (loaded)="onLoaded($event)"
 />`,
     vue: `<script setup>
@@ -464,7 +473,14 @@ import '@file-preview-viewer/viewer/styles.css';
 </script>
 
 <template>
-  <FilePreview :src="file" :options="{ theme: '${currentTheme}', showToolbar: true }" />
+  <FilePreview
+    :src="file"
+    :options="{
+      theme: '${currentTheme}',
+      showToolbar: ${isToolbarVisible},
+      showFileName: ${isFileNameVisible}
+    }"
+  />
 </template>`,
     vanilla: `import { FilePreviewViewer } from '@file-preview-viewer/viewer';
 import '@file-preview-viewer/viewer/styles.css';
@@ -472,7 +488,8 @@ import '@file-preview-viewer/viewer/styles.css';
 const viewer = new FilePreviewViewer();
 await viewer.preview(document.getElementById('container'), fileSource, {
   theme: '${currentTheme}',
-  showToolbar: true
+  showToolbar: ${isToolbarVisible},
+  showFileName: ${isFileNameVisible}
 });`
   };
 
@@ -569,6 +586,20 @@ if (headerSearchBtn) {
   });
 }
 
+// Wire up "Toggle Toolbar" button in preview header
+const toggleToolbarBtn = document.getElementById('toggle-toolbar-btn');
+const toolbarBtnText = document.getElementById('toolbar-btn-text');
+if (toggleToolbarBtn) {
+  toggleToolbarBtn.addEventListener('click', () => {
+    isToolbarVisible = !isToolbarVisible;
+    viewer.setShowToolbar(isToolbarVisible);
+    if (toolbarBtnText) {
+      toolbarBtnText.textContent = `Toolbar: ${isToolbarVisible ? 'ON' : 'OFF'}`;
+    }
+    updateSnippet();
+  });
+}
+
 // Wire up "Toggle File Name" button in preview header
 const toggleFileNameBtn = document.getElementById('toggle-filename-btn');
 const fileNameBtnText = document.getElementById('filename-btn-text');
@@ -583,6 +614,7 @@ if (toggleFileNameBtn) {
     if (activeFileInfo) {
       activeFileInfo.style.opacity = isFileNameVisible ? '1' : '0.2';
     }
+    updateSnippet();
   });
 }
 

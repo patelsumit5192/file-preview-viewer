@@ -106,4 +106,20 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
   public getInstance(): PreviewInstance | null {
     return this.instance;
   }
+
+  public getViewer(): FilePreviewViewer | null {
+    return this.viewer;
+  }
+
+  public setShowToolbar(show: boolean): void {
+    this.viewer?.setShowToolbar(show);
+  }
+
+  public toggleToolbar(): void {
+    this.viewer?.toggleToolbar();
+  }
+
+  public setShowFileName(show: boolean): void {
+    this.viewer?.setShowFileName(show);
+  }
 }

@@ -65,6 +65,9 @@ export const FilePreview = defineComponent({
     expose({
       getInstance: () => instance,
       getViewer: () => viewer,
+      setShowToolbar: (show: boolean) => viewer?.setShowToolbar(show),
+      toggleToolbar: () => viewer?.toggleToolbar(),
+      setShowFileName: (show: boolean) => viewer?.setShowFileName(show),
       destroy: () => viewer?.destroy(),
     });
 

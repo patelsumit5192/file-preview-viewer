@@ -25,6 +25,9 @@ export interface FilePreviewHandle {
   getViewer: () => FilePreviewViewer | null;
   resetZoom: () => void;
   fitToPage: () => void;
+  setShowToolbar: (show: boolean) => void;
+  toggleToolbar: () => void;
+  setShowFileName: (show: boolean) => void;
   destroy: () => void;
 }
 
@@ -53,6 +56,9 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       getViewer: () => viewerRef.current,
       resetZoom: () => viewerRef.current?.resetZoom(),
       fitToPage: () => viewerRef.current?.fitToPage(),
+      setShowToolbar: (show: boolean) => viewerRef.current?.setShowToolbar(show),
+      toggleToolbar: () => viewerRef.current?.toggleToolbar(),
+      setShowFileName: (show: boolean) => viewerRef.current?.setShowFileName(show),
       destroy: () => viewerRef.current?.destroy(),
     }));
 

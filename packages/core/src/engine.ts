@@ -232,6 +232,8 @@ export class FilePreviewViewer {
 
         this.toolbar.update(actions);
         this.toolbar.show();
+      } else if (this.toolbar) {
+        this.toolbar.hide();
       }
 
       // 9. Setup thumbnails asynchronously in background so initial preview is instant
@@ -691,6 +693,38 @@ export class FilePreviewViewer {
   }
 
   /**
+   * Set whether the toolbar is displayed (showToolbar / toolbar property: true or false).
+   */
+  setShowToolbar(show: boolean): void {
+    if (this.currentOptions) {
+      this.currentOptions.showToolbar = show;
+      if (typeof this.currentOptions.toolbar === 'boolean') {
+        this.currentOptions.toolbar = show;
+      }
+    }
+    if (show) {
+      this.toolbar?.show();
+    } else {
+      this.toolbar?.hide();
+    }
+    this.eventEmitter.emit('toolbar-visibility-change', { visible: show });
+  }
+
+  /**
+   * Check whether the built-in toolbar is currently visible.
+   */
+  isToolbarVisible(): boolean {
+    return this.toolbar?.isVisible() ?? (this.currentOptions?.showToolbar !== false && this.currentOptions?.toolbar !== false);
+  }
+
+  /**
+   * Toggle the built-in toolbar visibility on/off.
+   */
+  toggleToolbar(): void {
+    this.setShowToolbar(!this.isToolbarVisible());
+  }
+
+  /**
    * Set whether to display the file name / title bar above the toolbar.
    */
   setShowFileName(show: boolean): void {
@@ -899,6 +933,10 @@ export class FilePreviewViewer {
     // Initialize toolbar and thumbnail controllers
     const initialToolbarConfig = this.extractToolbarConfig(options);
     this.toolbar = new ToolbarController(toolbarEl, initialToolbarConfig);
+    const initialToolbarVisible = options.showToolbar !== false && options.toolbar !== false;
+    if (!initialToolbarVisible) {
+      this.toolbar.hide();
+    }
     this.thumbnailPanel = new ThumbnailPanel(thumbnailEl, (isOpen) => {
       this.toolbar?.setActionActive('thumbnails', isOpen);
       setTimeout(() => {
