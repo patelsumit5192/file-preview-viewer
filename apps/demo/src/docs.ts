@@ -113,5 +113,59 @@ if (contentArea) {
   });
 }
 
+// Smooth hash scrolling inside .docs-content-area
+function scrollToHash(hash?: string) {
+  const targetId = (hash || window.location.hash || '').replace(/^#/, '');
+  if (!targetId) return;
+
+  const targetEl = document.getElementById(targetId);
+  if (targetEl) {
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Visual pulse effect
+    targetEl.classList.add('highlight-target');
+    setTimeout(() => {
+      targetEl.classList.remove('highlight-target');
+    }, 2000);
+
+    // Update active nav item
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href') || '';
+      link.classList.toggle('active', href === `#${targetId}`);
+    });
+  }
+}
+
+// Intercept all anchor clicks with hash hrefs to guarantee smooth scrolling inside .docs-content-area
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', (e) => {
+    const href = anchor.getAttribute('href');
+    if (!href || href === '#') return;
+    const targetId = href.replace(/^#/, '');
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) {
+      e.preventDefault();
+      history.pushState(null, '', href);
+      scrollToHash(href);
+    }
+  });
+});
+
+// Handle initial hash on page load
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.location.hash) {
+    setTimeout(() => scrollToHash(window.location.hash), 80);
+  }
+});
+
+if (window.location.hash) {
+  setTimeout(() => scrollToHash(window.location.hash), 120);
+}
+
+// When URL hash changes (e.g. browser forward/back or external deep link)
+window.addEventListener('hashchange', () => {
+  scrollToHash(window.location.hash);
+});
+
 // Set initial framework
 setFramework('react');

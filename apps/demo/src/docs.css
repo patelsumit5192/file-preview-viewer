@@ -250,7 +250,24 @@ body.theme-dark .docs-nav-tag {
   border-radius: 10px;
   padding: 24px;
   margin-bottom: 24px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  scroll-margin-top: 80px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.docs-section,
+tr[id] {
+  scroll-margin-top: 80px;
+}
+
+@keyframes targetPulse {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); border-color: var(--primary); }
+  50% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0.18); border-color: var(--primary); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.prop-card.highlight-target {
+  animation: targetPulse 2s ease-out;
+  border-color: var(--primary) !important;
 }
 
 .prop-card:hover {
