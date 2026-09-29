@@ -22,6 +22,14 @@ export const FilePreview = defineComponent({
       type: Object as PropType<PreviewViewerOptions>,
       default: () => ({}),
     },
+    className: {
+      type: String,
+      default: '',
+    },
+    classname: {
+      type: String,
+      default: '',
+    },
   },
   emits: ['loading', 'loaded', 'error', 'page-change', 'zoom-change'],
   setup(props, { emit, expose }) {
@@ -72,8 +80,18 @@ export const FilePreview = defineComponent({
     });
 
     return () => {
+      const resolvedClass = [
+        props.className,
+        (props as any).classname,
+        props.options?.className,
+        (props.options as any)?.classname,
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined;
+
       return h('div', {
         ref: containerRef,
+        class: resolvedClass,
         style: { width: '100%', height: '100%', position: 'relative', overflow: 'hidden' },
       });
     };

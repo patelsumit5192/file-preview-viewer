@@ -34,6 +34,7 @@ export class FilePreviewViewer {
   private currentMetadata: import('./types').FileMetadata | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private currentContainer: HTMLElement | null = null;
+  private currentSource: FileSource | null = null;
   private currentOptions: PreviewViewerOptions = {};
   private resizeObserver: ResizeObserver | null = null;
   private fullscreenHandler: (() => void) | null = null;
@@ -72,6 +73,7 @@ export class FilePreviewViewer {
       fitMode: options.fitMode ?? 'width',
     };
     this.currentOptions = options;
+    this.currentSource = source;
 
     // 1. Abort any in-flight operation
     this.abort();
@@ -256,6 +258,36 @@ export class FilePreviewViewer {
         });
       }
 
+      // 10. Handle initial page navigation if specified in options
+      const targetPage = typeof options.page === 'number' ? options.page : undefined;
+      if (targetPage && targetPage >= 1) {
+        try {
+          instance.goToPage?.(targetPage);
+          this.toolbar?.setPage(targetPage);
+          this.thumbnailPanel?.setActive(targetPage - 1);
+        } catch {}
+        setTimeout(() => {
+          try {
+            instance.goToPage?.(targetPage);
+            this.toolbar?.setPage(targetPage);
+            this.thumbnailPanel?.setActive(targetPage - 1);
+          } catch {}
+        }, 120);
+      }
+
+      // 11. Handle initial zoom level if specified in options
+      const targetZoom = typeof options.zoom === 'number' ? options.zoom : undefined;
+      if (targetZoom && targetZoom > 0) {
+        try {
+          instance.setZoom?.(targetZoom);
+        } catch {}
+        setTimeout(() => {
+          try {
+            instance.setZoom?.(targetZoom);
+          } catch {}
+        }, 120);
+      }
+
       return instance;
     } catch (error: unknown) {
       this.hideLoading();
@@ -311,15 +343,32 @@ export class FilePreviewViewer {
     });
 
     let targetUrl: string | null = null;
-    if (this.currentOptions.standaloneViewerUrl) {
-      const u = new URL(this.currentOptions.standaloneViewerUrl, window.location.href);
+    const standaloneUrl = this.currentOptions.standaloneViewerUrl || (this.currentOptions as any).standalloneViewerUrl;
+    if (standaloneUrl) {
+      const u = new URL(standaloneUrl, window.location.href);
       u.searchParams.set('mode', 'fullscreen');
       u.searchParams.set('transferId', transferId);
+      if (typeof this.currentSource === 'string') {
+        u.searchParams.set('src', this.currentSource);
+        u.searchParams.set('file', this.currentSource);
+      }
+      if (this.currentMetadata?.name) {
+        u.searchParams.set('name', this.currentMetadata.name);
+        u.searchParams.set('fileName', this.currentMetadata.name);
+      }
       targetUrl = u.toString();
     } else if (typeof window !== 'undefined' && window.location?.href && !window.location.href.startsWith('about:')) {
       const u = new URL(window.location.href);
       u.searchParams.set('mode', 'fullscreen');
       u.searchParams.set('transferId', transferId);
+      if (typeof this.currentSource === 'string') {
+        u.searchParams.set('src', this.currentSource);
+        u.searchParams.set('file', this.currentSource);
+      }
+      if (this.currentMetadata?.name) {
+        u.searchParams.set('name', this.currentMetadata.name);
+        u.searchParams.set('fileName', this.currentMetadata.name);
+      }
       targetUrl = u.toString();
     }
 
@@ -549,6 +598,21 @@ export class FilePreviewViewer {
   goToPage(page: number): void {
     this.activeInstance?.goToPage?.(page);
     this.toolbar?.setPage(page);
+    this.thumbnailPanel?.setActive(page - 1);
+  }
+
+  /**
+   * Set page number (convenience alias for goToPage).
+   */
+  setPage(page: number): void {
+    this.goToPage(page);
+  }
+
+  /**
+   * Update or set custom standalone viewer URL.
+   */
+  setStandaloneViewerUrl(url: string): void {
+    this.currentOptions.standaloneViewerUrl = url;
   }
 
   /**
@@ -864,8 +928,14 @@ export class FilePreviewViewer {
     const themeClass = options.theme === 'dark' ? 'fp-theme-dark' : '';
     const toolbarPos = options.toolbarPosition ?? 'top';
 
+    const userClass = ((options.className || (options as any).classname || '') as string).trim();
     this.wrapperEl = document.createElement('div');
-    this.wrapperEl.className = `fp-viewer ${themeClass} ${options.className ?? ''}`.trim();
+    this.wrapperEl.className = `fp-viewer ${themeClass} ${userClass}`.trim();
+    if (userClass && container) {
+      userClass.split(/\s+/).forEach(cls => {
+        if (cls) container.classList.add(cls);
+      });
+    }
     this.wrapperEl.tabIndex = 0; // allow keyboard focus
     this.wrapperEl.style.display = 'flex';
     this.wrapperEl.style.flexDirection = 'column';

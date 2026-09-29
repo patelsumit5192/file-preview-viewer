@@ -17,6 +17,7 @@ export interface FilePreviewProps {
   onPageChange?: (data: unknown) => void;
   onZoomChange?: (data: unknown) => void;
   className?: string;
+  classname?: string;
   style?: React.CSSProperties;
 }
 
@@ -43,6 +44,7 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       onPageChange,
       onZoomChange,
       className,
+      classname,
       style,
     },
     ref
@@ -106,10 +108,19 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       doPreview();
     }, [src, options, onError]);
 
+    const resolvedClassName = [
+      className,
+      classname,
+      options?.className,
+      (options as any)?.classname,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
     return (
       <div
         ref={containerRef}
-        className={className}
+        className={resolvedClassName}
         style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', ...style }}
       />
     );

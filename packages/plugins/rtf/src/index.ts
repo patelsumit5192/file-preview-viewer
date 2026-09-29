@@ -444,10 +444,13 @@ export class RtfPlugin implements PreviewPlugin {
     ctx.container.style.backgroundColor = '#f1f5f9';
     ctx.container.appendChild(scrollWrapper);
 
-    let scale = 1.0;
+    const initialZoom = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
+    let scale = initialZoom;
     let rotation = 0;
     let pageElements: HTMLElement[] = [];
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
@@ -497,7 +500,9 @@ export class RtfPlugin implements PreviewPlugin {
     resizeObserver?.observe(ctx.container);
 
     setTimeout(() => {
-      scale = calculateFitScale(fitMode);
+      if (!isUserZoomed) {
+        scale = calculateFitScale(fitMode);
+      }
       applyTransform();
     }, 60);
 
@@ -785,7 +790,10 @@ export class RtfPlugin implements PreviewPlugin {
     applyTransform();
 
     const totalPages = Math.max(1, pageElements.length);
-    let currentPage = 1;
+    const initialPage = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, Math.min(totalPages, (ctx.options as any).page))
+      : 1;
+    let currentPage = initialPage;
     let isScrollingProgrammatically = false;
     let scrollTimeout: any = null;
 
@@ -818,6 +826,12 @@ export class RtfPlugin implements PreviewPlugin {
 
     if (observer) {
       pageElements.forEach(el => observer.observe(el));
+    }
+
+    if (currentPage > 1) {
+      setTimeout(() => {
+        showPage(currentPage);
+      }, 50);
     }
 
     const showPage = (pageNum: number) => {

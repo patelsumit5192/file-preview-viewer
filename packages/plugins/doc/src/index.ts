@@ -214,7 +214,10 @@ export class DocPlugin implements PreviewPlugin {
 
     const rawPages = this.splitIntoPages(extractedRawText, chartSvg);
     const totalPages = Math.max(1, rawPages.length);
-    let currentPage = 1;
+    const initialPage = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, Math.min(totalPages, (ctx.options as any).page))
+      : 1;
+    let currentPage = initialPage;
 
     const pageCards: HTMLElement[] = [];
 
@@ -339,7 +342,7 @@ export class DocPlugin implements PreviewPlugin {
     }
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const elW = 816;
@@ -371,9 +374,14 @@ export class DocPlugin implements PreviewPlugin {
     resizeObserver?.observe(ctx.container);
 
     setTimeout(() => {
-      scale = calculateFitScale(fitMode);
+      if (!isUserZoomed) {
+        scale = calculateFitScale(fitMode);
+      }
       applyTransform();
-    }, 60);
+      if (currentPage > 1) {
+        scrollToPage(currentPage);
+      }
+    }, 50);
 
     const cleanup = () => {
       resizeObserver?.disconnect();

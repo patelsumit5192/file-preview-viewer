@@ -234,11 +234,16 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
-    let scale = 1.0;
+    const initialZoom = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
+    let scale = initialZoom;
     let rotation = 0;
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let currentPage = 1;
+    let currentPage = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? (ctx.options as any).page
+      : 1;
     let totalPages = 1;
     let slides: HTMLElement[] = [];
 
@@ -427,6 +432,7 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       });
     }
 
+    currentPage = Math.min(totalPages, Math.max(1, currentPage));
     applyTransform();
 
     let isScrollingProgrammatically = false;
@@ -461,6 +467,12 @@ export class OpenDocumentPlugin implements PreviewPlugin {
 
     if (observer) {
       slides.forEach(s => observer.observe(s));
+    }
+
+    if (currentPage > 1) {
+      setTimeout(() => {
+        goToPage(currentPage);
+      }, 50);
     }
 
     let lastWheelTime = 0;

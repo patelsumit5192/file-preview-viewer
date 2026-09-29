@@ -226,8 +226,13 @@ export class PdfPlugin implements PreviewPlugin {
       pageCards.push(card);
     }
 
-    let currentPage = 1;
-    let zoomScale = 1.0;
+    const initialPage = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, Math.min(totalPages, (ctx.options as any).page))
+      : 1;
+    let currentPage = initialPage;
+    let zoomScale = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
     let rotation = 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
 
@@ -629,6 +634,12 @@ export class PdfPlugin implements PreviewPlugin {
 
     if (pageTrackingObserver) {
       pageCards.forEach(c => pageTrackingObserver.observe(c));
+    }
+
+    if (currentPage > 1) {
+      setTimeout(() => {
+        scrollToPage(currentPage);
+      }, 50);
     }
 
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;

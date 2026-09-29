@@ -199,14 +199,19 @@ export class PptPlugin implements PreviewPlugin {
     container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
-    let scale = 1.0;
+    const initialZoom = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
+    let scale = initialZoom;
     let rotation = 0;
-    let currentSlide = 1;
+    let currentSlide = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, (ctx.options as any).page)
+      : 1;
     let slides: PptSlide[] = [];
     const createdBlobUrls: string[] = [];
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const availW = Math.max(200, container.clientWidth - 32);
@@ -277,6 +282,7 @@ export class PptPlugin implements PreviewPlugin {
     }
 
     const totalSlides = slides.length;
+    currentSlide = Math.min(totalSlides, Math.max(1, currentSlide));
 
     const renderSlide = (idx: number) => {
       currentSlide = idx;
@@ -350,7 +356,7 @@ export class PptPlugin implements PreviewPlugin {
       ctx.emit('page-change', { page: currentSlide, total: totalSlides });
     };
 
-    renderSlide(1);
+    renderSlide(currentSlide);
 
     let lastWheelTime = 0;
     const onWheel = (e: WheelEvent) => {

@@ -31,6 +31,8 @@ export interface FilePreviewProps {
   onDestroy?: () => void;
   /** Custom wrapper CSS class name */
   className?: string;
+  /** Custom wrapper CSS class name alias */
+  classname?: string;
   /** Custom wrapper inline style */
   style?: React.CSSProperties;
 }
@@ -58,6 +60,7 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       onRotate,
       onDestroy,
       className,
+      classname,
       style,
     },
     ref
@@ -120,10 +123,19 @@ export const FilePreview = memo(forwardRef<FilePreviewHandle, FilePreviewProps>(
       doPreview();
     }, [src, options, onError]);
 
+    const resolvedClassName = [
+      className,
+      classname,
+      options?.className,
+      (options as any)?.classname,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
     return (
       <div
         ref={containerRef}
-        className={className}
+        className={resolvedClassName}
         style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', ...style }}
       />
     );

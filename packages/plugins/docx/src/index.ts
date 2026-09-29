@@ -367,7 +367,10 @@ export class DocxPlugin implements PreviewPlugin {
 
     const pageElements: HTMLElement[] = sections.length > 0 ? sections : cards;
     const totalPages = Math.max(1, pageElements.length);
-    let currentPage = 1;
+    const initialPage = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, Math.min(totalPages, (ctx.options as any).page))
+      : 1;
+    let currentPage = initialPage;
 
     const firstSection = wrapper.querySelector('section.docx') as HTMLElement;
     if (firstSection) {
@@ -428,10 +431,19 @@ export class DocxPlugin implements PreviewPlugin {
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     }
 
-    scale = 1.0;
+    if (currentPage > 1) {
+      setTimeout(() => {
+        showPage(currentPage);
+      }, 50);
+    }
+
+    const initialZoom = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
+    scale = initialZoom;
     let rotation = 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const activeEl = pageElements[0] || wrapper;

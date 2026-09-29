@@ -153,8 +153,14 @@ export class PptxPlugin implements PreviewPlugin {
     await renderer.load(ctx.buffer);
 
     const slideCount = (renderer as any).slidePaths?.length || 1;
-    let currentSlide = 1;
-    let scale = 1.0;
+    const initialSlide = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
+      ? Math.max(1, Math.min(slideCount, (ctx.options as any).page))
+      : 1;
+    let currentSlide = initialSlide;
+    const initialZoom = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0
+      ? (ctx.options as any).zoom
+      : 1.0;
+    let scale = initialZoom;
     let rotation = 0;
 
     const wrapper = document.createElement('div');
@@ -214,7 +220,7 @@ export class PptxPlugin implements PreviewPlugin {
     ctx.container.appendChild(wrapper);
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let isUserZoomed = false;
+    let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const availW = Math.max(200, ctx.container.clientWidth - 32);

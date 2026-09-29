@@ -26,13 +26,15 @@ import {
   selector: 'fp-file-preview',
   standalone: true,
   imports: [CommonModule],
-  template: `<div #container [style.width]="'100%'" [style.height]="'100%'" [style.position]="'relative'" [style.overflow]="'hidden'"></div>`,
+  template: `<div #container [class]="getContainerClass()" [style.width]="'100%'" [style.height]="'100%'" [style.position]="'relative'" [style.overflow]="'hidden'"></div>`,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) src!: FileSource;
   @Input() plugins?: PreviewPlugin[];
   @Input() options: PreviewViewerOptions = {};
+  @Input() className?: string;
+  @Input() classname?: string;
 
   @Output() loading = new EventEmitter<void>();
   @Output() loaded = new EventEmitter<unknown>();
@@ -43,6 +45,17 @@ export class FilePreviewComponent implements OnInit, OnChanges, OnDestroy {
   @Output() destroyed = new EventEmitter<void>();
 
   @ViewChild('container', { static: true }) container!: ElementRef<HTMLDivElement>;
+
+  getContainerClass(): string {
+    return [
+      this.className,
+      this.classname,
+      this.options?.className,
+      (this.options as any)?.classname,
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
 
   private viewer: FilePreviewViewer | null = null;
   private instance: PreviewInstance | null = null;
