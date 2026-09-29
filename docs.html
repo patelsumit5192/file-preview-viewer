@@ -16,7 +16,7 @@
     <div class="brand">
       <span class="brand-icon">👁️</span>
       <span class="brand-title">@file-preview-viewer/viewer</span>
-      <span class="badge">v1.1.0</span>
+      <span class="badge">v1.1.1</span>
     </div>
     <div class="header-actions">
       <a href="./index.html" class="nav-btn" title="Back to Interactive Live Demo">
@@ -852,17 +852,17 @@ viewer.toggleThumbnails();</pre>
             </div>
           </div>
 
-          <!-- Property: zoom & page -->
+          <!-- Property: zoom -->
           <div class="prop-card" id="prop-zoom">
             <div class="prop-header">
               <div class="prop-title-group">
-                <span class="prop-name">zoom & page</span>
+                <span class="prop-name">zoom</span>
                 <span class="prop-type-badge">number</span>
               </div>
-              <span class="prop-default-badge">Defaults: zoom: <strong>1.0</strong>, page: <strong>1</strong></span>
+              <span class="prop-default-badge">Default: <strong>1.0</strong> (auto-fit width)</span>
             </div>
             <div class="prop-desc">
-              Initial zoom scale and starting page number when the document opens.
+              Initial zoom magnification factor applied to document pages, slides, sheets, or images upon opening (e.g. <code>1.0</code> for 100%, <code>1.5</code> for 150%, <code>0.75</code> for 75%).
             </div>
 
             <div class="prop-details-grid">
@@ -874,8 +874,7 @@ viewer.toggleThumbnails();</pre>
                     <pre>&lt;FilePreview
   src={file}
   options={{
-    zoom: 1.5, // 150% initial magnification
-    page: 3    // Start immediately on page 3
+    zoom: 1.5 // 👈 Starts at 150% magnification
   }}
 /&gt;</pre>
                   </div>
@@ -885,8 +884,7 @@ viewer.toggleThumbnails();</pre>
                     <pre>&lt;fp-file-preview
   [src]="file"
   [options]="{
-    zoom: 1.5,
-    page: 3
+    zoom: 1.5 // 👈 Starts at 150% magnification
   }"
 /&gt;</pre>
                   </div>
@@ -896,8 +894,7 @@ viewer.toggleThumbnails();</pre>
                     <pre>&lt;FilePreview
   :src="file"
   :options="{
-    zoom: 1.5,
-    page: 3
+    zoom: 1.5 // 👈 Starts at 150% magnification
   }"
 /&gt;</pre>
                   </div>
@@ -905,9 +902,13 @@ viewer.toggleThumbnails();</pre>
                 <div class="framework-code" data-framework="vanilla" style="display: none;">
                   <div class="code-box">
                     <pre>await viewer.preview(container, file, {
-  zoom: 1.5,
-  page: 3
-});</pre>
+  zoom: 1.5 // Initial 150% zoom
+});
+
+// Or change dynamically anytime:
+viewer.setZoom(1.5);
+viewer.zoomIn();
+viewer.zoomOut();</pre>
                   </div>
                 </div>
               </div>
@@ -915,12 +916,245 @@ viewer.toggleThumbnails();</pre>
               <div class="prop-block">
                 <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
                 <ul class="prop-effect-list">
-                  <li><strong><code>zoom: 1.5</code></strong>: Renders document elements at 150% scale. Overrides default auto-fit width calculation.</li>
-                  <li><strong><code>page: 3</code></strong>: Scrolls or switches to page 3 immediately upon rendering completes.</li>
+                  <li><strong>Magnification Factor</strong>: Directly scales page canvas, typography, images, and tables by the given multiplier (<code>1.5</code> = 150% scale).</li>
+                  <li><strong>Overrides Auto-Fit</strong>: When specified, bypasses the automatic viewport width scaling and locks to the exact requested zoom level.</li>
+                  <li><strong>Toolbar Sync</strong>: Automatically updates the zoom percentage badge displayed in the toolbar.</li>
                 </ul>
                 <div class="effect-mockup">
                   <span class="effect-mockup-icon">🔍</span>
-                  <span class="effect-mockup-text"><strong>Deep Linking:</strong> Allows opening directly to a specific page or section of a report.</span>
+                  <span class="effect-mockup-text"><strong>Visual Difference:</strong> <code>1.5</code> renders the document 50% larger than baseline with high-DPI clarity.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: page -->
+          <div class="prop-card" id="prop-page">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">page</span>
+                <span class="prop-type-badge">number</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>1</strong></span>
+            </div>
+            <div class="prop-desc">
+              Initial 1-based page, slide, or sheet number to navigate to immediately when the document is rendered.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    page: 3 // 👈 Jumps directly to page/slide 3
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    page: 3 // 👈 Jumps directly to page/slide 3
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    page: 3 // 👈 Jumps directly to page/slide 3
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  page: 3 // Start on page 3
+});
+
+// Or navigate programmatically anytime:
+viewer.goToPage(3);
+// or alias:
+viewer.setPage(3);</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>Instant Navigation</strong>: Scrolls or transitions directly to page 3 upon load without requiring the user to scroll through pages 1 and 2.</li>
+                  <li><strong>Deep Linking</strong>: Enables linking directly to relevant invoice pages, report appendices, or specific presentation slides.</li>
+                  <li><strong>Toolbar & Thumbnail Sync</strong>: The toolbar input displays <code>3 / Total</code> and the 3rd card in the thumbnail drawer is marked active.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">📑</span>
+                  <span class="effect-mockup-text"><strong>Multi-page Support:</strong> Supported for PDF, Word (.docx, .doc, .rtf), PowerPoint (.pptx, .ppt), OpenDocument, and Excel sheets.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: className -->
+          <div class="prop-card" id="prop-className">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">className</span>
+                <span class="prop-type-badge">string</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>''</strong></span>
+            </div>
+            <div class="prop-desc">
+              Custom CSS class name attached to both the outer host container and the inner <code>.fp-viewer</code> root element. Enables custom border styling, drop shadows, responsive dimensions, and Tailwind CSS utilities. <em>(Also accepts alias <code>classname</code>)</em>.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  className="custom-viewer shadow-xl rounded-2xl"
+  options={{
+    className: 'custom-viewer' // Or pass inside options
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  className="custom-viewer shadow-xl rounded-2xl"
+  [options]="{
+    className: 'custom-viewer'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  className="custom-viewer shadow-xl rounded-2xl"
+  :options="{
+    className: 'custom-viewer'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  className: 'custom-viewer shadow-xl rounded-2xl'
+});
+
+/* In your CSS: */
+.custom-viewer {
+  border: 2px solid #2563eb;
+  border-radius: 12px;
+  overflow: hidden;
+}</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>DOM Class Injection</strong>: Automatically adds the specified class string to both the host element and <code>.fp-viewer</code>.</li>
+                  <li><strong>Seamless Utility Classes</strong>: Works directly with CSS frameworks like Tailwind CSS, Bootstrap, and CSS Modules.</li>
+                  <li><strong>Custom Theming</strong>: Allows scoping custom CSS overrides (e.g. toolbar colors, borders, fonts) to specific viewer instances.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🎨</span>
+                  <span class="effect-mockup-text"><strong>Custom Styling:</strong> Outer container and inner canvas inherit your application's custom CSS rules.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: standaloneViewerUrl -->
+          <div class="prop-card" id="prop-standaloneViewerUrl">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">standaloneViewerUrl</span>
+                <span class="prop-type-badge">string</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>undefined</strong> (built-in full window)</span>
+            </div>
+            <div class="prop-desc">
+              Custom destination URL navigated when the user clicks the "Open in Separate Full Window" button (<code>↗</code>) in the toolbar. <em>(Also accepts alias <code>standalloneViewerUrl</code>)</em>.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={fileUrl}
+  options={{
+    // Directs "Open in New Window" to your dedicated viewer route:
+    standaloneViewerUrl: '/app/standalone-viewer.html'
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="fileUrl"
+  [options]="{
+    standaloneViewerUrl: '/app/standalone-viewer.html'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="fileUrl"
+  :options="{
+    standaloneViewerUrl: '/app/standalone-viewer.html'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, fileUrl, {
+  standaloneViewerUrl: '/app/standalone-viewer.html'
+});
+
+// Or update dynamically:
+viewer.setStandaloneViewerUrl('/app/standalone-viewer.html');</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>Target Route Redirection</strong>: When clicked, opens a new browser window/tab pointing to your designated URL instead of a generic blank window.</li>
+                  <li><strong>Automatic Query Parameters</strong>: Automatically appends <code>mode=fullscreen</code>, <code>src=...</code>, <code>fileName=...</code>, and <code>transferId=...</code> so your standalone route immediately knows which document to render.</li>
+                  <li><strong>Large Buffer Support</strong>: Even when previewing in-memory Blobs or File uploads, the binary data is safely synced via IndexedDB transfer keys.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">↗️</span>
+                  <span class="effect-mockup-text"><strong>Pop-out Integration:</strong> Perfect for embedded CRM/ERP portals wanting to pop out into a full-screen dedicated window.</span>
                 </div>
               </div>
             </div>
