@@ -239,35 +239,88 @@ export class DocxPlugin implements PreviewPlugin {
         renderedSuccessfully = true;
 
         try {
-          // Only attempt chart rendering for reasonably-sized files (skip for 80MB+ to save memory)
-          if (ctx.buffer.byteLength < 50 * 1024 * 1024) {
-            const unzipped = unzipSync(new Uint8Array(ctx.buffer));
-            const chartKeys = Object.keys(unzipped)
-              .filter(k => k.replace(/^[./\\\\]+/, '').toLowerCase().startsWith('word/charts/chart') && k.endsWith('.xml'))
-              .sort();
+          // Decompress only chart and relationship XMLs (extremely fast and memory-safe even for 80MB+ files)
+          const unzipped = unzipSync(new Uint8Array(ctx.buffer), {
+            filter(file) {
+              const name = file.name.replace(/^[./\\]+/, '');
+              return name === 'word/document.xml' ||
+                name === 'word/_rels/document.xml.rels' ||
+                name.startsWith('word/charts/');
+            }
+          });
 
-            if (chartKeys.length > 0) {
-              // Only target containers with chart-specific classes, NOT generic empty divs
-              const drawingWrappers = Array.from(wrapper.querySelectorAll<HTMLElement>('[class*="drawing"], [class*="chart"]'));
-              const emptyContainers = drawingWrappers.filter(div => {
-                return div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
-              });
+          const docXmlStr = unzipped['word/document.xml'] ? strFromU8(unzipped['word/document.xml']) : '';
+          const relsXmlStr = unzipped['word/_rels/document.xml.rels'] ? strFromU8(unzipped['word/_rels/document.xml.rels']) : '';
 
-              if (emptyContainers.length === chartKeys.length) {
-                chartKeys.forEach((cKey, idx) => {
-                  const target = emptyContainers[idx];
-                  if (target) {
-                    const xmlStr = strFromU8(unzipped[cKey]);
-                    const svg = this.parseAndRenderChartSvg(xmlStr);
-                    if (svg) {
-                      target.innerHTML = svg;
-                      target.style.display = 'block';
-                      target.style.margin = '12px auto';
-                    }
-                  }
-                });
+          // Extract all chart relationship IDs in strict document order from document.xml
+          const chartRefs = [...docXmlStr.matchAll(/<c:chart[^>]*r:id="([^"]+)"/g)].map(m => m[1]);
+
+          // Map each rId to its target chart XML in the package
+          const orderedChartKeys: string[] = [];
+          chartRefs.forEach(rid => {
+            const m = relsXmlStr.match(new RegExp(`<Relationship[^>]*Id="${rid}"[^>]*Target="([^"]+)"`));
+            if (m) {
+              const target = m[1].replace(/^[./\\]+/, '');
+              const fullKey = target.startsWith('word/') ? target : `word/${target}`;
+              if (unzipped[fullKey]) {
+                orderedChartKeys.push(fullKey);
               }
             }
+          });
+
+          // Fallback: if no refs extracted from document.xml, find all chart files in package
+          if (orderedChartKeys.length === 0) {
+            const fallbackKeys = Object.keys(unzipped)
+              .filter(k => k.replace(/^[./\\]+/, '').toLowerCase().startsWith('word/charts/chart') && k.endsWith('.xml'))
+              .sort();
+            orderedChartKeys.push(...fallbackKeys);
+          }
+
+          if (orderedChartKeys.length > 0) {
+            // Find drawing placeholders created by docx-preview.
+            // docx-preview's renderDrawing always sets position: relative and text-indent: 0px.
+            // When graphic has no child elements (like unrendered charts), children.length === 0.
+            const allDivs = Array.from(wrapper.querySelectorAll<HTMLElement>('section.docx div'));
+            const emptyContainers = allDivs.filter(div => {
+              const st = div.getAttribute('style') || '';
+              const isDrawing = (div.style.position === 'relative' || st.includes('position: relative')) &&
+                (div.style.textIndent === '0px' || st.includes('text-indent: 0px'));
+              const isEmpty = div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
+              return isDrawing && isEmpty;
+            });
+
+            // Resilient fallback if specific styles were overridden
+            const targetContainers = emptyContainers.length > 0 ? emptyContainers : allDivs.filter(div => {
+              const st = div.getAttribute('style') || '';
+              const hasDim = st.includes('width:') || st.includes('height:') || div.style.width || div.style.height;
+              const isEmpty = div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
+              return hasDim && isEmpty;
+            });
+
+            orderedChartKeys.forEach((cKey, idx) => {
+              const target = targetContainers[idx];
+              if (target) {
+                const xmlStr = strFromU8(unzipped[cKey]);
+                // Compute target dimensions matching original document
+                let targetW = target.offsetWidth || parseFloat(target.style.width) || 520;
+                let targetH = target.offsetHeight || parseFloat(target.style.height) || 280;
+                if (target.style.width && target.style.width.endsWith('pt')) {
+                  targetW = Math.round(parseFloat(target.style.width) * 1.3333);
+                }
+                if (target.style.height && target.style.height.endsWith('pt')) {
+                  targetH = Math.round(parseFloat(target.style.height) * 1.3333);
+                }
+                targetW = Math.max(260, targetW);
+                targetH = Math.max(160, targetH);
+
+                const svg = this.parseAndRenderChartSvg(xmlStr, targetW, targetH);
+                if (svg) {
+                  target.innerHTML = svg;
+                  target.style.display = 'block';
+                  target.style.margin = '12px auto';
+                }
+              }
+            });
           }
         } catch (chartErr) {
           console.warn('[DocxPlugin] Non-critical error rendering DrawingML charts:', chartErr);
@@ -531,6 +584,7 @@ export class DocxPlugin implements PreviewPlugin {
     const doc = parser.parseFromString(xmlStr, 'application/xml');
 
     const imageMap: Record<string, string> = {};
+    const chartMap: Record<string, string> = {};
     const relsKey = Object.keys(unzipped).find(k => k.replace(/^[./\\]+/, '').toLowerCase() === 'word/_rels/document.xml.rels');
     if (relsKey && unzipped[relsKey]) {
       try {
@@ -540,6 +594,7 @@ export class DocxPlugin implements PreviewPlugin {
         for (const rel of relEls) {
           const rId = rel.getAttribute('Id');
           const target = rel.getAttribute('Target');
+          const type = rel.getAttribute('Type') || '';
           if (rId && target) {
             const cleanTarget = target.replace(/^\.\.\//, '').replace(/^\//, '');
             const fullTargetKey = Object.keys(unzipped).find(k => {
@@ -547,13 +602,21 @@ export class DocxPlugin implements PreviewPlugin {
               return norm === ('word/' + cleanTarget).toLowerCase() || norm === cleanTarget.toLowerCase();
             });
             if (fullTargetKey && unzipped[fullTargetKey]) {
-              const bytes = unzipped[fullTargetKey];
-              const ext = cleanTarget.split('.').pop()?.toLowerCase() || 'png';
-              const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'gif' ? 'image/gif' : ext === 'svg' ? 'image/svg+xml' : 'image/png';
-              const blob = new Blob([bytes], { type: mime });
-              const blobUrl = URL.createObjectURL(blob);
-              imageMap[rId] = blobUrl;
-              createdBlobUrls.push(blobUrl);
+              if (type.includes('/chart') || cleanTarget.includes('charts/')) {
+                try {
+                  const chartXml = strFromU8(unzipped[fullTargetKey]);
+                  const chartSvg = this.parseAndRenderChartSvg(chartXml, 520, 280);
+                  if (chartSvg) chartMap[rId] = chartSvg;
+                } catch {}
+              } else {
+                const bytes = unzipped[fullTargetKey];
+                const ext = cleanTarget.split('.').pop()?.toLowerCase() || 'png';
+                const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'gif' ? 'image/gif' : ext === 'svg' ? 'image/svg+xml' : 'image/png';
+                const blob = new Blob([bytes], { type: mime });
+                const blobUrl = URL.createObjectURL(blob);
+                imageMap[rId] = blobUrl;
+                createdBlobUrls.push(blobUrl);
+              }
             }
           }
         }
@@ -630,7 +693,7 @@ export class DocxPlugin implements PreviewPlugin {
         const styleVal = pStyle?.getAttribute('w:val') || pStyle?.getAttribute('val') || '';
         const numPr = child.getElementsByTagNameNS('*', 'numPr')[0];
 
-        const chunks = this.extractParagraphChunks(child, imageMap);
+        const chunks = this.extractParagraphChunks(child, imageMap, chartMap);
         
         for (let i = 0; i < chunks.length; i++) {
           if (i > 0) {
@@ -638,7 +701,7 @@ export class DocxPlugin implements PreviewPlugin {
           }
           
           const textContent = chunks[i];
-          if (!textContent.trim() && !textContent.includes('<img')) {
+          if (!textContent.trim() && !textContent.includes('<img') && !textContent.includes('<svg')) {
             currentHtml += '<div style="height: 10px;"></div>';
             continue;
           }
@@ -665,7 +728,7 @@ export class DocxPlugin implements PreviewPlugin {
           currentHtml += `<tr style="${rIdx === 0 ? 'background-color: #f8fafc; font-weight: 600;' : ''}">`;
           const cells = Array.from(tr.getElementsByTagNameNS('*', 'tc'));
           cells.forEach((tc) => {
-            const cellText = this.extractParagraphHtml(tc, imageMap);
+            const cellText = this.extractParagraphHtml(tc, imageMap, chartMap);
             currentHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px;">${cellText || '&nbsp;'}</td>`;
           });
           currentHtml += '</tr>';
@@ -677,18 +740,18 @@ export class DocxPlugin implements PreviewPlugin {
 
     for (const page of pages) {
       page.card.innerHTML = DOMPurify.sanitize(page.html, {
-        ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 's', 'strike', 'img', 'div', 'br'],
-        ADD_ATTR: ['style', 'src', 'alt', 'colspan', 'rowspan']
+        ADD_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'table', 'tr', 'td', 'span', 'b', 'i', 'u', 's', 'strike', 'img', 'div', 'br', 'svg', 'line', 'rect', 'circle', 'polyline', 'polygon', 'path', 'text', 'g'],
+        ADD_ATTR: ['style', 'src', 'alt', 'colspan', 'rowspan', 'viewBox', 'width', 'height', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'points', 'd', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'text-anchor', 'font-size', 'font-weight', 'font-family', 'fill-opacity', 'stroke-linejoin', 'stroke-linecap', 'rx']
       });
       wrapper.appendChild(page.card);
     }
   }
 
-  private extractParagraphHtml(pElement: Element, imageMap: Record<string, string> = {}): string {
-    return this.extractParagraphChunks(pElement, imageMap).join('<br/>');
+  private extractParagraphHtml(pElement: Element, imageMap: Record<string, string> = {}, chartMap: Record<string, string> = {}): string {
+    return this.extractParagraphChunks(pElement, imageMap, chartMap).join('<br/>');
   }
 
-  private extractParagraphChunks(pElement: Element, imageMap: Record<string, string> = {}): string[] {
+  private extractParagraphChunks(pElement: Element, imageMap: Record<string, string> = {}, chartMap: Record<string, string> = {}): string[] {
     const chunks: string[] = [''];
     let currentChunkIndex = 0;
     // Track rendered image rIds to avoid duplicates
@@ -730,6 +793,14 @@ export class DocxPlugin implements PreviewPlugin {
           } else {
             chunks[currentChunkIndex] += `<img src="${imageMap[rId]}" style="${imgStyle}" />`;
           }
+        }
+
+        // Check for charts inside drawing
+        const chartNode = drawing.getElementsByTagNameNS('*', 'chart')[0];
+        const cId = chartNode?.getAttribute('r:id') || chartNode?.getAttribute('id');
+        if (cId && chartMap[cId] && !renderedImages.has(cId)) {
+          renderedImages.add(cId);
+          chunks[currentChunkIndex] += `<div style="text-align:center; margin: 16px auto; max-width: 100%;">${chartMap[cId]}</div>`;
         }
       }
 
@@ -846,63 +917,324 @@ export class DocxPlugin implements PreviewPlugin {
   }
 
   private parseAndRenderChartSvg(xmlStr: string, width = 500, height = 260): string {
-    const catMatches = [...xmlStr.matchAll(/<c:cat>[\s\S]*?<c:strCache>([\s\S]*?)<\/c:strCache>/g)];
-    let categories: string[] = [];
-    if (catMatches.length > 0) {
-      categories = [...catMatches[0][1].matchAll(/<c:v>([^<]+)<\/c:v>/g)].map(m => m[1]);
-    }
-    if (categories.length === 0) {
-      categories = ['Category 1', 'Category 2', 'Category 3', 'Category 4'];
+    // 1. Chart Title
+    let title = '';
+    const titleMatch = xmlStr.match(/<c:title>[\s\S]*?<\/c:title>/);
+    if (titleMatch) {
+      const tTexts = [...titleMatch[0].matchAll(/<(?:a:t|c:v)>([^<]+)<\/(?:a:t|c:v)>/g)].map(m => m[1].trim()).filter(Boolean);
+      if (tTexts.length > 0) title = tTexts.join(' ');
     }
 
-    const defaultColors = ['#004586', '#ff420e', '#ffd320', '#579d1c', '#7e0021', '#83caff'];
+    // 2. Detect chart type
+    let chartType = 'col'; // default column chart
+    if (/<c:lineChart[\s>]/.test(xmlStr)) {
+      chartType = 'line';
+    } else if (/<c:pieChart[\s>]|<c:pie3DChart[\s>]/.test(xmlStr)) {
+      chartType = 'pie';
+    } else if (/<c:doughnutChart[\s>]/.test(xmlStr)) {
+      chartType = 'doughnut';
+    } else if (/<c:areaChart[\s>]|<c:area3DChart[\s>]/.test(xmlStr)) {
+      chartType = 'area';
+    } else if (/<c:barChart[\s>]/.test(xmlStr)) {
+      const barDir = xmlStr.match(/<c:barDir\s+val="([^"]+)"/);
+      if (barDir && barDir[1] === 'bar') {
+        chartType = 'bar';
+      } else {
+        chartType = 'col';
+      }
+    }
+
+    // 3. Categories
+    let categories: string[] = [];
+    const catMatch = xmlStr.match(/<c:cat>[\s\S]*?<\/c:cat>/);
+    if (catMatch) {
+      const pts = [...catMatch[0].matchAll(/<c:pt\s+idx="(\d+)">\s*<c:v>([^<]+)<\/c:v>/g)]
+        .sort((a, b) => parseInt(a[1], 10) - parseInt(b[1], 10))
+        .map(m => m[2].trim());
+      if (pts.length > 0) {
+        categories = pts;
+      } else {
+        categories = [...catMatch[0].matchAll(/<c:v>([^<]+)<\/c:v>/g)].map(m => m[1].trim()).filter(Boolean);
+      }
+    }
+
+    // 4. Color Palette (Office default accent colors)
+    const SCHEME_COLORS: Record<string, string> = {
+      accent1: '#4472c4',
+      accent2: '#ed7d31',
+      accent3: '#a5a5a5',
+      accent4: '#ffc000',
+      accent5: '#5b9bd5',
+      accent6: '#70ad47',
+    };
+    const DEFAULT_PALETTE = ['#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47', '#264478', '#9e480e', '#636363', '#997300'];
+
+    // 5. Series Extraction
     const sers = [...xmlStr.matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)];
-    const series: { title: string; color: string; values: number[] }[] = [];
+    const series: { title: string; color: string; values: number[]; sliceColors: Record<number, string> }[] = [];
 
     sers.forEach((s, sIdx) => {
-      const titleMatch = s[1].match(/<c:tx>[\s\S]*?<c:v>([^<]+)<\/c:v>/);
-      const title = titleMatch ? titleMatch[1] : `Series ${sIdx + 1}`;
+      let sTitle = '';
+      const txMatch = s[1].match(/<c:tx>[\s\S]*?<\/c:tx>/);
+      if (txMatch) {
+        const texts = [...txMatch[0].matchAll(/<(?:a:t|c:v)>([^<]+)<\/(?:a:t|c:v)>/g)].map(m => m[1].trim()).filter(Boolean);
+        if (texts.length > 0) sTitle = texts.join(' ');
+      }
+      if (!sTitle) sTitle = `Series ${sIdx + 1}`;
 
-      const clrMatch = s[1].match(/<a:srgbClr\s+val="([^"]+)"/);
-      const color = clrMatch ? '#' + clrMatch[1] : defaultColors[sIdx % defaultColors.length];
+      let color = '';
+      const srgbMatch = s[1].match(/<a:srgbClr\s+val="([^"]+)"/);
+      if (srgbMatch) {
+        color = '#' + srgbMatch[1];
+      } else {
+        const schemeMatch = s[1].match(/<a:schemeClr\s+val="([^"]+)"/);
+        if (schemeMatch && SCHEME_COLORS[schemeMatch[1]]) {
+          color = SCHEME_COLORS[schemeMatch[1]];
+        } else {
+          color = DEFAULT_PALETTE[sIdx % DEFAULT_PALETTE.length];
+        }
+      }
 
-      const valMatch = s[1].match(/<c:val>[\s\S]*?<c:numCache>([\s\S]*?)<\/c:numCache>/);
+      // Values from <c:val> or <c:yVal>
+      const valBlockMatch = s[1].match(/<(?:c:val|c:yVal)>([\s\S]*?)<\/(?:c:val|c:yVal)>/);
       let values: number[] = [];
-      if (valMatch) {
-        values = [...valMatch[1].matchAll(/<c:pt\s+idx="(\d+)">\s*<c:v>([^<]+)<\/c:v>/g)]
+      if (valBlockMatch) {
+        const pts = [...valBlockMatch[1].matchAll(/<c:pt\s+idx="(\d+)">\s*<c:v>([^<]+)<\/c:v>/g)]
           .sort((a, b) => parseInt(a[1], 10) - parseInt(b[1], 10))
           .map(m => parseFloat(m[2]) || 0);
+        if (pts.length > 0) {
+          values = pts;
+        } else {
+          values = [...valBlockMatch[1].matchAll(/<c:v>([^<]+)<\/c:v>/g)].map(m => parseFloat(m[1]) || 0);
+        }
       }
-      series.push({ title, color, values });
+
+      // Check individual slice colors in <c:dPt>
+      const sliceColors: Record<number, string> = {};
+      const dPts = [...s[1].matchAll(/<c:dPt>([\s\S]*?)<\/c:dPt>/g)];
+      dPts.forEach(dp => {
+        const idxM = dp[1].match(/<c:idx\s+val="(\d+)"/);
+        const clrM = dp[1].match(/<a:srgbClr\s+val="([^"]+)"/);
+        if (idxM && clrM) {
+          sliceColors[parseInt(idxM[1], 10)] = '#' + clrM[1];
+        }
+      });
+
+      series.push({ title: sTitle, color, values, sliceColors });
     });
 
     if (series.length === 0) return '';
 
-    let maxVal = 10;
-    series.forEach(s => s.values.forEach(v => { if (v > maxVal) maxVal = v; }));
-    maxVal = Math.ceil(maxVal * 1.15);
-    if (maxVal % 2 !== 0) maxVal++;
+    const maxValCount = Math.max(...series.map(s => s.values.length), 1);
+    if (categories.length === 0) {
+      for (let i = 0; i < maxValCount; i++) {
+        categories.push(`${i + 1}`);
+      }
+    }
 
-    const padLeft = 45;
+    // Geometry layout
+    const padLeft = chartType === 'bar' ? 70 : 50;
     const padBottom = 55;
-    const padTop = 20;
-    const padRight = 20;
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
+    const padTop = title ? 42 : 22;
+    const padRight = 30;
+    const plotW = Math.max(100, width - padLeft - padRight);
+    const plotH = Math.max(80, height - padTop - padBottom);
 
+    let titleSvg = '';
+    if (title) {
+      titleSvg = `<text x="${width / 2}" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${title}</text>`;
+    }
+
+    // PIE & DOUGHNUT CHARTS
+    if (chartType === 'pie' || chartType === 'doughnut') {
+      const s0 = series[0] || { values: [], sliceColors: {} };
+      const vals = s0.values.length > 0 ? s0.values : [1];
+      const total = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1;
+      const cx = padLeft + plotW / 2;
+      const cy = padTop + plotH / 2;
+      const radius = Math.min(plotW, plotH) / 2 - 8;
+      const innerRadius = chartType === 'doughnut' ? radius * 0.55 : 0;
+
+      let startAngle = -Math.PI / 2;
+      let paths = '';
+      let legItems = '';
+
+      vals.forEach((v, idx) => {
+        const sliceVal = Math.max(0, v);
+        const angle = (sliceVal / total) * Math.PI * 2;
+        const endAngle = startAngle + angle;
+        const color = s0.sliceColors[idx] || DEFAULT_PALETTE[idx % DEFAULT_PALETTE.length];
+        const catLabel = categories[idx] || `Item ${idx + 1}`;
+        const pct = Math.round((sliceVal / total) * 100);
+
+        const x1 = cx + radius * Math.cos(startAngle);
+        const y1 = cy + radius * Math.sin(startAngle);
+        const x2 = cx + radius * Math.cos(endAngle);
+        const y2 = cy + radius * Math.sin(endAngle);
+        const largeArc = angle > Math.PI ? 1 : 0;
+
+        let d = '';
+        if (innerRadius > 0) {
+          const ix1 = cx + innerRadius * Math.cos(endAngle);
+          const iy1 = cy + innerRadius * Math.sin(endAngle);
+          const ix2 = cx + innerRadius * Math.cos(startAngle);
+          const iy2 = cy + innerRadius * Math.sin(startAngle);
+          d = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
+        } else {
+          d = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        }
+
+        paths += `<path d="${d}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />`;
+        startAngle = endAngle;
+
+        legItems += `
+          <g transform="translate(${cx - 100 + (idx % 3) * 75}, ${cy + radius + 15 + Math.floor(idx / 3) * 16})">
+            <rect width="10" height="10" fill="${color}" rx="2" />
+            <text x="14" y="9" font-size="10" fill="#475569" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${catLabel} (${pct}%)</text>
+          </g>
+        `;
+      });
+
+      return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" style="background:#ffffff; border-radius:4px; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+          ${titleSvg}
+          ${paths}
+          ${legItems}
+        </svg>
+      `.trim();
+    }
+
+    // Value bounds for Cartesian charts
+    let maxVal = 1;
+    series.forEach(s => s.values.forEach(v => {
+      if (v > maxVal) maxVal = v;
+    }));
+    maxVal = Math.ceil(maxVal * 1.15) || 1;
+    if (maxVal % 2 !== 0 && maxVal > 5) maxVal++;
+
+    // Legend
+    let legend = '';
+    const legY = height - 12;
+    let legX = padLeft + Math.max(0, (plotW - series.length * 100) / 2);
+    series.forEach(s => {
+      legend += `<rect x="${legX}" y="${legY - 9}" width="10" height="10" fill="${s.color}" rx="2" />`;
+      legend += `<text x="${legX + 15}" y="${legY}" font-size="11" fill="#475569" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${s.title}</text>`;
+      legX += Math.max(90, (s.title.length * 7) + 25);
+    });
+
+    // LINE & AREA CHARTS
+    if (chartType === 'line' || chartType === 'area') {
+      const yTicks = 5;
+      let gridLines = '';
+      for (let i = 0; i <= yTicks; i++) {
+        const val = (maxVal / yTicks) * i;
+        const y = padTop + plotH - (val / maxVal) * plotH;
+        gridLines += `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e2e8f0" stroke-width="1" />`;
+        gridLines += `<text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#64748b" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${Math.round(val)}</text>`;
+      }
+
+      const numCats = categories.length;
+      const catStep = numCats > 1 ? plotW / (numCats - 1) : plotW;
+      let catLabels = '';
+      for (let c = 0; c < numCats; c++) {
+        const x = padLeft + c * catStep;
+        catLabels += `<text x="${x}" y="${padTop + plotH + 18}" text-anchor="middle" font-size="11" fill="#334155" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${categories[c]}</text>`;
+      }
+
+      let chartGraphics = '';
+      series.forEach(s => {
+        const pts: { x: number; y: number }[] = [];
+        for (let c = 0; c < numCats; c++) {
+          const val = s.values[c] ?? 0;
+          const x = padLeft + c * catStep;
+          const y = padTop + plotH - (val / maxVal) * plotH;
+          pts.push({ x, y });
+        }
+
+        if (chartType === 'area' && pts.length > 0) {
+          const areaPoints = `${pts[0].x},${padTop + plotH} ` + pts.map(p => `${p.x},${p.y}`).join(' ') + ` ${pts[pts.length - 1].x},${padTop + plotH}`;
+          chartGraphics += `<polygon points="${areaPoints}" fill="${s.color}" fill-opacity="0.25" />`;
+        }
+
+        const polyPoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+        chartGraphics += `<polyline points="${polyPoints}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />`;
+
+        pts.forEach(p => {
+          chartGraphics += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#ffffff" stroke="${s.color}" stroke-width="2" />`;
+        });
+      });
+
+      return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" style="background:#ffffff; border-radius:4px; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+          ${titleSvg}
+          ${gridLines}
+          <line x1="${padLeft}" y1="${padTop + plotH}" x2="${padLeft + plotW}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+          ${chartGraphics}
+          ${catLabels}
+          ${legend}
+        </svg>
+      `.trim();
+    }
+
+    // HORIZONTAL BAR CHART
+    if (chartType === 'bar') {
+      const numCats = categories.length;
+      const numSers = series.length;
+      const groupH = plotH / numCats;
+      const barH = Math.max(6, Math.min(24, (groupH * 0.7) / numSers));
+      const groupPad = (groupH - barH * numSers) / 2;
+
+      const xTicks = 5;
+      let gridLines = '';
+      for (let i = 0; i <= xTicks; i++) {
+        const val = (maxVal / xTicks) * i;
+        const x = padLeft + (val / maxVal) * plotW;
+        gridLines += `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e2e8f0" stroke-width="1" />`;
+        gridLines += `<text x="${x}" y="${padTop + plotH + 16}" text-anchor="middle" font-size="11" fill="#64748b" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${Math.round(val)}</text>`;
+      }
+
+      let bars = '';
+      let catLabels = '';
+      for (let c = 0; c < numCats; c++) {
+        const catY = padTop + c * groupH;
+        catLabels += `<text x="${padLeft - 8}" y="${catY + groupH / 2 + 4}" text-anchor="end" font-size="11" fill="#334155" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${categories[c]}</text>`;
+
+        for (let s = 0; s < numSers; s++) {
+          const val = series[s].values[c] ?? 0;
+          const bW = Math.max(0, (val / maxVal) * plotW);
+          const bY = catY + groupPad + s * barH;
+          bars += `<rect x="${padLeft}" y="${bY}" width="${bW}" height="${barH - 2}" fill="${series[s].color}" rx="1" />`;
+        }
+      }
+
+      return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" style="background:#ffffff; border-radius:4px; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+          ${titleSvg}
+          ${gridLines}
+          <line x1="${padLeft}" y1="${padTop + plotH}" x2="${padLeft + plotW}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+          ${bars}
+          ${catLabels}
+          ${legend}
+        </svg>
+      `.trim();
+    }
+
+    // VERTICAL COLUMN CHART ('col')
     const yTicks = 5;
     let gridLines = '';
     for (let i = 0; i <= yTicks; i++) {
       const val = (maxVal / yTicks) * i;
       const y = padTop + plotH - (val / maxVal) * plotH;
       gridLines += `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e2e8f0" stroke-width="1" />`;
-      gridLines += `<text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#64748b" font-family="Calibri, sans-serif">${Math.round(val)}</text>`;
+      gridLines += `<text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#64748b" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${Math.round(val)}</text>`;
     }
 
     const numCats = categories.length;
     const numSers = series.length;
     const groupW = plotW / numCats;
-    const barW = Math.max(8, Math.min(28, (groupW * 0.7) / numSers));
+    const barW = Math.max(6, Math.min(28, (groupW * 0.7) / numSers));
     const groupPad = (groupW - barW * numSers) / 2;
 
     let bars = '';
@@ -910,7 +1242,7 @@ export class DocxPlugin implements PreviewPlugin {
 
     for (let c = 0; c < numCats; c++) {
       const catX = padLeft + c * groupW;
-      catLabels += `<text x="${catX + groupW / 2}" y="${padTop + plotH + 18}" text-anchor="middle" font-size="11" fill="#334155" font-family="Calibri, sans-serif">${categories[c]}</text>`;
+      catLabels += `<text x="${catX + groupW / 2}" y="${padTop + plotH + 18}" text-anchor="middle" font-size="11" fill="#334155" font-family="Calibri, 'Segoe UI', Arial, sans-serif">${categories[c]}</text>`;
 
       for (let s = 0; s < numSers; s++) {
         const val = series[s].values[c] ?? 0;
@@ -921,17 +1253,9 @@ export class DocxPlugin implements PreviewPlugin {
       }
     }
 
-    let legend = '';
-    const legY = height - 12;
-    let legX = padLeft + (plotW - numSers * 100) / 2;
-    series.forEach(s => {
-      legend += `<rect x="${legX}" y="${legY - 9}" width="10" height="10" fill="${s.color}" rx="2" />`;
-      legend += `<text x="${legX + 15}" y="${legY}" font-size="11" fill="#475569" font-family="Calibri, sans-serif">${s.title}</text>`;
-      legX += 95;
-    });
-
     return `
       <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" style="background:#ffffff; border-radius:4px; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+        ${titleSvg}
         ${gridLines}
         <line x1="${padLeft}" y1="${padTop + plotH}" x2="${padLeft + plotW}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />
         <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotH}" stroke="#94a3b8" stroke-width="1.5" />

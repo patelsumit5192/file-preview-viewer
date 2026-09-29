@@ -722,21 +722,27 @@ export class DocPlugin implements PreviewPlugin {
       }
     );
 
-    // 3. For other fields (PAGE, NUMPAGES, DATE, etc.): keep result only if printable
+    // 3. Replace chart embeds with SVG before field instruction stripping
+    if (chartSvg) {
+      cleaned = cleaned.replace(/\x13\s*EMBED\s+[^\x14\x15]*Chart[^\x14\x15]*\x14[^\x15]*\x15/gi, `\n\n${chartSvg}\n\n`);
+      cleaned = cleaned.replace(/\x13\s*EMBED\s+LibreOffice\.ChartDocument[^\x14\x15]*\x14[^\x15]*\x15/gi, `\n\n${chartSvg}\n\n`);
+      cleaned = cleaned.replace(/\x13\s*EMBED\s+Excel\.Chart[^\x14\x15]*\x14[^\x15]*\x15/gi, `\n\n${chartSvg}\n\n`);
+      cleaned = cleaned.replace(/\x13\s*EMBED\s+MSGraph\.Chart[^\x14\x15]*\x14[^\x15]*\x15/gi, `\n\n${chartSvg}\n\n`);
+      cleaned = cleaned.replace(/EMBED\s+[a-zA-Z0-9._]*Chart[a-zA-Z0-9._]*/gi, `\n\n${chartSvg}\n\n`);
+    }
+
+    // 4. For other fields (PAGE, NUMPAGES, DATE, etc.): keep result only if printable
     cleaned = cleaned.replace(/\x13[^\x14\x15]*\x14([^\x15]*)\x15/g, (_m, res) => {
       if (/[\x00-\x1F]/.test(res)) return '';
       return res.trim();
     });
 
-    // 4. Remove any remaining raw field instructions
+    // 5. Remove any remaining raw field instructions
     cleaned = cleaned.replace(/\x13[^\x15]*\x15/g, '');
     cleaned = cleaned.replace(/[\x13\x14\x15]/g, '');
 
-    // 5. Remove any unprintable control characters except \t, \n, \r
+    // 6. Remove any unprintable control characters except \t, \n, \r
     cleaned = cleaned.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-
-    // 6. Clean any raw leftover "EMBED LibreOffice.ChartDocument..."
-    cleaned = cleaned.replace(/EMBED\s+LibreOffice\.ChartDocument\.[0-9]+/gi, chartSvg || '');
 
     return cleaned;
   }
@@ -787,7 +793,13 @@ export class DocPlugin implements PreviewPlugin {
       }
     }
     
-    return finalPages.length > 0 ? finalPages : [normalized];
+    const resultPages = finalPages.length > 0 ? finalPages : [normalized];
+    if (chartSvg && !resultPages.some(p => p.includes('<svg'))) {
+      if (resultPages.length > 0) {
+        resultPages[0] += `\n\n${chartSvg}\n\n`;
+      }
+    }
+    return resultPages;
   }
 
   /**
