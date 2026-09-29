@@ -143,17 +143,14 @@ export class DocxPlugin implements PreviewPlugin {
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
+    // IMPORTANT: Do NOT use display:flex on the wrapper. docx-preview uses CSS float
+    // and position:absolute for image/drawing placement. Flex containers ignore float,
+    // which causes images to appear in wrong positions.
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-docx-wrapper';
     wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.2s ease';
     wrapper.style.padding = '0';
-    wrapper.style.maxWidth = 'none';
-    wrapper.style.width = '816px';
-    wrapper.style.margin = '0 auto';
-    wrapper.style.display = 'flex';
-    wrapper.style.flexDirection = 'column';
-    wrapper.style.alignItems = 'center';
     wrapper.style.boxSizing = 'border-box';
     wrapper.style.flexShrink = '0';
 
@@ -217,7 +214,7 @@ export class DocxPlugin implements PreviewPlugin {
         renderFooters: true,
         renderFootnotes: true,
         renderEndnotes: true,
-        useBase64URL: true,
+        useBase64URL: false,
         renderChanges: false,
         renderComments: false,
         renderAltChunks: true,
@@ -242,30 +239,35 @@ export class DocxPlugin implements PreviewPlugin {
         renderedSuccessfully = true;
 
         try {
-          const unzipped = unzipSync(new Uint8Array(ctx.buffer));
-          const chartKeys = Object.keys(unzipped)
-            .filter(k => k.replace(/^[./\\]+/, '').toLowerCase().startsWith('word/charts/chart') && k.endsWith('.xml'))
-            .sort();
+          // Only attempt chart rendering for reasonably-sized files (skip for 80MB+ to save memory)
+          if (ctx.buffer.byteLength < 50 * 1024 * 1024) {
+            const unzipped = unzipSync(new Uint8Array(ctx.buffer));
+            const chartKeys = Object.keys(unzipped)
+              .filter(k => k.replace(/^[./\\\\]+/, '').toLowerCase().startsWith('word/charts/chart') && k.endsWith('.xml'))
+              .sort();
 
-          if (chartKeys.length > 0) {
-            const allDivs = Array.from(wrapper.querySelectorAll<HTMLElement>('div'));
-            const emptyContainers = allDivs.filter(div => {
-              const st = div.getAttribute('style') || '';
-              return st.includes('width:') && st.includes('height:') && div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
-            });
+            if (chartKeys.length > 0) {
+              // Only target containers with chart-specific classes, NOT generic empty divs
+              const drawingWrappers = Array.from(wrapper.querySelectorAll<HTMLElement>('[class*="drawing"], [class*="chart"]'));
+              const emptyContainers = drawingWrappers.filter(div => {
+                return div.children.length === 0 && (div.textContent?.trim().length ?? 0) === 0;
+              });
 
-            chartKeys.forEach((cKey, idx) => {
-              const target = emptyContainers[idx];
-              if (target) {
-                const xmlStr = strFromU8(unzipped[cKey]);
-                const svg = this.parseAndRenderChartSvg(xmlStr);
-                if (svg) {
-                  target.innerHTML = svg;
-                  target.style.display = 'block';
-                  target.style.margin = '12px auto';
-                }
+              if (emptyContainers.length === chartKeys.length) {
+                chartKeys.forEach((cKey, idx) => {
+                  const target = emptyContainers[idx];
+                  if (target) {
+                    const xmlStr = strFromU8(unzipped[cKey]);
+                    const svg = this.parseAndRenderChartSvg(xmlStr);
+                    if (svg) {
+                      target.innerHTML = svg;
+                      target.style.display = 'block';
+                      target.style.margin = '12px auto';
+                    }
+                  }
+                });
               }
-            });
+            }
           }
         } catch (chartErr) {
           console.warn('[DocxPlugin] Non-critical error rendering DrawingML charts:', chartErr);
