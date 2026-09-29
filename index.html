@@ -17,7 +17,7 @@
     window.addEventListener('error', function(e) { window.__consoleLogs.push({ t: 'window.error', m: e.message + ' at ' + e.filename + ':' + e.lineno }); });
     window.addEventListener('unhandledrejection', function(e) { window.__consoleLogs.push({ t: 'unhandledrejection', m: (e.reason && e.reason.message) || String(e.reason) }); });
   </script>
-  <script type="module" crossorigin src="./assets/index-DZdljnyU.js"></script>
+  <script type="module" crossorigin src="./assets/index-CSYKsywa.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-BO-XrImy.css">
 </head>
 <body class="theme-light">
@@ -26,7 +26,7 @@
       <div class="brand">
         <span class="brand-icon">👁️</span>
         <span class="brand-title">@file-preview-viewer/viewer</span>
-        <span class="badge">v1.0.8</span>
+        <span class="badge">v1.0.9</span>
       </div>
       <div class="header-actions">
         <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer" target="_blank" class="nav-btn npm-btn">
@@ -179,6 +179,10 @@
               <span id="file-meta" class="active-file-meta">Loading preview...</span>
             </div>
             <div class="preview-header-actions">
+              <button id="toggle-toolbar-btn" class="header-action-btn" title="Toggle Toolbar Property (showToolbar)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                <span id="toolbar-btn-text">Toolbar: ON</span>
+              </button>
               <button id="toggle-filename-btn" class="header-action-btn" title="Toggle File Name Property (showFileName)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span id="filename-btn-text">File Name: ON</span>
