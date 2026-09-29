@@ -28,6 +28,7 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const PKG_DIR = path.join(ROOT_DIR, 'packages', 'preview-file');
 const PKG_JSON_PATH = path.join(PKG_DIR, 'package.json');
 const DEMO_HTML_PATH = path.join(ROOT_DIR, 'apps', 'demo', 'index.html');
+const DOCS_HTML_PATH = path.join(ROOT_DIR, 'apps', 'demo', 'docs.html');
 const DOC_TXT_PATH = path.join(ROOT_DIR, 'apps', 'demo', 'public', 'samples', 'document.txt');
 
 function run(cmd, cwd = ROOT_DIR) {
@@ -90,6 +91,17 @@ async function main() {
     );
     fs.writeFileSync(DEMO_HTML_PATH, demoHtml, 'utf8');
     console.log(`[sync-release] Updated demo badge to v${newVersion} in ${DEMO_HTML_PATH}`);
+  }
+
+  // Step 3b: Synchronize docs.html version badge
+  if (fs.existsSync(DOCS_HTML_PATH)) {
+    let docsHtml = fs.readFileSync(DOCS_HTML_PATH, 'utf8');
+    docsHtml = docsHtml.replace(
+      /<span class="badge">v[0-9.]+<\/span>/,
+      `<span class="badge">v${newVersion}</span>`
+    );
+    fs.writeFileSync(DOCS_HTML_PATH, docsHtml, 'utf8');
+    console.log(`[sync-release] Updated docs badge to v${newVersion} in ${DOCS_HTML_PATH}`);
   }
 
   // Step 4: Synchronize document.txt sample version if present
