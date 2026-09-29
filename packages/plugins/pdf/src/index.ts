@@ -188,20 +188,6 @@ export class PdfPlugin implements PreviewPlugin {
     scrollWrapper.style.padding = '16px 8px';
     scrollWrapper.style.boxSizing = 'border-box';
 
-    const pageCard = document.createElement('div');
-    pageCard.className = 'fp-pdf-page-card';
-    pageCard.style.boxShadow = '0 10px 35px rgba(0, 0, 0, 0.5)';
-    pageCard.style.backgroundColor = '#ffffff';
-    pageCard.style.borderRadius = '4px';
-    pageCard.style.overflow = 'hidden';
-    pageCard.style.lineHeight = '0';
-    pageCard.style.position = 'relative';
-    pageCard.style.flexShrink = '0';
-    pageCard.style.transition = 'box-shadow 0.2s ease';
-
-    let canvas = document.createElement('canvas');
-    pageCard.appendChild(canvas);
-    scrollWrapper.appendChild(pageCard);
     container.appendChild(scrollWrapper);
     ctx.container.appendChild(container);
 
@@ -219,12 +205,35 @@ export class PdfPlugin implements PreviewPlugin {
     const pdfDoc = await loadingTask.promise;
     const totalPages = Math.max(1, pdfDoc.numPages);
 
+    const pageCards: HTMLElement[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      const card = document.createElement('div');
+      card.className = 'fp-pdf-page-card';
+      card.setAttribute('data-page-number', String(i));
+      card.style.boxShadow = '0 10px 35px rgba(0, 0, 0, 0.5)';
+      card.style.backgroundColor = '#ffffff';
+      card.style.borderRadius = '4px';
+      card.style.overflow = 'hidden';
+      card.style.lineHeight = '0';
+      card.style.position = 'relative';
+      card.style.flexShrink = '0';
+      card.style.marginBottom = i < totalPages ? '24px' : '0';
+      card.style.transition = 'box-shadow 0.2s ease';
+
+      const pageCanvas = document.createElement('canvas');
+      card.appendChild(pageCanvas);
+      scrollWrapper.appendChild(card);
+      pageCards.push(card);
+    }
+
     let currentPage = 1;
     let zoomScale = 1.0;
     let rotation = 0;
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
-    let currentRenderTask: any = null;
-    let textLayerDiv: HTMLElement | null = null;
+
+    const renderTasks: Map<number, any> = new Map();
+    const renderedScale: Map<number, number> = new Map();
+    const renderedRotation: Map<number, number> = new Map();
 
     const pageTextCache: Map<number, string> = new Map();
     let activeSearchQuery = '';
@@ -232,9 +241,63 @@ export class PdfPlugin implements PreviewPlugin {
     let allMatches: Array<{ page: number; matchIndexOnPage: number }> = [];
     let currentMatchIdx = -1;
 
+    let effectiveScale = 1.0;
+
+    const updateLayoutDimensions = async () => {
+      const firstPage = await pdfDoc.getPage(1);
+      const unscaledVp = firstPage.getViewport({ scale: 1.0, rotation });
+
+      const containerWidth = container.clientWidth || 900;
+      const containerHeight = container.clientHeight || 700;
+      const availWidth = Math.max(280, containerWidth - 36);
+      const availHeight = Math.max(280, containerHeight - 32);
+      const scaleW = availWidth / unscaledVp.width;
+      const scaleH = availHeight / unscaledVp.height;
+
+      let fitScale: number;
+      if (fitMode === 'page') {
+        fitScale = Math.max(0.2, Math.min(4.0, Math.min(scaleW, scaleH)));
+      } else {
+        fitScale = Math.max(0.2, Math.min(4.0, scaleW));
+      }
+      effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
+
+      const estimatedW = Math.floor(unscaledVp.width * effectiveScale);
+      const estimatedH = Math.floor(unscaledVp.height * effectiveScale);
+
+      pageCards.forEach((c) => {
+        c.style.width = `${estimatedW}px`;
+        c.style.height = `${estimatedH}px`;
+      });
+    };
+
     const clearHighlights = () => {
-      if (!textLayerDiv) return;
-      const marks = textLayerDiv.querySelectorAll('mark.fp-search-match');
+      pageCards.forEach((c) => {
+        const textLayer = c.querySelector('.textLayer');
+        if (!textLayer) return;
+        const marks = textLayer.querySelectorAll('mark.fp-search-match');
+        const parents = new Set<Node>();
+        marks.forEach((m) => {
+          const p = m.parentNode;
+          if (p) {
+            parents.add(p);
+            while (m.firstChild) {
+              p.insertBefore(m.firstChild, m);
+            }
+            p.removeChild(m);
+          }
+        });
+        parents.forEach((p) => p.normalize());
+      });
+    };
+
+    const applyHighlightsToPage = (pageNum: number) => {
+      const card = pageCards[pageNum - 1];
+      if (!card || !activeSearchQuery) return;
+      const textLayer = card.querySelector('.textLayer') as HTMLElement | null;
+      if (!textLayer) return;
+
+      const marks = textLayer.querySelectorAll('mark.fp-search-match');
       const parents = new Set<Node>();
       marks.forEach((m) => {
         const p = m.parentNode;
@@ -247,15 +310,10 @@ export class PdfPlugin implements PreviewPlugin {
         }
       });
       parents.forEach((p) => p.normalize());
-    };
-
-    const applyHighlightsToCurrentPage = () => {
-      if (!textLayerDiv || !activeSearchQuery) return;
-      clearHighlights();
 
       const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const re = new RegExp(escapeRegex(activeSearchQuery), activeCaseSensitive ? 'g' : 'gi');
-      const walker = document.createTreeWalker(textLayerDiv, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(textLayer, NodeFilter.SHOW_TEXT);
       const textNodes: Text[] = [];
       let n = walker.nextNode();
       while (n) {
@@ -291,7 +349,7 @@ export class PdfPlugin implements PreviewPlugin {
 
       if (currentMatchIdx >= 0 && currentMatchIdx < allMatches.length) {
         const curMatch = allMatches[currentMatchIdx];
-        if (curMatch.page === currentPage && pageMarks.length > 0) {
+        if (curMatch.page === pageNum && pageMarks.length > 0) {
           const markIdx = Math.min(curMatch.matchIndexOnPage, pageMarks.length - 1);
           const activeMark = pageMarks[markIdx];
           if (activeMark) {
@@ -349,11 +407,9 @@ export class PdfPlugin implements PreviewPlugin {
       currentMatchIdx = targetIdx;
 
       const targetMatch = allMatches[currentMatchIdx];
-      if (targetMatch.page !== currentPage) {
-        await renderPage(targetMatch.page);
-      } else {
-        applyHighlightsToCurrentPage();
-      }
+      scrollToPage(targetMatch.page);
+      await renderPage(targetMatch.page);
+      applyHighlightsToPage(targetMatch.page);
 
       return { total, current: currentMatchIdx + 1 };
     };
@@ -362,11 +418,9 @@ export class PdfPlugin implements PreviewPlugin {
       if (allMatches.length === 0) return { total: 0, current: 0 };
       currentMatchIdx = (currentMatchIdx + 1) % allMatches.length;
       const targetMatch = allMatches[currentMatchIdx];
-      if (targetMatch.page !== currentPage) {
-        await renderPage(targetMatch.page);
-      } else {
-        applyHighlightsToCurrentPage();
-      }
+      scrollToPage(targetMatch.page);
+      await renderPage(targetMatch.page);
+      applyHighlightsToPage(targetMatch.page);
       return { total: allMatches.length, current: currentMatchIdx + 1 };
     };
 
@@ -374,11 +428,9 @@ export class PdfPlugin implements PreviewPlugin {
       if (allMatches.length === 0) return { total: 0, current: 0 };
       currentMatchIdx = (currentMatchIdx - 1 + allMatches.length) % allMatches.length;
       const targetMatch = allMatches[currentMatchIdx];
-      if (targetMatch.page !== currentPage) {
-        await renderPage(targetMatch.page);
-      } else {
-        applyHighlightsToCurrentPage();
-      }
+      scrollToPage(targetMatch.page);
+      await renderPage(targetMatch.page);
+      applyHighlightsToPage(targetMatch.page);
       return { total: allMatches.length, current: currentMatchIdx + 1 };
     };
 
@@ -390,84 +442,71 @@ export class PdfPlugin implements PreviewPlugin {
     };
 
     const renderPage = async (pageNum: number) => {
-      if (currentRenderTask) {
+      const card = pageCards[pageNum - 1];
+      if (!card) return;
+
+      if (renderedScale.get(pageNum) === effectiveScale && renderedRotation.get(pageNum) === rotation) {
+        return;
+      }
+
+      if (renderTasks.has(pageNum)) {
         try {
-          currentRenderTask.cancel();
+          renderTasks.get(pageNum).cancel();
         } catch {}
-        currentRenderTask = null;
+        renderTasks.delete(pageNum);
       }
 
-      // Fresh canvas on every render to eliminate PDF.js canvas collision on fast render/rotation
-      const newCanvas = document.createElement('canvas');
-      pageCard.replaceChild(newCanvas, canvas);
-      canvas = newCanvas;
-
-      if (textLayerDiv) {
-        textLayerDiv.remove();
-        textLayerDiv = null;
-      }
-
-      currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      ctx.emit('page-change', { page: currentPage, total: totalPages });
-
-      const page = await pdfDoc.getPage(currentPage);
-
-      const containerWidth = container.clientWidth || 900;
-      const containerHeight = container.clientHeight || 700;
-      const unscaledVp = page.getViewport({ scale: 1.0, rotation });
-
-      // Minimal side margins (16px on each side, safe from vertical scrollbar)
-      const availWidth = Math.max(280, containerWidth - 36);
-      const availHeight = Math.max(280, containerHeight - 32);
-      const scaleW = availWidth / unscaledVp.width;
-      const scaleH = availHeight / unscaledVp.height;
-
-      // In 'page' mode: fit page height & width so full document fits comfortably with 0 scroll
-      // In 'width' mode: fit page width comfortably for reading with minimal side margins
-      let fitScale: number;
-      if (fitMode === 'page') {
-        fitScale = Math.max(0.2, Math.min(4.0, Math.min(scaleW, scaleH)));
-      } else {
-        fitScale = Math.max(0.2, Math.min(4.0, scaleW));
-      }
-      const effectiveScale = (fitScale > 0 ? fitScale : 1.0) * zoomScale;
-
+      const page = await pdfDoc.getPage(pageNum);
       const pixelRatio = window.devicePixelRatio || 1;
       const viewport = page.getViewport({ scale: effectiveScale, rotation });
 
       const displayWidth = Math.floor(viewport.width);
       const displayHeight = Math.floor(viewport.height);
 
+      card.style.width = `${displayWidth}px`;
+      card.style.height = `${displayHeight}px`;
+
+      let canvas = card.querySelector('canvas');
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        card.appendChild(canvas);
+      }
       canvas.width = Math.floor(viewport.width * pixelRatio);
       canvas.height = Math.floor(viewport.height * pixelRatio);
       canvas.style.width = `${displayWidth}px`;
       canvas.style.height = `${displayHeight}px`;
-
-      pageCard.style.width = `${displayWidth}px`;
-      pageCard.style.height = `${displayHeight}px`;
 
       const canvasCtx = canvas.getContext('2d');
       if (!canvasCtx) return;
 
       canvasCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-      currentRenderTask = page.render({
+      const renderTask = page.render({
         canvasContext: canvasCtx,
         viewport,
       });
+      renderTasks.set(pageNum, renderTask);
 
       try {
-        await currentRenderTask.promise;
+        await renderTask.promise;
+        renderedScale.set(pageNum, effectiveScale);
+        renderedRotation.set(pageNum, rotation);
       } catch (err: any) {
         if (err?.name !== 'RenderingCancelledException') {
-          console.warn('[PdfPlugin] Page render warning:', err);
+          console.warn(`[PdfPlugin] Page ${pageNum} render warning:`, err);
         }
         return;
       } finally {
-        currentRenderTask = null;
+        if (renderTasks.get(pageNum) === renderTask) {
+          renderTasks.delete(pageNum);
+        }
       }
 
-      // Render Text Layer for text selection and copying
+      // Render Text Layer
+      let textLayerDiv = card.querySelector('.textLayer') as HTMLElement | null;
+      if (textLayerDiv) {
+        textLayerDiv.remove();
+      }
       try {
         textLayerDiv = document.createElement('div');
         textLayerDiv.className = 'textLayer';
@@ -477,7 +516,7 @@ export class PdfPlugin implements PreviewPlugin {
         textLayerDiv.style.top = '0';
         textLayerDiv.style.left = '0';
         textLayerDiv.style.lineHeight = '1';
-        pageCard.appendChild(textLayerDiv);
+        card.appendChild(textLayerDiv);
 
         if ((pdfjsLib as any).TextLayer) {
           const textLayer = new (pdfjsLib as any).TextLayer({
@@ -489,41 +528,130 @@ export class PdfPlugin implements PreviewPlugin {
         }
 
         if (activeSearchQuery) {
-          applyHighlightsToCurrentPage();
+          applyHighlightsToPage(pageNum);
         }
       } catch (err) {
-        // Non-fatal text layer notice
         console.debug('[PdfPlugin] TextLayer notice:', err);
       }
     };
 
+    let isScrollingProgrammatically = false;
+    let scrollTimeout: any = null;
+
+    const scrollToPage = (pageNum: number) => {
+      currentPage = Math.max(1, Math.min(totalPages, pageNum));
+      const targetCard = pageCards[currentPage - 1];
+      if (targetCard) {
+        isScrollingProgrammatically = true;
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        renderPage(currentPage);
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          isScrollingProgrammatically = false;
+        }, 1000);
+      }
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    };
+
+    const reRenderAll = async () => {
+      await updateLayoutDimensions();
+      renderedScale.clear();
+      renderedRotation.clear();
+      const cRect = container.getBoundingClientRect();
+      const visibleIndices: number[] = [];
+      pageCards.forEach((card, idx) => {
+        const rect = card.getBoundingClientRect();
+        if (rect.bottom >= cRect.top - 400 && rect.top <= cRect.bottom + 400) {
+          visibleIndices.push(idx + 1);
+        }
+      });
+      if (visibleIndices.length === 0) visibleIndices.push(currentPage);
+      for (const p of visibleIndices) {
+        renderPage(p);
+      }
+    };
+
+    // Initialize layout and render first page
+    await updateLayoutDimensions();
     renderPage(1);
 
-    // Auto-refit on container resize (window resize, thumbnail panel toggle, fullscreen)
+    if (totalPages > 1) {
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    }
+
+    const lazyRenderObserver = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const idx = pageCards.indexOf(entry.target as HTMLElement);
+              if (idx !== -1) {
+                renderPage(idx + 1);
+              }
+            }
+          });
+        }, {
+          root: container,
+          rootMargin: '400px 0px 400px 0px'
+        })
+      : null;
+
+    if (lazyRenderObserver) {
+      pageCards.forEach(c => lazyRenderObserver.observe(c));
+    }
+
+    const pageTrackingObserver = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          if (isScrollingProgrammatically) return;
+
+          let maxRatio = 0;
+          let mostVisible = currentPage;
+
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              const idx = pageCards.indexOf(entry.target as HTMLElement);
+              if (idx !== -1) {
+                mostVisible = idx + 1;
+              }
+            }
+          });
+
+          if (mostVisible !== currentPage && maxRatio > 0.1) {
+            currentPage = mostVisible;
+            ctx.emit('page-change', { page: currentPage, total: totalPages });
+          }
+        }, {
+          root: container,
+          threshold: [0.1, 0.3, 0.5, 0.7, 0.9]
+        })
+      : null;
+
+    if (pageTrackingObserver) {
+      pageCards.forEach(c => pageTrackingObserver.observe(c));
+    }
+
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        // Auto-refit if zoom is near 1.0
         if (Math.abs(zoomScale - 1.0) < 0.05) {
-          renderPage(currentPage);
+          reRenderAll();
         }
       }, 120);
     });
     resizeObserver.observe(container);
 
-    // Ctrl + Wheel / Trackpad Pinch Zoom
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.15 : 0.15;
         zoomScale = Math.max(0.25, Math.min(4.0, Math.round((zoomScale + delta) * 100) / 100));
-        renderPage(currentPage);
+        reRenderAll();
       }
     };
     container.addEventListener('wheel', onWheel, { passive: false });
 
-    // Keyboard navigation (Left/Right arrows, PageUp/PageDown, Home/End)
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -531,35 +659,35 @@ export class PdfPlugin implements PreviewPlugin {
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         if (currentPage < totalPages) {
           e.preventDefault();
-          container.scrollTop = 0;
-          renderPage(currentPage + 1);
+          scrollToPage(currentPage + 1);
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         if (currentPage > 1) {
           e.preventDefault();
-          container.scrollTop = 0;
-          renderPage(currentPage - 1);
+          scrollToPage(currentPage - 1);
         }
       } else if (e.key === 'Home') {
         e.preventDefault();
-        container.scrollTop = 0;
-        renderPage(1);
+        scrollToPage(1);
       } else if (e.key === 'End') {
         e.preventDefault();
-        container.scrollTop = 0;
-        renderPage(totalPages);
+        scrollToPage(totalPages);
       }
     };
     window.addEventListener('keydown', onKeyDown);
 
     const cleanup = () => {
       resizeObserver.disconnect();
+      lazyRenderObserver?.disconnect();
+      pageTrackingObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       container.removeEventListener('wheel', onWheel);
       if (resizeTimer) clearTimeout(resizeTimer);
-      if (currentRenderTask) {
-        try { currentRenderTask.cancel(); } catch {}
-      }
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      renderTasks.forEach((task) => {
+        try { task.cancel(); } catch {}
+      });
+      renderTasks.clear();
       try {
         pdfDoc.destroy();
       } catch {}
@@ -574,21 +702,21 @@ export class PdfPlugin implements PreviewPlugin {
       destroy: cleanup,
       zoomIn: () => {
         zoomScale = Math.min(4.0, Math.round((zoomScale + 0.2) * 10) / 10);
-        renderPage(currentPage);
+        reRenderAll();
       },
       zoomOut: () => {
         zoomScale = Math.max(0.25, Math.round((zoomScale - 0.2) * 10) / 10);
-        renderPage(currentPage);
+        reRenderAll();
       },
       getZoom: () => zoomScale,
       setZoom: (level: number) => {
         zoomScale = Math.max(0.25, Math.min(4.0, level));
-        renderPage(currentPage);
+        reRenderAll();
       },
       fitToPage: () => {
         fitMode = 'page';
         zoomScale = 1.0;
-        renderPage(currentPage);
+        reRenderAll();
       },
       resetZoom: () => {
         fitMode = ((ctx as any)?.options?.fitMode as any) || 'width';
@@ -596,27 +724,26 @@ export class PdfPlugin implements PreviewPlugin {
         rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;
-        renderPage(currentPage);
+        reRenderAll();
       },
       fitToWidth: () => {
         fitMode = 'width';
         zoomScale = 1.0;
-        renderPage(currentPage);
+        reRenderAll();
       },
       rotateCW: () => {
         rotation = (rotation + 90) % 360;
-        renderPage(currentPage);
+        reRenderAll();
       },
       rotateCCW: () => {
         rotation = (rotation - 90 + 360) % 360;
-        renderPage(currentPage);
+        reRenderAll();
       },
       getRotation: () => rotation,
       getPageCount: () => totalPages,
       getCurrentPage: () => currentPage,
       goToPage: (page: number) => {
-        container.scrollTop = 0;
-        renderPage(page);
+        scrollToPage(page);
       },
       toggleThumbnails: () => {
         (ctx as any)?.toggleThumbnails?.();

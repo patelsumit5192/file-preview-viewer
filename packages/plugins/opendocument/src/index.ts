@@ -215,17 +215,17 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     sizer.style.flexShrink = '0';
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
-    sizer.style.alignItems = 'center';
+    sizer.style.alignItems = isPresentation ? 'center' : 'flex-start';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-odf-wrapper';
     wrapper.style.margin = '0 auto';
     wrapper.style.width = isPresentation ? '960px' : '816px';
     wrapper.style.boxSizing = 'border-box';
-    wrapper.style.backgroundColor = '#ffffff';
-    wrapper.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
+    wrapper.style.backgroundColor = isPresentation ? '#ffffff' : 'transparent';
+    wrapper.style.boxShadow = isPresentation ? '0 2px 10px rgba(0,0,0,0.08)' : 'none';
     wrapper.style.borderRadius = '4px';
-    wrapper.style.transformOrigin = 'center center';
+    wrapper.style.transformOrigin = isPresentation ? 'center center' : 'top center';
     wrapper.style.transition = 'transform 0.15s ease';
     wrapper.style.flexShrink = '0';
 
@@ -269,7 +269,17 @@ export class OpenDocumentPlugin implements PreviewPlugin {
     const applyTransform = () => {
       const activeSlide = slides[currentPage - 1];
       const elW = isPresentation ? 960 : 816;
-      const baseH = activeSlide?.offsetHeight || wrapper.offsetHeight || 1056;
+      let baseH = 1056;
+      if (isPresentation) {
+        baseH = activeSlide?.offsetHeight || wrapper.offsetHeight || 540;
+      } else {
+        baseH = 0;
+        for (const s of slides) {
+          baseH += s.offsetHeight || 1056;
+        }
+        baseH += Math.max(0, slides.length - 1) * 24;
+        if (baseH === 0) baseH = 1056;
+      }
       const isRotated90 = (rotation % 180 !== 0);
       const boxW = Math.round((isRotated90 ? baseH : elW) * scale);
       const boxH = Math.round((isRotated90 ? elW : baseH) * scale);
@@ -278,9 +288,8 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       sizer.style.height = `${boxH}px`;
 
       wrapper.style.width = `${elW}px`;
-      wrapper.style.height = `${baseH}px`;
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'center center';
+      wrapper.style.transformOrigin = isPresentation ? 'center center' : 'top center';
     };
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -405,13 +414,12 @@ export class OpenDocumentPlugin implements PreviewPlugin {
         page.style.width = `${dims.width}px`;
         page.style.minHeight = `${dims.height}px`;
         page.style.padding = `${dims.marginTop}px ${dims.marginRight}px ${dims.marginBottom}px ${dims.marginLeft}px`;
-        page.style.margin = '0 auto';
-        page.style.backgroundColor = '#ffffff';
-        page.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
-        page.style.borderRadius = '4px';
-        page.style.display = idx === 0 ? 'block' : 'none';
         page.style.margin = '0 auto 24px';
+        page.style.backgroundColor = '#ffffff';
         page.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.08)';
+        page.style.borderRadius = '4px';
+        page.style.display = 'block';
+        page.style.flexShrink = '0';
         
         elements.forEach(el => page.appendChild(el));
         wrapper.appendChild(page);
@@ -419,24 +427,99 @@ export class OpenDocumentPlugin implements PreviewPlugin {
       });
     }
 
+    applyTransform();
+
+    let isScrollingProgrammatically = false;
+    let scrollTimeout: any = null;
+
+    const observer = !isPresentation && typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          if (isScrollingProgrammatically) return;
+
+          let maxRatio = 0;
+          let mostVisible = currentPage;
+
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              const idx = slides.indexOf(entry.target as HTMLElement);
+              if (idx !== -1) {
+                mostVisible = idx + 1;
+              }
+            }
+          });
+
+          if (mostVisible !== currentPage && maxRatio > 0.1) {
+            currentPage = mostVisible;
+            ctx.emit('page-change', { page: currentPage, total: totalPages });
+          }
+        }, {
+          root: container,
+          threshold: [0.1, 0.3, 0.5, 0.7, 0.9]
+        })
+      : null;
+
+    if (observer) {
+      slides.forEach(s => observer.observe(s));
+    }
+
+    let lastWheelTime = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!isPresentation) return;
+      if (e.ctrlKey || e.metaKey) return;
+      const now = Date.now();
+      if (now - lastWheelTime < 350) return;
+      if (e.deltaY > 30) {
+        if (currentPage < totalPages) {
+          lastWheelTime = now;
+          goToPage(currentPage + 1);
+        }
+      } else if (e.deltaY < -30) {
+        if (currentPage > 1) {
+          lastWheelTime = now;
+          goToPage(currentPage - 1);
+        }
+      }
+    };
+    container.addEventListener('wheel', onWheel, { passive: true });
+
+    const goToPage = (page: number) => {
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      if (isPresentation) {
+        slides.forEach((s, idx) => {
+          s.style.display = idx === page - 1 ? 'block' : 'none';
+        });
+        container.scrollTop = 0;
+      } else {
+        const target = slides[currentPage - 1];
+        if (target) {
+          isScrollingProgrammatically = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            isScrollingProgrammatically = false;
+          }, 1000);
+        }
+      }
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    };
+
+    if (totalPages > 1) {
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    }
+
     const cleanup = () => {
+      observer?.disconnect();
       resizeObserver?.disconnect();
+      container.removeEventListener('wheel', onWheel);
       imageUrls.forEach(url => URL.revokeObjectURL(url));
       container.remove();
       ctx.container.innerHTML = '';
     };
 
     ctx.signal.addEventListener('abort', cleanup);
-
-    const goToPage = (page: number) => {
-      if (page < 1 || page > totalPages) return;
-      currentPage = page;
-      slides.forEach((s, idx) => {
-        s.style.display = idx === page - 1 ? 'block' : 'none';
-      });
-      container.scrollTop = 0;
-      ctx.emit('page-change', { page: currentPage, total: totalPages });
-    };
 
     return {
       destroy: cleanup,

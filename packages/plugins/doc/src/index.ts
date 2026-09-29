@@ -145,13 +145,6 @@ export class DocPlugin implements PreviewPlugin {
   }
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
-    const container = document.createElement('div');
-    container.className = 'fp-doc-container';
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.overflow = 'auto';
-    container.style.backgroundColor = '#f1f5f9';
-
     const scrollWrapper = document.createElement('div');
     scrollWrapper.className = 'fp-doc-scroll-wrapper';
     scrollWrapper.style.minWidth = '100%';
@@ -173,8 +166,10 @@ export class DocPlugin implements PreviewPlugin {
     sizer.style.alignItems = 'flex-start';
 
     scrollWrapper.appendChild(sizer);
-    container.appendChild(scrollWrapper);
-    ctx.container.appendChild(container);
+    ctx.container.style.overflow = 'auto';
+    ctx.container.style.padding = '0';
+    ctx.container.style.backgroundColor = '#f1f5f9';
+    ctx.container.appendChild(scrollWrapper);
 
     let scale = 1.0;
     let extractedRawText = '';
@@ -290,21 +285,34 @@ export class DocPlugin implements PreviewPlugin {
     };
 
     // Use IntersectionObserver to track which page is visible during scrolling
+    let isScrollingProgrammatically = false;
+    let scrollTimeout: any = null;
+
     let intersectionObserver: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== 'undefined') {
       intersectionObserver = new IntersectionObserver(
         (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+          if (isScrollingProgrammatically) return;
+
+          let maxRatio = 0;
+          let mostVisible = currentPage;
+
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
               const idx = pageCards.indexOf(entry.target as HTMLElement);
-              if (idx >= 0 && idx + 1 !== currentPage) {
-                currentPage = idx + 1;
-                ctx.emit('page-change', { page: currentPage, total: totalPages });
+              if (idx !== -1) {
+                mostVisible = idx + 1;
               }
             }
+          });
+
+          if (mostVisible !== currentPage && maxRatio > 0.1) {
+            currentPage = mostVisible;
+            ctx.emit('page-change', { page: currentPage, total: totalPages });
           }
         },
-        { root: container, threshold: [0.3, 0.5] }
+        { root: ctx.container, threshold: [0.1, 0.3, 0.5, 0.7, 0.9] }
       );
       for (const card of pageCards) {
         intersectionObserver.observe(card);
@@ -315,10 +323,20 @@ export class DocPlugin implements PreviewPlugin {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
       const targetCard = pageCards[currentPage - 1];
       if (targetCard) {
+        isScrollingProgrammatically = true;
         targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          isScrollingProgrammatically = false;
+        }, 1000);
       }
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
+
+    if (totalPages > 1) {
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
+    }
 
     let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let isUserZoomed = false;
@@ -361,7 +379,7 @@ export class DocPlugin implements PreviewPlugin {
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
       intersectionObserver = null;
-      container.remove();
+      scrollWrapper.remove();
       ctx.container.innerHTML = '';
     };
 
@@ -407,8 +425,6 @@ export class DocPlugin implements PreviewPlugin {
         fitMode = 'width';
         scale = 1.0;
         rotation = 0;
-        container.scrollTop = 0;
-        container.scrollLeft = 0;
         ctx.container.scrollTop = 0;
         ctx.container.scrollLeft = 0;
         applyTransform();

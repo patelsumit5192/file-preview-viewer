@@ -410,8 +410,9 @@ export class RtfPlugin implements PreviewPlugin {
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '24px';
     wrapper.style.backgroundColor = 'transparent';
-    wrapper.style.transformOrigin = 'center center';
+    wrapper.style.transformOrigin = 'top center';
     wrapper.style.transition = 'transform 0.15s ease';
     wrapper.style.flexShrink = '0';
 
@@ -421,7 +422,7 @@ export class RtfPlugin implements PreviewPlugin {
     sizer.style.flexShrink = '0';
     sizer.style.display = 'flex';
     sizer.style.justifyContent = 'center';
-    sizer.style.alignItems = 'center';
+    sizer.style.alignItems = 'flex-start';
 
     const scrollWrapper = document.createElement('div');
     scrollWrapper.className = 'fp-rtf-scroll-wrapper';
@@ -466,18 +467,23 @@ export class RtfPlugin implements PreviewPlugin {
 
     const applyTransform = () => {
       const elW = pageWidth;
-      const baseH = pageHeight;
+      let totalH = 0;
+      for (const card of pageElements) {
+        totalH += card.offsetHeight || pageHeight;
+      }
+      totalH += Math.max(0, pageElements.length - 1) * 24;
+      if (totalH === 0) totalH = pageHeight;
+
       const isRotated90 = (rotation % 180 !== 0);
-      const boxW = Math.round((isRotated90 ? baseH : elW) * scale);
-      const boxH = Math.round((isRotated90 ? elW : baseH) * scale);
+      const boxW = Math.round((isRotated90 ? totalH : elW) * scale);
+      const boxH = Math.round((isRotated90 ? elW : totalH) * scale);
 
       sizer.style.width = `${boxW}px`;
       sizer.style.height = `${boxH}px`;
 
       wrapper.style.width = `${elW}px`;
-      wrapper.style.height = `${baseH}px`;
       wrapper.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      wrapper.style.transformOrigin = 'center center';
+      wrapper.style.transformOrigin = 'top center';
     };
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -734,7 +740,8 @@ export class RtfPlugin implements PreviewPlugin {
       wrapper.innerHTML = '';
       pageElements.forEach((card, idx) => {
         card.setAttribute('data-page-number', String(idx + 1));
-        card.style.display = idx === 0 ? 'block' : 'none';
+        card.style.display = 'block';
+        card.style.flexShrink = '0';
         wrapper.appendChild(card);
       });
 
@@ -762,7 +769,8 @@ export class RtfPlugin implements PreviewPlugin {
         pageCard.style.lineHeight = '1.6';
         pageCard.style.color = '#1e293b';
         pageCard.style.whiteSpace = 'pre-wrap';
-        pageCard.style.display = i === 0 ? 'block' : 'none';
+        pageCard.style.display = 'block';
+        pageCard.style.flexShrink = '0';
         pageCard.textContent = pages[i];
 
         if (i === 1 && tables.length > 0) {
@@ -774,23 +782,65 @@ export class RtfPlugin implements PreviewPlugin {
       }
     }
 
+    applyTransform();
+
     const totalPages = Math.max(1, pageElements.length);
     let currentPage = 1;
+    let isScrollingProgrammatically = false;
+    let scrollTimeout: any = null;
+
+    const observer = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          if (isScrollingProgrammatically) return;
+
+          let maxRatio = 0;
+          let mostVisible = currentPage;
+
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              const idx = pageElements.indexOf(entry.target as HTMLElement);
+              if (idx !== -1) {
+                mostVisible = idx + 1;
+              }
+            }
+          });
+
+          if (mostVisible !== currentPage && maxRatio > 0.1) {
+            currentPage = mostVisible;
+            ctx.emit('page-change', { page: currentPage, total: totalPages });
+          }
+        }, {
+          root: ctx.container,
+          threshold: [0.1, 0.3, 0.5, 0.7, 0.9]
+        })
+      : null;
+
+    if (observer) {
+      pageElements.forEach(el => observer.observe(el));
+    }
 
     const showPage = (pageNum: number) => {
       currentPage = Math.max(1, Math.min(totalPages, pageNum));
-      pageElements.forEach((el, idx) => {
-        el.style.display = idx + 1 === currentPage ? 'block' : 'none';
-      });
-      ctx.container.scrollTop = 0;
+      const target = pageElements[currentPage - 1];
+      if (target) {
+        isScrollingProgrammatically = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          isScrollingProgrammatically = false;
+        }, 1000);
+      }
       ctx.emit('page-change', { page: currentPage, total: totalPages });
     };
 
     if (totalPages > 1) {
-      showPage(1);
+      ctx.emit('page-change', { page: currentPage, total: totalPages });
     }
 
     const cleanup = () => {
+      observer?.disconnect();
       resizeObserver?.disconnect();
       scrollWrapper.remove();
       ctx.container.innerHTML = '';

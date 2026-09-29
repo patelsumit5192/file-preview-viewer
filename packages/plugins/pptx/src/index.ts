@@ -246,7 +246,7 @@ export class PptxPlugin implements PreviewPlugin {
     const renderCurrentSlide = async () => {
       try {
         await renderer.renderSlide(currentSlide - 1, canvas, 1280);
-        ctx.emit('page-change', { page: currentSlide, totalPages: slideCount });
+        ctx.emit('page-change', { page: currentSlide, total: slideCount, totalPages: slideCount });
         if (!isUserZoomed) {
           scale = calculateFitScale(fitMode);
         }
@@ -257,6 +257,27 @@ export class PptxPlugin implements PreviewPlugin {
     };
 
     await renderCurrentSlide();
+
+    let lastWheelTime = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      const now = Date.now();
+      if (now - lastWheelTime < 350) return;
+      if (e.deltaY > 30) {
+        if (currentSlide < slideCount) {
+          lastWheelTime = now;
+          currentSlide++;
+          renderCurrentSlide();
+        }
+      } else if (e.deltaY < -30) {
+        if (currentSlide > 1) {
+          lastWheelTime = now;
+          currentSlide--;
+          renderCurrentSlide();
+        }
+      }
+    };
+    wrapper.addEventListener('wheel', onWheel, { passive: true });
 
     const ro = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
@@ -270,6 +291,7 @@ export class PptxPlugin implements PreviewPlugin {
 
     const cleanup = () => {
       ro?.disconnect();
+      wrapper.removeEventListener('wheel', onWheel);
       renderer.destroy();
       wrapper.remove();
       ctx.container.innerHTML = '';

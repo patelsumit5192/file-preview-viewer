@@ -352,8 +352,28 @@ export class PptPlugin implements PreviewPlugin {
 
     renderSlide(1);
 
+    let lastWheelTime = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      const now = Date.now();
+      if (now - lastWheelTime < 350) return;
+      if (e.deltaY > 30) {
+        if (currentSlide < totalSlides) {
+          lastWheelTime = now;
+          renderSlide(currentSlide + 1);
+        }
+      } else if (e.deltaY < -30) {
+        if (currentSlide > 1) {
+          lastWheelTime = now;
+          renderSlide(currentSlide - 1);
+        }
+      }
+    };
+    container.addEventListener('wheel', onWheel, { passive: true });
+
     const cleanup = () => {
       ro?.disconnect();
+      container.removeEventListener('wheel', onWheel);
       for (const u of createdBlobUrls) {
         URL.revokeObjectURL(u);
       }
