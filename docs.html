@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation & API Reference - File Preview Viewer</title>
+  <meta name="description" content="Complete documentation and property guide for @file-preview-viewer/viewer across React, Angular, Vue 3, and Vanilla JS." />
+  <script type="module" crossorigin src="./assets/docs-CiPVJO5A.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="stylesheet" crossorigin href="./assets/docs-J21IHYdM.css">
+</head>
+<body class="docs-body">
+
+  <!-- Header -->
+  <header class="docs-header">
+    <div class="brand">
+      <span class="brand-icon">👁️</span>
+      <span class="brand-title">@file-preview-viewer/viewer</span>
+      <span class="badge">v1.1.0</span>
+    </div>
+    <div class="header-actions">
+      <a href="./index.html" class="nav-btn" title="Back to Interactive Live Demo">
+        ← Live Demo
+      </a>
+      <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer" target="_blank" class="nav-btn npm-btn">
+        <span>npm i @file-preview-viewer/viewer</span>
+      </a>
+      <a href="https://github.com/patelsumit5192/file-preview-viewer" target="_blank" class="nav-btn">
+        GitHub
+      </a>
+      <button id="theme-toggle" class="theme-btn" title="Toggle Light/Dark Theme">
+        🌙
+      </button>
+    </div>
+  </header>
+
+  <!-- Layout: Sidebar + Content -->
+  <div class="docs-main-layout">
+
+    <!-- Sidebar Navigation -->
+    <aside class="docs-sidebar">
+      <div class="docs-search-box">
+        <span class="docs-search-icon">🔍</span>
+        <input type="text" id="docs-search-input" class="docs-search-input" placeholder="Filter properties (e.g. toolbar, zoom)..." />
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Getting Started</div>
+        <a href="#quickstart" class="docs-nav-item active">
+          <span>🚀 Quick Start</span>
+        </a>
+        <a href="#framework-setup" class="docs-nav-item">
+          <span>📦 Installation</span>
+        </a>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Viewer Options</div>
+        <a href="#prop-showToolbar" class="docs-nav-item">
+          <span>showToolbar</span>
+          <span class="docs-nav-tag">boolean</span>
+        </a>
+        <a href="#prop-showFileName" class="docs-nav-item">
+          <span>showFileName</span>
+          <span class="docs-nav-tag">boolean</span>
+        </a>
+        <a href="#prop-fileName" class="docs-nav-item">
+          <span>fileName</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+        <a href="#prop-theme" class="docs-nav-item">
+          <span>theme</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+        <a href="#prop-toolbarPosition" class="docs-nav-item">
+          <span>toolbarPosition</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+        <a href="#prop-fitMode" class="docs-nav-item">
+          <span>fitMode</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+        <a href="#prop-showThumbnails" class="docs-nav-item">
+          <span>showThumbnails</span>
+          <span class="docs-nav-tag">boolean</span>
+        </a>
+        <a href="#prop-zoom" class="docs-nav-item">
+          <span>zoom</span>
+          <span class="docs-nav-tag">number</span>
+        </a>
+        <a href="#prop-page" class="docs-nav-item">
+          <span>page</span>
+          <span class="docs-nav-tag">number</span>
+        </a>
+        <a href="#prop-className" class="docs-nav-item">
+          <span>className</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+        <a href="#prop-standaloneViewerUrl" class="docs-nav-item">
+          <span>standaloneViewerUrl</span>
+          <span class="docs-nav-tag">string</span>
+        </a>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Granular Toolbar Controls</div>
+        <a href="#toolbar-download" class="docs-nav-item">
+          <span>download</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-print" class="docs-nav-item">
+          <span>print</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-openWindow" class="docs-nav-item">
+          <span>openWindow</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-search" class="docs-nav-item">
+          <span>search</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-thumbnails" class="docs-nav-item">
+          <span>thumbnails</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-fullscreen" class="docs-nav-item">
+          <span>fullscreen</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-zoomControls" class="docs-nav-item">
+          <span>zoomControls</span>
+          <span class="docs-nav-tag">zoom</span>
+        </a>
+        <a href="#toolbar-fitWidth" class="docs-nav-item">
+          <span>fitWidth / fitPage</span>
+          <span class="docs-nav-tag">zoom</span>
+        </a>
+        <a href="#toolbar-rotate" class="docs-nav-item">
+          <span>rotate</span>
+          <span class="docs-nav-tag">view</span>
+        </a>
+        <a href="#toolbar-pageNav" class="docs-nav-item">
+          <span>pageNav</span>
+          <span class="docs-nav-tag">nav</span>
+        </a>
+        <a href="#toolbar-copy" class="docs-nav-item">
+          <span>copy</span>
+          <span class="docs-nav-tag">action</span>
+        </a>
+        <a href="#toolbar-media" class="docs-nav-item">
+          <span>mediaControls</span>
+          <span class="docs-nav-tag">media</span>
+        </a>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Events & Lifecycle</div>
+        <a href="#events-callbacks" class="docs-nav-item">
+          <span>📡 Event Callbacks</span>
+        </a>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Imperative API</div>
+        <a href="#imperative-api" class="docs-nav-item">
+          <span>⚡ Ref & Instance API</span>
+        </a>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Supported Formats</div>
+        <a href="#supported-formats" class="docs-nav-item">
+          <span>📄 50+ File Types</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="docs-content-area">
+      <div class="docs-container">
+
+        <!-- Hero Section -->
+        <section class="docs-hero" id="quickstart">
+          <h1>Interactive Documentation & API Reference</h1>
+          <p>
+            Learn how to integrate <strong>@file-preview-viewer/viewer</strong> into your application. Explore every configuration property, how to configure it in <strong>React, Angular, Vue 3, or Vanilla JS</strong>, and understand the exact visual and behavioral effect it produces.
+          </p>
+        </section>
+
+        <!-- Sticky Framework Selector Bar -->
+        <div class="framework-bar">
+          <div class="framework-bar-label">
+            <span>⚙️ Preferred Framework:</span>
+          </div>
+          <div class="framework-pills">
+            <button class="framework-pill active" data-framework="react">
+              <span>⚛️ React</span>
+            </button>
+            <button class="framework-pill" data-framework="angular">
+              <span>🅰️ Angular</span>
+            </button>
+            <button class="framework-pill" data-framework="vue">
+              <span>🟢 Vue 3</span>
+            </button>
+            <button class="framework-pill" data-framework="vanilla">
+              <span>🟡 Vanilla JS / TS</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Installation & Quick Start -->
+        <section class="docs-section" id="framework-setup">
+          <h2 class="docs-section-heading">📦 Installation & Framework Setup</h2>
+          <p class="docs-section-desc">Install the universal library into your project using npm, pnpm, or yarn. One single dependency supports all frameworks and 50+ file formats.</p>
+
+          <div class="install-grid">
+            <div class="install-card">
+              <div class="install-card-title"><span>npm</span></div>
+              <div class="code-box">
+                <pre>npm i @file-preview-viewer/viewer</pre>
+              </div>
+            </div>
+            <div class="install-card">
+              <div class="install-card-title"><span>pnpm</span></div>
+              <div class="code-box">
+                <pre>pnpm add @file-preview-viewer/viewer</pre>
+              </div>
+            </div>
+            <div class="install-card">
+              <div class="install-card-title"><span>yarn</span></div>
+              <div class="code-box">
+                <pre>yarn add @file-preview-viewer/viewer</pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Framework Initial Usage Samples -->
+          <div class="framework-code" data-framework="react">
+            <div class="code-box">
+              <div class="code-box-header">
+                <span>React Component (JSX / TSX)</span>
+                <button class="copy-btn">📋 Copy</button>
+              </div>
+              <pre>import { FilePreview } from '@file-preview-viewer/viewer/react';
+import '@file-preview-viewer/viewer/styles.css';
+
+export function DocumentViewer({ fileUrl }) {
+  return (
+    &lt;div style={{ width: '100%', height: '800px' }}&gt;
+      &lt;FilePreview
+        src={fileUrl} // URL string, File, Blob, or ArrayBuffer
+        options={{
+          theme: 'light',
+          showToolbar: true,
+          showFileName: true
+        }}
+        onLoaded={(meta) => console.log('Document loaded:', meta)}
+      /&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+            </div>
+          </div>
+
+          <div class="framework-code" data-framework="angular" style="display: none;">
+            <div class="code-box">
+              <div class="code-box-header">
+                <span>Angular Component (HTML & TS)</span>
+                <button class="copy-btn">📋 Copy</button>
+              </div>
+              <pre>// app.module.ts or standalone component
+import { FilePreviewModule } from '@file-preview-viewer/viewer/angular';
+import '@file-preview-viewer/viewer/styles.css';
+
+@NgModule({
+  imports: [FilePreviewModule]
+})
+export class AppModule {}
+
+// app.component.html
+&lt;div style="width: 100%; height: 800px;"&gt;
+  &lt;fp-file-preview
+    [src]="fileSource"
+    [options]="{
+      theme: 'light',
+      showToolbar: true,
+      showFileName: true
+    }"
+    (loaded)="onLoaded($event)"
+  &gt;&lt;/fp-file-preview&gt;
+&lt;/div&gt;</pre>
+            </div>
+          </div>
+
+          <div class="framework-code" data-framework="vue" style="display: none;">
+            <div class="code-box">
+              <div class="code-box-header">
+                <span>Vue 3 Component (SFC)</span>
+                <button class="copy-btn">📋 Copy</button>
+              </div>
+              <pre>&lt;script setup&gt;
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+import '@file-preview-viewer/viewer/styles.css';
+
+const fileUrl = 'https://example.com/document.docx';
+&lt;/script&gt;
+
+&lt;template&gt;
+  &lt;div style="width: 100%; height: 800px;"&gt;
+    &lt;FilePreview
+      :src="fileUrl"
+      :options="{
+        theme: 'light',
+        showToolbar: true,
+        showFileName: true
+      }"
+      @loaded="(meta) => console.log('Loaded:', meta)"
+    /&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</pre>
+            </div>
+          </div>
+
+          <div class="framework-code" data-framework="vanilla" style="display: none;">
+            <div class="code-box">
+              <div class="code-box-header">
+                <span>Vanilla JavaScript / TypeScript</span>
+                <button class="copy-btn">📋 Copy</button>
+              </div>
+              <pre>import { FilePreviewViewer } from '@file-preview-viewer/viewer';
+import '@file-preview-viewer/viewer/styles.css';
+
+const viewer = new FilePreviewViewer();
+const container = document.getElementById('preview-container');
+
+await viewer.preview(container, fileSource, {
+  theme: 'light',
+  showToolbar: true,
+  showFileName: true
+});</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEWER OPTIONS SECTION -->
+        <section class="docs-section">
+          <h2 class="docs-section-heading">🎛️ PreviewViewerOptions Reference</h2>
+          <p class="docs-section-desc">Detailed guide for every configuration property passed into the viewer.</p>
+
+          <!-- Property: showToolbar -->
+          <div class="prop-card" id="prop-showToolbar">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">showToolbar</span>
+                <span class="prop-type-badge">boolean</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>true</strong></span>
+            </div>
+            <div class="prop-desc">
+              Controls whether the built-in toolbar (containing zoom, navigation, search, print, download, and fullscreen actions) is displayed or completely hidden.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    showToolbar: false // 👈 Hides toolbar completely
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="fileSource"
+  [options]="{
+    showToolbar: false // 👈 Hides toolbar completely
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    showToolbar: false // 👈 Hides toolbar completely
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  showToolbar: false // 👈 Hides toolbar completely
+});
+
+// Or toggle dynamically anytime:
+viewer.setShowToolbar(false); // Hide
+viewer.setShowToolbar(true);  // Show
+viewer.toggleToolbar();       // Toggle</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>When <code>false</code></strong>: Completely removes the toolbar element from the DOM with zero vertical height, giving 100% of the viewport space to the document preview. Ideal for clean embed widgets or custom application toolbars.</li>
+                  <li><strong>When <code>true</code></strong>: Renders the full toolbar equipped with zoom controls, search bar, download/print buttons, and page indicators.</li>
+                  <li><strong>Dynamic Switching</strong>: Can be toggled on-the-fly at runtime using <code>viewer.setShowToolbar(boolean)</code> or <code>viewer.toggleToolbar()</code> without reloading the file.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🎚️</span>
+                  <span class="effect-mockup-text"><strong>Visual Difference:</strong> <code>true</code> renders the 40px action toolbar; <code>false</code> collapses it to 0px.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: showFileName -->
+          <div class="prop-card" id="prop-showFileName">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">showFileName</span>
+                <span class="prop-type-badge">boolean</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>true</strong></span>
+            </div>
+            <div class="prop-desc">
+              Controls whether the document title header bar (displaying the file icon, file name, and format badge like "XLSX" or "PDF") is visible above the toolbar.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    showFileName: false // 👈 Hides top title bar
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="fileSource"
+  [options]="{
+    showFileName: false // 👈 Hides top title bar
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    showFileName: false // 👈 Hides top title bar
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  showFileName: false
+});
+
+// Or dynamically change anytime:
+viewer.setShowFileName(false);</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>When <code>true</code></strong>: Displays a sleek header bar above the toolbar with <code>📄 FileName.ext</code> and a colored badge such as <code>DOCX</code>, <code>PDF</code>, or <code>XLSX</code>.</li>
+                  <li><strong>When <code>false</code></strong>: Completely hides the title header bar, useful when your page already provides its own heading or tab title.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">📄</span>
+                  <span class="effect-mockup-text"><strong>Title Bar:</strong> <code>📄 Repository.xlsx [XLSX]</code></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: fileName -->
+          <div class="prop-card" id="prop-fileName">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">fileName</span>
+                <span class="prop-type-badge">string</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>derived from source</strong></span>
+            </div>
+            <div class="prop-desc">
+              Custom display name override for the file. Useful when previewing raw Blobs, ArrayBuffers, or UUID/hashed URLs that lack human-readable filenames.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={blobData}
+  options={{
+    fileName: 'Annual_Financial_Report_2026.xlsx'
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="blobData"
+  [options]="{
+    fileName: 'Annual_Financial_Report_2026.xlsx'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="blobData"
+  :options="{
+    fileName: 'Annual_Financial_Report_2026.xlsx'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, blobData, {
+  fileName: 'Annual_Financial_Report_2026.xlsx'
+});</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li>Overrides the name shown in the preview title bar.</li>
+                  <li>Sets the default filename used when the user clicks the <strong>Download</strong> button.</li>
+                  <li>Sets the window title when opened in a separate full window.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🏷️</span>
+                  <span class="effect-mockup-text"><strong>Download Name:</strong> User saves with the clean custom filename instead of <code>blob:http...</code></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: theme -->
+          <div class="prop-card" id="prop-theme">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">theme</span>
+                <span class="prop-type-badge">'light' | 'dark' | 'auto'</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>'light'</strong></span>
+            </div>
+            <div class="prop-desc">
+              Specifies the color theme of the viewer container, toolbar, thumbnail panels, and dialogs.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    theme: 'dark' // 'light' | 'dark' | 'auto'
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    theme: 'dark'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    theme: 'dark'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  theme: 'dark'
+});</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong><code>'light'</code></strong>: Crisp white background (<code>#ffffff</code> / <code>#f8fafc</code>), slate text, and light borders.</li>
+                  <li><strong><code>'dark'</code></strong>: Dark slate background (<code>#0f172a</code> / <code>#1e293b</code>), light text, dark toolbar and search inputs.</li>
+                  <li><strong><code>'auto'</code></strong>: Automatically responds to the user's OS system color preference via <code>prefers-color-scheme</code> media query.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🌓</span>
+                  <span class="effect-mockup-text"><strong>Theme Mode:</strong> Toolbar and UI widgets seamlessly adapt without altering document page content.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: toolbarPosition -->
+          <div class="prop-card" id="prop-toolbarPosition">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">toolbarPosition</span>
+                <span class="prop-type-badge">'top' | 'bottom'</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>'top'</strong></span>
+            </div>
+            <div class="prop-desc">
+              Controls the physical placement of the action toolbar relative to the document preview canvas.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    toolbarPosition: 'bottom' // 👈 Places toolbar at bottom
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    toolbarPosition: 'bottom'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    toolbarPosition: 'bottom'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  toolbarPosition: 'bottom'
+});</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong><code>'top'</code></strong>: Standard desktop reader layout — title bar and toolbar sit above the document.</li>
+                  <li><strong><code>'bottom'</code></strong>: Mobile/touch friendly bottom bar layout — controls are positioned at the bottom of the container within easy reach.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">📍</span>
+                  <span class="effect-mockup-text"><strong>Position:</strong> Swaps the flex order of <code>.fp-toolbar-container</code> and document viewport.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: fitMode -->
+          <div class="prop-card" id="prop-fitMode">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">fitMode</span>
+                <span class="prop-type-badge">'width' | 'page'</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>'width'</strong></span>
+            </div>
+            <div class="prop-desc">
+              Determines how pages and documents are automatically scaled to fit within the viewport on initial render and during window resize.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    fitMode: 'page' // 'width' (default) or 'page'
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    fitMode: 'page'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    fitMode: 'page'
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  fitMode: 'page'
+});</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong><code>'width'</code> (Default)</strong>: Automatically calculates zoom scale so document width comfortably spans the container width with minimal horizontal margins. Best for continuous vertical reading without horizontal scrolling.</li>
+                  <li><strong><code>'page'</code></strong>: Scales the document so that the entire height and width of a page fit within the viewport without requiring vertical scrolling for that page.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">📐</span>
+                  <span class="effect-mockup-text"><strong>Responsive Auto-Fit:</strong> ResizeObserver automatically recalculates fit scale on window or container resize.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: showThumbnails -->
+          <div class="prop-card" id="prop-showThumbnails">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">showThumbnails</span>
+                <span class="prop-type-badge">boolean</span>
+              </div>
+              <span class="prop-default-badge">Default: <strong>false</strong></span>
+            </div>
+            <div class="prop-desc">
+              Whether the page/slide thumbnail sidebar panel is expanded by default on document load.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    showThumbnails: true // 👈 Opens thumbnail drawer initially
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    showThumbnails: true
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    showThumbnails: true
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  showThumbnails: true
+});
+
+// Or toggle dynamically:
+viewer.toggleThumbnails();</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong>When <code>true</code></strong>: Opens the left thumbnail drawer displaying visual preview cards for all pages or slides. Users can click any thumbnail to jump to that page.</li>
+                  <li><strong>When <code>false</code></strong>: The sidebar starts collapsed, maximizing document reading area. The user can open it by clicking the Thumbnails toolbar icon.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🖼️</span>
+                  <span class="effect-mockup-text"><strong>Multi-page Navigation:</strong> Supported for PDF, Word, PowerPoint, RTF, and OpenDocument.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Property: zoom & page -->
+          <div class="prop-card" id="prop-zoom">
+            <div class="prop-header">
+              <div class="prop-title-group">
+                <span class="prop-name">zoom & page</span>
+                <span class="prop-type-badge">number</span>
+              </div>
+              <span class="prop-default-badge">Defaults: zoom: <strong>1.0</strong>, page: <strong>1</strong></span>
+            </div>
+            <div class="prop-desc">
+              Initial zoom scale and starting page number when the document opens.
+            </div>
+
+            <div class="prop-details-grid">
+              <div class="prop-block">
+                <div class="prop-block-title"><span>💻 How to Set</span></div>
+                
+                <div class="framework-code" data-framework="react">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  src={file}
+  options={{
+    zoom: 1.5, // 150% initial magnification
+    page: 3    // Start immediately on page 3
+  }}
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="angular" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;fp-file-preview
+  [src]="file"
+  [options]="{
+    zoom: 1.5,
+    page: 3
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vue" style="display: none;">
+                  <div class="code-box">
+                    <pre>&lt;FilePreview
+  :src="file"
+  :options="{
+    zoom: 1.5,
+    page: 3
+  }"
+/&gt;</pre>
+                  </div>
+                </div>
+                <div class="framework-code" data-framework="vanilla" style="display: none;">
+                  <div class="code-box">
+                    <pre>await viewer.preview(container, file, {
+  zoom: 1.5,
+  page: 3
+});</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prop-block">
+                <div class="prop-block-title"><span>👁️ What Effect It Has</span></div>
+                <ul class="prop-effect-list">
+                  <li><strong><code>zoom: 1.5</code></strong>: Renders document elements at 150% scale. Overrides default auto-fit width calculation.</li>
+                  <li><strong><code>page: 3</code></strong>: Scrolls or switches to page 3 immediately upon rendering completes.</li>
+                </ul>
+                <div class="effect-mockup">
+                  <span class="effect-mockup-icon">🔍</span>
+                  <span class="effect-mockup-text"><strong>Deep Linking:</strong> Allows opening directly to a specific page or section of a report.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- GRANULAR TOOLBAR CONFIG SECTION -->
+        <section class="docs-section">
+          <h2 class="docs-section-heading">🧩 Granular Toolbar Button Controls (ToolbarConfig)</h2>
+          <p class="docs-section-desc">You can keep the toolbar enabled while selectively disallowing or hiding specific buttons by passing booleans under <code>toolbar: { ... }</code> or directly on options.</p>
+
+          <!-- Granular Action Table -->
+          <table class="format-table">
+            <thead>
+              <tr>
+                <th>Button / Action</th>
+                <th>Option Key</th>
+                <th>Default</th>
+                <th>Effect When Set to <code>false</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="toolbar-download">
+                <td><strong>Download</strong> (📥)</td>
+                <td><code>download: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the download button, preventing users from downloading the raw file asset from the viewer toolbar.</td>
+              </tr>
+              <tr id="toolbar-print">
+                <td><strong>Print</strong> (🖨️)</td>
+                <td><code>print: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the print button to restrict printing from the viewer interface.</td>
+              </tr>
+              <tr id="toolbar-openWindow">
+                <td><strong>Open in Separate Window</strong> (↗️)</td>
+                <td><code>openWindow: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the separate full window expansion button.</td>
+              </tr>
+              <tr id="toolbar-search">
+                <td><strong>Search / Find (Ctrl+F)</strong> (🔍)</td>
+                <td><code>search: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the in-document search button and disables the built-in search bar.</td>
+              </tr>
+              <tr id="toolbar-thumbnails">
+                <td><strong>Thumbnails</strong> (⊞)</td>
+                <td><code>thumbnails: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the thumbnail grid toggle icon.</td>
+              </tr>
+              <tr id="toolbar-fullscreen">
+                <td><strong>Fullscreen</strong> (⛶)</td>
+                <td><code>fullscreen: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the browser fullscreen toggle button.</td>
+              </tr>
+              <tr id="toolbar-zoomControls">
+                <td><strong>Zoom In / Out</strong> (➕ / ➖)</td>
+                <td><code>zoomIn: false</code>, <code>zoomOut: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the magnification increment and decrement buttons.</td>
+              </tr>
+              <tr id="toolbar-fitWidth">
+                <td><strong>Fit to Width / Reset</strong> (↔ / 🔄)</td>
+                <td><code>fitWidth: false</code>, <code>resetZoom: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the fit-to-width and zoom reset buttons.</td>
+              </tr>
+              <tr id="toolbar-rotate">
+                <td><strong>Rotate CW / CCW</strong> (↻ / ↺)</td>
+                <td><code>rotate: false</code> (or <code>rotateCW: false</code>)</td>
+                <td><code>true</code></td>
+                <td>Hides page rotation buttons (PDF, Word, images).</td>
+              </tr>
+              <tr id="toolbar-pageNav">
+                <td><strong>Page Navigation</strong> (&lt; [1] / N &gt;)</td>
+                <td><code>pageNav: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the page number input box and previous/next page chevron buttons.</td>
+              </tr>
+              <tr id="toolbar-copy">
+                <td><strong>Copy Text</strong> (📋)</td>
+                <td><code>copy: false</code></td>
+                <td><code>true</code></td>
+                <td>Hides the text clipboard copy button (code, RTF, legacy documents).</td>
+              </tr>
+              <tr id="toolbar-media">
+                <td><strong>Media Controls</strong> (▶, ⏸, ⏩, ⏪)</td>
+                <td><code>play: false</code>, <code>speed: false</code>, etc.</td>
+                <td><code>true</code></td>
+                <td>Hides playback controls for audio and video media files.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 20px;">
+            <div class="prop-block">
+              <div class="prop-block-title"><span>💻 Example: Disallow Download, Print & Separate Window</span></div>
+              <div class="framework-code" data-framework="react">
+                <div class="code-box">
+                  <pre>&lt;FilePreview
+  src={documentUrl}
+  options={{
+    showToolbar: true, // Keep toolbar visible
+    toolbar: {
+      download: false,   // 👈 Disallow downloading
+      print: false,      // 👈 Disallow printing
+      openWindow: false, // 👈 Disallow opening in separate window
+    }
+  }}
+/&gt;</pre>
+                </div>
+              </div>
+              <div class="framework-code" data-framework="angular" style="display: none;">
+                <div class="code-box">
+                  <pre>&lt;fp-file-preview
+  [src]="documentUrl"
+  [options]="{
+    showToolbar: true,
+    toolbar: {
+      download: false,
+      print: false,
+      openWindow: false
+    }
+  }"
+/&gt;</pre>
+                </div>
+              </div>
+              <div class="framework-code" data-framework="vue" style="display: none;">
+                <div class="code-box">
+                  <pre>&lt;FilePreview
+  :src="documentUrl"
+  :options="{
+    showToolbar: true,
+    toolbar: {
+      download: false,
+      print: false,
+      openWindow: false
+    }
+  }"
+/&gt;</pre>
+                </div>
+              </div>
+              <div class="framework-code" data-framework="vanilla" style="display: none;">
+                <div class="code-box">
+                  <pre>await viewer.preview(container, documentUrl, {
+  showToolbar: true,
+  toolbar: {
+    download: false,
+    print: false,
+    openWindow: false
+  }
+});
+
+// Or dynamically hide an action button:
+viewer.hideToolbarAction('download');
+viewer.hideToolbarAction('print');</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- EVENTS & LIFECYCLE SECTION -->
+        <section class="docs-section" id="events-callbacks">
+          <h2 class="docs-section-heading">📡 Events & Lifecycle Callbacks</h2>
+          <p class="docs-section-desc">Listen to document lifecycle events, pagination changes, and zoom updates.</p>
+
+          <table class="format-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Payload</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>onLoading</code> (<code>'loading'</code>)</td>
+                <td><code>{ source }</code></td>
+                <td>Fired immediately when file parsing and rendering starts.</td>
+              </tr>
+              <tr>
+                <td><code>onLoaded</code> (<code>'loaded'</code>)</td>
+                <td><code>{ metadata, plugin }</code></td>
+                <td>Fired when the document is rendered, verified, and displayed to the user.</td>
+              </tr>
+              <tr>
+                <td><code>onError</code> (<code>'error'</code>)</td>
+                <td><code>Error</code></td>
+                <td>Fired if the document is corrupt or fails to render.</td>
+              </tr>
+              <tr>
+                <td><code>onPageChange</code> (<code>'page-change'</code>)</td>
+                <td><code>{ page, total }</code></td>
+                <td>Fired automatically when scrolling down past pages or navigating pages.</td>
+              </tr>
+              <tr>
+                <td><code>onZoomChange</code> (<code>'zoom-change'</code>)</td>
+                <td><code>{ scale }</code></td>
+                <td>Fired whenever the user zooms in, zooms out, or auto-fits.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- IMPERATIVE API SECTION -->
+        <section class="docs-section" id="imperative-api">
+          <h2 class="docs-section-heading">⚡ Imperative API & Ref Methods</h2>
+          <p class="docs-section-desc">Control the viewer programmatically through component refs or the viewer instance.</p>
+
+          <div class="prop-card">
+            <div class="framework-code" data-framework="react">
+              <div class="code-box">
+                <div class="code-box-header">
+                  <span>React Ref Example (useRef)</span>
+                  <button class="copy-btn">📋 Copy</button>
+                </div>
+                <pre>import { useRef } from 'react';
+import { FilePreview, FilePreviewHandle } from '@file-preview-viewer/viewer/react';
+
+export function ControlledViewer({ file }) {
+  const viewerRef = useRef&lt;FilePreviewHandle&gt;(null);
+
+  return (
+    &lt;div&gt;
+      &lt;div style={{ marginBottom: 10, display: 'flex', gap: 8 }}&gt;
+        &lt;button onClick={() =&gt; viewerRef.current?.setShowToolbar(false)}&gt;Hide Toolbar&lt;/button&gt;
+        &lt;button onClick={() =&gt; viewerRef.current?.setShowToolbar(true)}&gt;Show Toolbar&lt;/button&gt;
+        &lt;button onClick={() =&gt; viewerRef.current?.toggleToolbar()}&gt;Toggle Toolbar&lt;/button&gt;
+        &lt;button onClick={() =&gt; viewerRef.current?.fitToPage()}&gt;Fit to Page&lt;/button&gt;
+        &lt;button onClick={() =&gt; viewerRef.current?.resetZoom()}&gt;Reset Zoom&lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;FilePreview ref={viewerRef} src={file} /&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+              </div>
+            </div>
+
+            <div class="framework-code" data-framework="angular" style="display: none;">
+              <div class="code-box">
+                <div class="code-box-header">
+                  <span>Angular ViewChild Example</span>
+                  <button class="copy-btn">📋 Copy</button>
+                </div>
+                <pre>import { Component, ViewChild } from '@angular/core';
+import { FilePreviewComponent } from '@file-preview-viewer/viewer/angular';
+
+@Component({
+  template: `
+    &lt;button (click)="preview.setShowToolbar(false)"&gt;Hide Toolbar&lt;/button&gt;
+    &lt;button (click)="preview.toggleToolbar()"&gt;Toggle Toolbar&lt;/button&gt;
+    &lt;fp-file-preview #preview [src]="fileSource"&gt;&lt;/fp-file-preview&gt;
+  `
+})
+export class MyComponent {
+  @ViewChild('preview') preview!: FilePreviewComponent;
+  fileSource = 'sample.pdf';
+}</pre>
+              </div>
+            </div>
+
+            <div class="framework-code" data-framework="vue" style="display: none;">
+              <div class="code-box">
+                <div class="code-box-header">
+                  <span>Vue 3 Template Ref Example</span>
+                  <button class="copy-btn">📋 Copy</button>
+                </div>
+                <pre>&lt;script setup&gt;
+import { ref } from 'vue';
+import { FilePreview } from '@file-preview-viewer/viewer/vue';
+
+const previewRef = ref(null);
+const file = 'sample.pdf';
+
+function hideToolbar() {
+  previewRef.value?.setShowToolbar(false);
+}
+
+function toggleToolbar() {
+  previewRef.value?.toggleToolbar();
+}
+&lt;/script&gt;
+
+&lt;template&gt;
+  &lt;button @click="hideToolbar"&gt;Hide Toolbar&lt;/button&gt;
+  &lt;button @click="toggleToolbar"&gt;Toggle Toolbar&lt;/button&gt;
+  &lt;FilePreview ref="previewRef" :src="file" /&gt;
+&lt;/template&gt;</pre>
+              </div>
+            </div>
+
+            <div class="framework-code" data-framework="vanilla" style="display: none;">
+              <div class="code-box">
+                <div class="code-box-header">
+                  <span>Vanilla JavaScript Controller Example</span>
+                  <button class="copy-btn">📋 Copy</button>
+                </div>
+                <pre>import { FilePreviewViewer } from '@file-preview-viewer/viewer';
+
+const viewer = new FilePreviewViewer();
+await viewer.preview(container, file);
+
+// Programmatic controls:
+viewer.setShowToolbar(false); // Hide toolbar
+viewer.setShowToolbar(true);  // Show toolbar
+viewer.toggleToolbar();       // Toggle toolbar
+viewer.isToolbarVisible();    // returns boolean
+
+viewer.setShowFileName(false);// Hide title header
+viewer.setFileName('Custom Name.docx'); // Update name
+
+viewer.fitToPage();           // Fit page
+viewer.resetZoom();           // Reset zoom
+viewer.zoomIn();              // Zoom in
+viewer.zoomOut();             // Zoom out
+
+await viewer.search('query'); // Find in document
+viewer.findNext();            // Next match
+viewer.findPrev();            // Previous match
+
+viewer.toggleThumbnails();    // Toggle thumbnail drawer
+viewer.toggleFullscreen();    // Toggle fullscreen
+viewer.download();            // Trigger download
+viewer.print();               // Trigger print</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUPPORTED FORMATS SECTION -->
+        <section class="docs-section" id="supported-formats">
+          <h2 class="docs-section-heading">📄 50+ Supported File Formats</h2>
+          <p class="docs-section-desc">Zero cloud conversion, 100% private client-side rendering across all popular extensions.</p>
+
+          <table class="format-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Extensions</th>
+                <th>Engine & Features</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Word Documents</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.docx</span>
+                    <span class="format-badge">.docm</span>
+                    <span class="format-badge">.dotx</span>
+                    <span class="format-badge">.dotm</span>
+                    <span class="format-badge">.doc</span>
+                    <span class="format-badge">.dot</span>
+                  </div>
+                </td>
+                <td>DrawingML chart rendering, table styling, images, native pagination, automatic page-change scrolling.</td>
+              </tr>
+              <tr>
+                <td><strong>Spreadsheets</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.xlsx</span>
+                    <span class="format-badge">.xlsm</span>
+                    <span class="format-badge">.xls</span>
+                    <span class="format-badge">.xlsb</span>
+                    <span class="format-badge">.xltx</span>
+                    <span class="format-badge">.xltm</span>
+                    <span class="format-badge">.ods</span>
+                  </div>
+                </td>
+                <td>Multi-sheet workbook tabs, cell formatting, formula evaluation, column resizing.</td>
+              </tr>
+              <tr>
+                <td><strong>PowerPoint</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.pptx</span>
+                    <span class="format-badge">.potx</span>
+                    <span class="format-badge">.ppsx</span>
+                    <span class="format-badge">.ppt</span>
+                    <span class="format-badge">.pot</span>
+                    <span class="format-badge">.pps</span>
+                  </div>
+                </td>
+                <td>Slide renderer with animations, wheel scrolling navigation, thumbnail jumping.</td>
+              </tr>
+              <tr>
+                <td><strong>PDF Documents</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.pdf</span>
+                  </div>
+                </td>
+                <td>Continuous lazy-loading multi-page viewer, text layer selection, search highlights, automatic page scroll tracking.</td>
+              </tr>
+              <tr>
+                <td><strong>OpenDocument Suite</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.odt</span>
+                    <span class="format-badge">.ott</span>
+                    <span class="format-badge">.odp</span>
+                    <span class="format-badge">.otp</span>
+                    <span class="format-badge">.ods</span>
+                    <span class="format-badge">.odg</span>
+                  </div>
+                </td>
+                <td>ODF XML text, tables, embedded charts, continuous multi-page scrolling layout.</td>
+              </tr>
+              <tr>
+                <td><strong>Rich Text & HTML</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.rtf</span>
+                    <span class="format-badge">.html</span>
+                    <span class="format-badge">.htm</span>
+                  </div>
+                </td>
+                <td>RTF parser with embedded images, continuous page cards, sandboxed iframe HTML preview.</td>
+              </tr>
+              <tr>
+                <td><strong>Code & Text</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.ts</span>
+                    <span class="format-badge">.js</span>
+                    <span class="format-badge">.py</span>
+                    <span class="format-badge">.java</span>
+                    <span class="format-badge">.json</span>
+                    <span class="format-badge">.xml</span>
+                    <span class="format-badge">.txt</span>
+                    <span class="format-badge">.md</span>
+                  </div>
+                </td>
+                <td>190+ languages syntax highlighting, line numbers, word wrap, code search, text copy.</td>
+              </tr>
+              <tr>
+                <td><strong>Media & 3D</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.mp3</span>
+                    <span class="format-badge">.wav</span>
+                    <span class="format-badge">.mp4</span>
+                    <span class="format-badge">.webm</span>
+                    <span class="format-badge">.stl</span>
+                    <span class="format-badge">.obj</span>
+                    <span class="format-badge">.png</span>
+                    <span class="format-badge">.jpg</span>
+                    <span class="format-badge">.svg</span>
+                  </div>
+                </td>
+                <td>Audio visualizer / waveforms, video player, interactive Three.js 3D orbit controls, pan and zoom.</td>
+              </tr>
+              <tr>
+                <td><strong>Data & Archives</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.csv</span>
+                    <span class="format-badge">.tsv</span>
+                    <span class="format-badge">.zip</span>
+                  </div>
+                </td>
+                <td>Interactive paginated data grid, sorting, ZIP archive file tree explorer and extraction.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>

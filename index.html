@@ -17,8 +17,9 @@
     window.addEventListener('error', function(e) { window.__consoleLogs.push({ t: 'window.error', m: e.message + ' at ' + e.filename + ':' + e.lineno }); });
     window.addEventListener('unhandledrejection', function(e) { window.__consoleLogs.push({ t: 'unhandledrejection', m: (e.reason && e.reason.message) || String(e.reason) }); });
   </script>
-  <script type="module" crossorigin src="./assets/index-CSYKsywa.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BO-XrImy.css">
+  <script type="module" crossorigin src="./assets/main-C_eq8hjp.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="stylesheet" crossorigin href="./assets/main-BO-XrImy.css">
 </head>
 <body class="theme-light">
   <div class="app-layout">
@@ -26,11 +27,14 @@
       <div class="brand">
         <span class="brand-icon">👁️</span>
         <span class="brand-title">@file-preview-viewer/viewer</span>
-        <span class="badge">v1.0.9</span>
+        <span class="badge">v1.1.0</span>
       </div>
       <div class="header-actions">
         <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer" target="_blank" class="nav-btn npm-btn">
           <span>npm i @file-preview-viewer/viewer</span>
+        </a>
+        <a href="./docs.html" class="nav-btn docs-btn" title="View Full Interactive Documentation">
+          📖 Documentation
         </a>
         <a href="https://github.com/patelsumit5192/file-preview-viewer" target="_blank" class="nav-btn">
           GitHub
