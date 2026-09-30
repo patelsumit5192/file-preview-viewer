@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "2.0.0",
+  "serviceCluster": "global-router",
+  "activeRegions": [
+    "us-east-1",
+    "eu-west-1",
+    "ap-southeast-1"
+  ],
+  "telemetry": {
+    "pollingIntervalMs": 500,
+    "alertThresholdP99": 4.5,
+    "autoRecoveryEnabled": true
+  },
+  "quotas": [
+    {
+      "tier": "standard",
+      "rateLimitPerMinute": 60000,
+      "maxPayloadBytes": 10485760
+    },
+    {
+      "tier": "enterprise",
+      "rateLimitPerMinute": 600000,
+      "maxPayloadBytes": 52428800
+    }
+  ]
+}

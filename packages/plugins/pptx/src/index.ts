@@ -325,34 +325,46 @@ export class PptxPlugin implements PreviewPlugin {
       const parser = new DOMParser();
       const doc = parser.parseFromString(slideXml, 'application/xml');
 
+      // Helper to extract elements across namespaces (with prefix, without prefix, or wildcard NS)
+      const getTags = (root: Document | Element, tagName: string): Element[] => {
+        const pTags = Array.from(root.getElementsByTagName('p:' + tagName));
+        const aTags = Array.from(root.getElementsByTagName('a:' + tagName));
+        const plainTags = Array.from(root.getElementsByTagName(tagName));
+        const nsTags = Array.from(root.getElementsByTagNameNS('*', tagName));
+        const set = new Set([...pTags, ...aTags, ...plainTags, ...nsTags]);
+        return Array.from(set);
+      };
+
       // Extract text shapes
-      const shapes = Array.from(doc.getElementsByTagName('p:sp'));
+      const shapes = getTags(doc, 'sp');
       const scaleFactor = targetW / baseW;
-      let yCursor = Math.round(40 * scaleFactor);
+      let yCursor = Math.round(60 * scaleFactor);
 
       for (const sp of shapes) {
         // Read text body
-        const txBody = sp.getElementsByTagName('p:txBody')[0];
+        const txBodies = getTags(sp, 'txBody');
+        const txBody = txBodies[0];
         if (!txBody) continue;
 
-        const paragraphs = Array.from(txBody.getElementsByTagName('a:p'));
+        const paragraphs = getTags(txBody, 'p');
         for (const p of paragraphs) {
-          const textRuns = Array.from(p.getElementsByTagName('a:t'));
+          const textRuns = getTags(p, 't');
           const lineText = textRuns.map(t => t.textContent || '').join('').trim();
           if (!lineText) continue;
 
           // Check if title or body
-          const rPr = p.getElementsByTagName('a:rPr')[0];
-          const sz = rPr ? parseInt(rPr.getAttribute('sz') || '1800', 10) : 1800;
-          const isBold = rPr?.getAttribute('b') === '1';
-          const fontSize = Math.max(12, Math.round((sz / 100) * 1.333 * scaleFactor));
+          const rPrs = getTags(p, 'rPr');
+          const rPr = rPrs[0];
+          const sz = rPr ? parseInt(rPr.getAttribute('sz') || '2000', 10) : 2000;
+          const isBold = rPr?.getAttribute('b') === '1' || sz >= 2800;
+          const fontSize = Math.max(14, Math.round((sz / 100) * 1.333 * scaleFactor));
 
-          ctx2d.font = `${isBold ? 'bold ' : ''}${fontSize}px Calibri, sans-serif`;
+          ctx2d.font = `${isBold ? 'bold ' : ''}${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Calibri, sans-serif`;
           ctx2d.fillStyle = isBold ? '#0f172a' : '#334155';
           ctx2d.textAlign = 'left';
 
           // Word wrap
-          const maxWidth = targetW - Math.round(80 * scaleFactor);
+          const maxWidth = targetW - Math.round(120 * scaleFactor);
           const words = lineText.split(' ');
           let currentLine = '';
 
@@ -360,23 +372,23 @@ export class PptxPlugin implements PreviewPlugin {
             const testLine = currentLine ? `${currentLine} ${word}` : word;
             const metrics = ctx2d.measureText(testLine);
             if (metrics.width > maxWidth && currentLine) {
-              ctx2d.fillText(currentLine, Math.round(40 * scaleFactor), yCursor);
-              yCursor += fontSize * 1.3;
+              ctx2d.fillText(currentLine, Math.round(60 * scaleFactor), yCursor);
+              yCursor += fontSize * 1.35;
               currentLine = word;
             } else {
               currentLine = testLine;
             }
           }
           if (currentLine) {
-            ctx2d.fillText(currentLine, Math.round(40 * scaleFactor), yCursor);
+            ctx2d.fillText(currentLine, Math.round(60 * scaleFactor), yCursor);
             yCursor += fontSize * 1.4;
           }
-          yCursor += Math.round(6 * scaleFactor);
+          yCursor += Math.round(12 * scaleFactor);
         }
       }
 
       // If no text was rendered, render slide index indicator
-      if (yCursor <= Math.round(40 * scaleFactor)) {
+      if (yCursor <= Math.round(60 * scaleFactor)) {
         ctx2d.fillStyle = '#64748b';
         ctx2d.font = `bold ${Math.round(targetW * 0.03)}px sans-serif`;
         ctx2d.textAlign = 'center';
@@ -384,15 +396,43 @@ export class PptxPlugin implements PreviewPlugin {
       }
     };
 
-    const renderCurrentSlide = async () => {
+    const hasCanvasDrawnContent = (c: HTMLCanvasElement): boolean => {
       try {
-        const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
-        const renderW = Math.round(baseW * dpr);
+        const testCtx = c.getContext('2d');
+        if (!testCtx || c.width === 0 || c.height === 0) return false;
+        // Sample 400 pixels across canvas
+        const sampleW = Math.min(c.width, 20);
+        const sampleH = Math.min(c.height, 20);
+        const imgData = testCtx.getImageData(
+          Math.floor(c.width / 4),
+          Math.floor(c.height / 4),
+          sampleW,
+          sampleH
+        ).data;
+        for (let i = 0; i < imgData.length; i += 4) {
+          // If pixel has alpha and is not pure white (#ffffff)
+          if (imgData[i + 3] > 0 && (imgData[i] < 250 || imgData[i + 1] < 250 || imgData[i + 2] < 250)) {
+            return true;
+          }
+        }
+      } catch {}
+      return false;
+    };
+
+    const renderCurrentSlide = async () => {
+      let renderSucceeded = false;
+      const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
+      const renderW = Math.round(baseW * dpr);
+
+      try {
         await renderer.renderSlide(currentSlide - 1, canvas, renderW);
+        renderSucceeded = hasCanvasDrawnContent(canvas);
       } catch (err) {
-        console.warn(`[PptxPlugin] Canvas render encountered issue on slide ${currentSlide}, using resilient fallback:`, err);
-        const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
-        await renderSlideFallback(currentSlide - 1, canvas, Math.round(baseW * dpr));
+        console.warn(`[PptxPlugin] Canvas render encountered issue on slide ${currentSlide}:`, err);
+      }
+
+      if (!renderSucceeded) {
+        await renderSlideFallback(currentSlide - 1, canvas, renderW);
       }
 
       canvas.style.width = `${baseW}px`;
@@ -550,9 +590,12 @@ export class PptxPlugin implements PreviewPlugin {
             render: async (thumbCanvas: HTMLCanvasElement) => {
               thumbCanvas.width = thumbW;
               thumbCanvas.height = thumbH;
+              let thumbDrawn = false;
               try {
                 await renderer.renderSlide(slideIdx, thumbCanvas, thumbW);
-              } catch (err) {
+                thumbDrawn = hasCanvasDrawnContent(thumbCanvas);
+              } catch (err) {}
+              if (!thumbDrawn) {
                 await renderSlideFallback(slideIdx, thumbCanvas, thumbW);
               }
             }
