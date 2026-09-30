@@ -14,17 +14,18 @@ interface PptSlide {
   title: string;
   subtitle?: string;
   paragraphs: string[];
-  tableColumns: string[];
+  tableCells: string[];
   pictureUrl?: string | null;
   hasChart?: boolean;
   hasOle?: boolean;
+  backgroundColor?: string;
 }
 
 interface PptPresentation {
   slides: PptSlide[];
   width: number;
   height: number;
-  templateUrl: string | null;
+  aspectRatio: number;
   pictures: string[];
 }
 
@@ -223,10 +224,10 @@ export class PptPlugin implements PreviewPlugin {
     ctx.container.style.overflow = 'hidden';
     ctx.container.appendChild(container);
 
-    // 1. Extract presentation data from CFBF binary streams
+    // 1. Generic extraction of presentation structure from CFBF binary streams
     const presentation = this.parsePresentation(ctx.buffer, createdBlobUrls, ctx.metadata.name);
     const slides = presentation.slides;
-    const totalSlides = slides.length;
+    const totalSlides = Math.max(1, slides.length);
     const baseW = presentation.width;
     const baseH = presentation.height;
 
@@ -244,12 +245,15 @@ export class PptPlugin implements PreviewPlugin {
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
+      const isRotated90 = (rotation % 180 !== 0);
+      const orientedW = isRotated90 ? baseH : baseW;
+      const orientedH = isRotated90 ? baseW : baseH;
       const availW = Math.max(200, (container.clientWidth || ctx.container.clientWidth) - 64);
       const availH = Math.max(200, (container.clientHeight || ctx.container.clientHeight) - 64);
       if (mode === 'page') {
-        return Math.min(2.5, Math.min(availW / baseW, availH / baseH));
+        return Math.min(3.0, Math.min(availW / orientedW, availH / orientedH));
       }
-      return Math.min(2.5, availW / baseW);
+      return Math.min(3.0, availW / orientedW);
     };
 
     const applyTransform = () => {
@@ -270,111 +274,66 @@ export class PptPlugin implements PreviewPlugin {
       const s = slides[currentSlide - 1];
       if (!s) return;
 
-      const hasTemplate = Boolean(presentation.templateUrl);
       slideCard.innerHTML = '';
+      slideCard.style.backgroundImage = 'none';
+      slideCard.style.backgroundColor = s.backgroundColor || '#ffffff';
+      slideCard.style.display = 'flex';
+      slideCard.style.flexDirection = 'column';
 
-      if (hasTemplate) {
-        slideCard.style.backgroundImage = `url("${presentation.templateUrl}")`;
-        slideCard.style.backgroundSize = '100% 100%';
-        slideCard.style.backgroundPosition = 'center';
-        slideCard.style.backgroundRepeat = 'no-repeat';
-        slideCard.style.backgroundColor = '#ffffff';
-      } else {
-        slideCard.style.backgroundImage = 'none';
-        slideCard.style.backgroundColor = '#ffffff';
-      }
-
-      // Title element
+      // Clean, modern presentation slide header
       const titleWrapper = document.createElement('div');
       titleWrapper.className = 'fp-ppt-title-zone';
-      if (hasTemplate) {
-        // Fits right inside the template's pre-printed banner header (exact measured coordinates: top: 55px, height: 73px)
-        titleWrapper.style.cssText = `
-          position: absolute;
-          top: 55px;
-          left: 36px;
-          right: 140px;
-          height: 73px;
-          display: flex;
-          align-items: center;
-          padding: 0 16px;
-          box-sizing: border-box;
-          z-index: 5;
-        `;
-        titleWrapper.innerHTML = `
-          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px; line-height: 1.2;">
-            ${DOMPurify.sanitize(s.title)}
-          </h1>
-        `;
-      } else {
-        // Clean modern slide title
-        titleWrapper.style.cssText = `
-          padding: 36px 48px 16px;
-          box-sizing: border-box;
-        `;
-        titleWrapper.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px;">
-            <div>
-              <h1 style="margin: 0 0 6px 0; font-size: 30px; font-weight: 700; color: #0f172a; letter-spacing: -0.4px;">
-                ${DOMPurify.sanitize(s.title)}
-              </h1>
-              ${s.subtitle ? `<div style="font-size: 15px; color: #64748b;">${DOMPurify.sanitize(s.subtitle)}</div>` : ''}
-            </div>
-            <span style="font-size: 13px; font-weight: 600; color: #94a3b8; background: #f1f5f9; padding: 4px 10px; border-radius: 9999px;">
-              Slide ${currentSlide} / ${totalSlides}
-            </span>
+      titleWrapper.style.cssText = `
+        padding: 32px 48px 16px;
+        box-sizing: border-box;
+        flex-shrink: 0;
+      `;
+      titleWrapper.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px;">
+          <div style="flex: 1; padding-right: 24px;">
+            <h1 style="margin: 0 0 6px 0; font-size: 28px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; line-height: 1.25;">
+              ${DOMPurify.sanitize(s.title || `Slide ${currentSlide}`)}
+            </h1>
+            ${s.subtitle ? `<div style="font-size: 15px; color: #64748b; margin-top: 4px;">${DOMPurify.sanitize(s.subtitle)}</div>` : ''}
           </div>
-        `;
-      }
+          <span style="font-size: 13px; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 9999px; flex-shrink: 0;">
+            Slide ${currentSlide} / ${totalSlides}
+          </span>
+        </div>
+      `;
       slideCard.appendChild(titleWrapper);
 
-      // Content zone
+      // Slide content zone
       const contentZone = document.createElement('div');
       contentZone.className = 'fp-ppt-content-zone';
-      if (hasTemplate) {
-        contentZone.style.cssText = `
-          position: absolute;
-          top: 142px;
-          left: 55px;
-          right: 55px;
-          bottom: 35px;
-          overflow: auto;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          padding: 12px 16px;
-          z-index: 4;
-        `;
-      } else {
-        contentZone.style.cssText = `
-          padding: 16px 48px 36px;
-          box-sizing: border-box;
-          flex: 1;
-          overflow: auto;
-          display: flex;
-          flex-direction: column;
-        `;
-      }
+      contentZone.style.cssText = `
+        padding: 16px 48px 36px;
+        box-sizing: border-box;
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+      `;
 
-      // 1. Content Image
+      // 1. If slide has an associated image
       if (s.pictureUrl) {
         contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 16px;">
-            <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.15);" />
+          <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 12px;">
+            <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
           </div>
         `;
       }
-      // 2. Chart / OLE
-      else if (s.hasChart || s.hasOle || s.title.toLowerCase().includes('chart')) {
-        contentZone.innerHTML = this.renderChartSvg();
+      // 2. If slide has chart or OLE
+      else if (s.hasChart || s.hasOle) {
+        contentZone.innerHTML = this.renderChartDisplay(s);
       }
-      // 3. Table
-      else if (s.tableColumns && s.tableColumns.length > 0) {
-        contentZone.innerHTML = this.renderTableHtml(s);
+      // 3. If slide has table cells
+      else if (s.tableCells && s.tableCells.length > 0) {
+        contentZone.innerHTML = this.renderTableDisplay(s);
       }
-      // 4. Text Paragraphs
+      // 4. Slide paragraphs and text
       else {
-        contentZone.innerHTML = this.renderTextHtml(s);
+        contentZone.innerHTML = this.renderTextDisplay(s);
       }
 
       slideCard.appendChild(contentZone);
@@ -442,7 +401,9 @@ export class PptPlugin implements PreviewPlugin {
       container.removeEventListener('wheel', onWheel);
       container.removeEventListener('keydown', onKeyDown);
       for (const u of createdBlobUrls) {
-        URL.revokeObjectURL(u);
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
       }
       container.remove();
       ctx.container.innerHTML = '';
@@ -461,32 +422,30 @@ export class PptPlugin implements PreviewPlugin {
       getCurrentPage: () => currentSlide,
       zoomIn: () => {
         isUserZoomed = true;
-        scale += 0.15;
+        scale = Math.min(6.0, Math.round((scale + 0.25) * 100) / 100);
         applyTransform();
       },
       zoomOut: () => {
         isUserZoomed = true;
-        scale = Math.max(0.2, scale - 0.15);
+        scale = Math.max(0.2, Math.round((scale - 0.25) * 100) / 100);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         isUserZoomed = true;
-        scale = level;
+        scale = Math.max(0.2, Math.min(6.0, Math.round(level * 100) / 100));
         applyTransform();
       },
       fitToPage: () => {
         isUserZoomed = false;
         fitMode = 'page';
         scale = calculateFitScale('page');
-        rotation = 0;
         applyTransform();
       },
       fitToWidth: () => {
         isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
-        rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;
         applyTransform();
@@ -519,62 +478,68 @@ export class PptPlugin implements PreviewPlugin {
             if (!ctx2d) return;
 
             const thumbW = 160;
-            const thumbH = Math.round(thumbW * (baseH / baseW));
+            const thumbH = Math.max(90, Math.round(thumbW * (baseH / baseW)));
             canvas.width = thumbW;
             canvas.height = thumbH;
 
-            // Background
-            if (presentation.templateUrl) {
-              const img = new Image();
-              img.src = presentation.templateUrl;
-              await new Promise<void>((res) => {
-                if (img.complete) return res();
-                img.onload = () => res();
-                img.onerror = () => res();
-              });
-              ctx2d.drawImage(img, 0, 0, thumbW, thumbH);
-            } else {
-              ctx2d.fillStyle = '#ffffff';
-              ctx2d.fillRect(0, 0, thumbW, thumbH);
-              ctx2d.strokeStyle = '#e2e8f0';
-              ctx2d.strokeRect(0, 0, thumbW, thumbH);
-            }
+            // Clean background
+            ctx2d.fillStyle = s.backgroundColor || '#ffffff';
+            ctx2d.fillRect(0, 0, thumbW, thumbH);
+            ctx2d.strokeStyle = '#cbd5e1';
+            ctx2d.lineWidth = 1;
+            ctx2d.strokeRect(0, 0, thumbW, thumbH);
 
-            // Thumbnail title
-            ctx2d.fillStyle = '#1e293b';
+            // Thumbnail header bar
+            ctx2d.fillStyle = '#f8fafc';
+            ctx2d.fillRect(1, 1, thumbW - 2, 22);
+            ctx2d.strokeStyle = '#e2e8f0';
+            ctx2d.beginPath();
+            ctx2d.moveTo(1, 23);
+            ctx2d.lineTo(thumbW - 1, 23);
+            ctx2d.stroke();
+
+            // Slide number
+            ctx2d.fillStyle = '#64748b';
             ctx2d.font = 'bold 9px sans-serif';
             ctx2d.textAlign = 'left';
-            const titleY = presentation.templateUrl ? 17 : 20;
-            const titleX = presentation.templateUrl ? 10 : 12;
-            const tText = s.title.length > 20 ? s.title.slice(0, 18) + '..' : s.title;
-            ctx2d.fillText(tText, titleX, titleY);
+            ctx2d.fillText(`${idx + 1}`, 6, 15);
 
-            // Thumbnail content indication
-            const contentY = presentation.templateUrl ? 32 : 36;
-            if (s.hasChart || s.hasOle || s.title.toLowerCase().includes('chart')) {
-              // Mini chart
-              const barColors = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'];
-              const heights = [32, 48, 26, 40];
+            // Thumbnail title
+            ctx2d.fillStyle = '#0f172a';
+            ctx2d.font = 'bold 9px sans-serif';
+            const tText = s.title.length > 20 ? s.title.slice(0, 18) + '..' : s.title;
+            ctx2d.fillText(tText, 22, 15);
+
+            // Thumbnail visual content
+            const contentY = 32;
+            if (s.pictureUrl) {
+              ctx2d.fillStyle = '#e2e8f0';
+              ctx2d.fillRect(20, contentY + 2, thumbW - 40, thumbH - contentY - 8);
+              ctx2d.fillStyle = '#94a3b8';
+              ctx2d.font = '8px sans-serif';
+              ctx2d.textAlign = 'center';
+              ctx2d.fillText('Image', thumbW / 2, contentY + (thumbH - contentY) / 2);
+            } else if (s.hasChart || s.hasOle) {
+              const barColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+              const heights = [28, 44, 24, 38];
               for (let b = 0; b < 4; b++) {
                 ctx2d.fillStyle = barColors[b];
-                ctx2d.fillRect(36 + b * 24, contentY + (52 - heights[b]), 16, heights[b]);
+                ctx2d.fillRect(32 + b * 26, contentY + (48 - heights[b]), 16, heights[b]);
               }
-            } else if (s.tableColumns && s.tableColumns.length > 0) {
-              // Mini table grid
+            } else if (s.tableCells && s.tableCells.length > 0) {
               ctx2d.strokeStyle = '#cbd5e1';
               ctx2d.lineWidth = 1;
-              ctx2d.strokeRect(14, contentY + 4, 132, 44);
+              ctx2d.strokeRect(12, contentY + 2, thumbW - 24, 40);
               for (let l = 1; l <= 3; l++) {
                 ctx2d.beginPath();
-                ctx2d.moveTo(14, contentY + 4 + l * 11);
-                ctx2d.lineTo(146, contentY + 4 + l * 11);
+                ctx2d.moveTo(12, contentY + 2 + l * 10);
+                ctx2d.lineTo(thumbW - 12, contentY + 2 + l * 10);
                 ctx2d.stroke();
               }
             } else {
-              // Mini text lines
-              ctx2d.fillStyle = '#64748b';
+              ctx2d.fillStyle = '#94a3b8';
               for (let l = 0; l < 4; l++) {
-                ctx2d.fillRect(14, contentY + 6 + l * 10, 132 - (l === 3 ? 35 : 0), 4);
+                ctx2d.fillRect(16, contentY + 4 + l * 10, thumbW - 32 - (l === 3 ? 35 : 0), 4);
               }
             }
           }
@@ -594,95 +559,117 @@ export class PptPlugin implements PreviewPlugin {
   }
 
   /**
-   * Parse CFBF PowerPoint Document and Pictures streams to build clean presentation structure
+   * Parse CFBF PowerPoint Document and Pictures streams to build clean generic presentation structure
    */
   private parsePresentation(buffer: ArrayBuffer, createdBlobUrls: string[], docName?: string): PptPresentation {
     let slides: PptSlide[] = [];
     let width = 960;
-    let height = 720;
-    let templateUrl: string | null = null;
+    let height = 540;
     let pictures: string[] = [];
 
     try {
       const cfbf = new CfbfReader(buffer);
       pictures = this.extractPictures(cfbf, createdBlobUrls);
 
-      // Check if first picture is a presentation slide background template
-      if (pictures.length > 0) {
-        templateUrl = pictures[0];
-      }
-
       const pptStream = cfbf.readStream('PowerPoint Document');
-      if (pptStream && pptStream.length >= 512) {
+      if (pptStream && pptStream.length >= 64) {
         const view = new DataView(pptStream.buffer, pptStream.byteOffset, pptStream.byteLength);
 
-        // Detect SlideSizeAtom (0x0400)
-        let o = 0;
-        while (o + 8 <= pptStream.length) {
-          const v = view.getUint16(o, true);
+        // 1. Detect SlideSizeAtom (0x0400)
+        for (let o = 0; o + 16 <= pptStream.length; o += 2) {
           const t = view.getUint16(o + 2, true);
           const l = view.getUint32(o + 4, true);
-          const isCont = (v & 0x0F) === 0x0F;
           if (t === 0x0400 && l >= 8) {
             const szX = view.getInt32(o + 8, true);
             const szY = view.getInt32(o + 12, true);
             if (szX > 0 && szY > 0) {
               const ratio = szX / szY;
-              if (Math.abs(ratio - (16 / 9)) < 0.1) {
-                width = 960;
-                height = 540;
-              } else {
-                width = 960;
-                height = Math.round(960 / ratio);
+              width = 960;
+              height = Math.max(200, Math.round(960 / ratio));
+            }
+            break;
+          }
+        }
+
+        // 2. Discover ALL SlideContainers (0x03EE) across the entire stream
+        const slideOffsets: Array<{ offset: number; len: number }> = [];
+        const seenOffsets = new Set<number>();
+
+        const scan = (start: number, end: number) => {
+          let p = start;
+          while (p + 8 <= end) {
+            const ver = view.getUint16(p, true);
+            const recType = view.getUint16(p + 2, true);
+            const recLen = view.getUint32(p + 4, true);
+            const isCont = (ver & 0x0F) === 0x0F;
+            const recEnd = Math.min(end, p + 8 + recLen);
+
+            if (recType === 0x03EE && recLen > 0) {
+              if (!seenOffsets.has(p)) {
+                seenOffsets.add(p);
+                slideOffsets.push({ offset: p, len: recLen });
+              }
+            } else if (isCont && recLen > 0) {
+              scan(p + 8, recEnd);
+            }
+            p = recEnd;
+          }
+        };
+
+        scan(0, pptStream.length);
+
+        // Fallback: If container scan missed slides, perform linear sweep for 0x03EE
+        if (slideOffsets.length === 0) {
+          for (let p = 0; p + 8 <= pptStream.length; p += 2) {
+            const ver = view.getUint16(p, true);
+            const recType = view.getUint16(p + 2, true);
+            const recLen = view.getUint32(p + 4, true);
+            if (recType === 0x03EE && (ver & 0x0F) === 0x0F && recLen > 16 && p + 8 + recLen <= pptStream.length + 1024) {
+              if (!seenOffsets.has(p)) {
+                seenOffsets.add(p);
+                slideOffsets.push({ offset: p, len: recLen });
               }
             }
           }
-          if (isCont) o += 8;
-          else o += 8 + l;
         }
 
-        // Find SlideContainers (0x03EE)
-        const slideOffsets: number[] = [];
-        o = 0;
-        while (o + 8 <= pptStream.length) {
-          const v = view.getUint16(o, true);
-          const t = view.getUint16(o + 2, true);
-          const l = view.getUint32(o + 4, true);
-          const isCont = (v & 0x0F) === 0x0F;
-          if (t === 0x03EE) {
-            slideOffsets.push(o);
-          }
-          if (isCont) o += 8;
-          else o += 8 + l;
-        }
-
+        // 3. Extract slide contents for each discovered slide
         for (let i = 0; i < slideOffsets.length; i++) {
-          const sOff = slideOffsets[i];
-          const sLen = view.getUint32(sOff + 4, true);
-          const end = sOff + 8 + sLen;
-          const extractedTexts: string[] = [];
-          let hasOle = false;
+          const sOff = slideOffsets[i].offset;
+          const sLen = slideOffsets[i].len;
+          const end = Math.min(pptStream.length, sOff + 8 + sLen);
 
-          const scan = (start: number, maxEnd: number) => {
+          const texts: Array<{ type: number; text: string }> = [];
+          let currentType = -1;
+          let hasOle = false;
+          let slidePictureUrl: string | null = null;
+          let bgColor = '#ffffff';
+
+          const walk = (start: number, maxEnd: number) => {
             let p = start;
             while (p + 8 <= maxEnd) {
               const ver = view.getUint16(p, true);
               const recType = view.getUint16(p + 2, true);
               const recLen = view.getUint32(p + 4, true);
-              const cont = (ver & 0x0F) === 0x0F;
+              const isCont = (ver & 0x0F) === 0x0F;
+              const recEnd = Math.min(maxEnd, p + 8 + recLen);
 
-              // UTF-16LE text atoms
-              if (recType === 0x0F9F || recType === 0x0FA0) {
-                const str = new TextDecoder('utf-16le').decode(pptStream.subarray(p + 8, p + 8 + recLen)).replace(/\0/g, '').trim();
+              // TextHeaderAtom
+              if (recType === 0x0F9F && recLen >= 4) {
+                currentType = view.getUint32(p + 8, true);
+              }
+              // UTF-16LE text atom
+              else if (recType === 0x0FA0 && recLen > 0) {
+                const str = new TextDecoder('utf-16le').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
                 if (str && str !== '\x04' && str !== '\x05' && !str.includes('style.visibility') && !str.includes('___PPT')) {
-                  extractedTexts.push(str);
+                  texts.push({ type: currentType, text: str });
                 }
               }
-              // Latin1 text atoms
-              else if (recType === 0x0F9E || recType === 0x0FA8) {
-                const str = new TextDecoder('latin1').decode(pptStream.subarray(p + 8, p + 8 + recLen)).replace(/\0/g, '').trim();
-                if (str && str.length > 1 && !str.includes('___PPT')) {
-                  extractedTexts.push(str);
+              // Latin1 text atom
+              else if (recType === 0x0FA8 && recLen > 0) {
+                const str = new TextDecoder('latin1').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
+                if (str && str.length > 1 && !str.includes('style.visibility') && !str.includes('___PPT')) {
+                  texts.push({ type: currentType, text: str });
                 }
               }
               // OLE Object
@@ -690,52 +677,82 @@ export class PptPlugin implements PreviewPlugin {
                 hasOle = true;
               }
 
-              if (cont) {
-                scan(p + 8, p + 8 + recLen);
+              if (isCont && recLen > 0) {
+                walk(p + 8, recEnd);
               }
-              p += 8 + recLen;
+              p = recEnd;
             }
           };
 
-          scan(sOff + 8, end);
+          walk(sOff + 8, end);
 
-          // Categorize text into Title, Table Columns, and Paragraphs
+          // Categorize text by real MS-PPT TextHeader types:
+          // 0 = Title, 6 = Center Title
+          // 1 = Body, 5 = Center Body
+          // 4 = Other / Table Cell
           let title = '';
-          const tableCols: string[] = [];
-          const paragraphs: string[] = [];
+          let subtitle = '';
+          const bodyParagraphs: string[] = [];
+          const tableCells: string[] = [];
 
-          for (const item of extractedTexts) {
-            if (!title) {
-              title = item;
-            } else if (item.startsWith('Column ') || (title === 'Table' && item.startsWith('Column'))) {
-              tableCols.push(item);
+          for (const item of texts) {
+            if ((item.type === 0 || item.type === 6) && !title) {
+              title = item.text;
+            } else if (item.type === 1 || item.type === 5) {
+              bodyParagraphs.push(item.text);
+            } else if (item.type === 4) {
+              tableCells.push(item.text);
             } else {
-              paragraphs.push(item);
+              if (!title) {
+                title = item.text;
+              } else if (!subtitle && item.text.length < 120 && bodyParagraphs.length === 0) {
+                subtitle = item.text;
+              } else {
+                bodyParagraphs.push(item.text);
+              }
             }
+          }
+
+          // If no title found from headers, use the first available text string
+          if (!title && texts.length > 0) {
+            title = texts[0].text;
+            for (let t = 1; t < texts.length; t++) {
+              if (texts[t].type === 4) tableCells.push(texts[t].text);
+              else bodyParagraphs.push(texts[t].text);
+            }
+          }
+
+          // Check if picture belongs specifically to this slide
+          if (pictures.length > 0 && pictures[i]) {
+            slidePictureUrl = pictures[i];
           }
 
           slides.push({
             slideIndex: i + 1,
             title: title || `Slide ${i + 1}`,
-            paragraphs,
-            tableColumns: tableCols,
-            hasChart: hasOle || (title.toLowerCase().includes('chart')),
+            subtitle: subtitle || undefined,
+            paragraphs: bodyParagraphs,
+            tableCells,
+            hasChart: hasOle || title.toLowerCase().includes('chart'),
             hasOle,
-            pictureUrl: null
+            pictureUrl: slidePictureUrl,
+            backgroundColor: bgColor
           });
         }
       }
     } catch (err) {
-      console.warn('[PptPlugin] Error extracting slides:', err);
+      console.warn('[PptPlugin] Error extracting generic presentation:', err);
     }
 
+    // Fallback if no slides could be extracted
     if (slides.length === 0) {
       slides = [
         {
           slideIndex: 1,
           title: docName || 'PowerPoint Presentation',
-          paragraphs: ['Legacy PowerPoint 97-2003 Presentation', 'Preview loaded successfully'],
-          tableColumns: []
+          subtitle: 'Legacy PowerPoint 97-2003 Presentation',
+          paragraphs: ['Preview loaded successfully.'],
+          tableCells: []
         }
       ];
     }
@@ -744,7 +761,7 @@ export class PptPlugin implements PreviewPlugin {
       slides,
       width,
       height,
-      templateUrl,
+      aspectRatio: width / height,
       pictures
     };
   }
@@ -826,7 +843,7 @@ export class PptPlugin implements PreviewPlugin {
   /**
    * Render text paragraphs with clean typography
    */
-  private renderTextHtml(s: PptSlide): string {
+  private renderTextDisplay(s: PptSlide): string {
     const rawParagraphs = s.paragraphs.length > 0 ? s.paragraphs : ['No additional text content on this slide.'];
     const pElements = rawParagraphs.map(p => {
       const lines = p.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
@@ -842,7 +859,7 @@ export class PptPlugin implements PreviewPlugin {
           `;
         }
         return `
-          <p style="margin: 0 0 16px; font-size: 17px; line-height: 1.65; color: #334155; text-align: justify; letter-spacing: 0.1px;">
+          <p style="margin: 0 0 16px; font-size: 17px; line-height: 1.65; color: #334155; letter-spacing: 0.1px;">
             ${DOMPurify.sanitize(line)}
           </p>
         `;
@@ -850,25 +867,34 @@ export class PptPlugin implements PreviewPlugin {
     }).join('');
 
     return `
-      <div style="flex: 1; overflow: auto; padding: 8px 12px; display: flex; flex-direction: column;">
+      <div style="flex: 1; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column;">
         ${pElements}
       </div>
     `;
   }
 
   /**
-   * Render presentation table cleanly
+   * Render real table structure from extracted table cells
    */
-  private renderTableHtml(s: PptSlide): string {
-    const cols = (s.tableColumns && s.tableColumns.length > 0)
-      ? s.tableColumns
-      : ['Column 1', 'Column 2', 'Column 3', 'Column 4', 'Column 5'];
+  private renderTableDisplay(s: PptSlide): string {
+    const cells = s.tableCells;
+    // Determine reasonable column count (e.g. 5 if 5 or more cells, or cells length)
+    const numCols = Math.min(6, Math.max(2, Math.ceil(Math.sqrt(cells.length))));
+    const headerCells = cells.slice(0, numCols);
+    const bodyCells = cells.slice(numCols);
+
+    // Group body cells into rows
+    const rows: string[][] = [];
+    for (let i = 0; i < bodyCells.length; i += numCols) {
+      rows.push(bodyCells.slice(i, i + numCols));
+    }
+
     return `
       <div style="flex: 1; overflow: auto; padding: 12px 4px; display: flex; flex-direction: column; justify-content: center;">
         <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
           <thead>
             <tr style="background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);">
-              ${cols.map(c => `
+              ${headerCells.map(c => `
                 <th style="padding: 14px 18px; border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px;">
                   ${DOMPurify.sanitize(c)}
                 </th>
@@ -876,11 +902,11 @@ export class PptPlugin implements PreviewPlugin {
             </tr>
           </thead>
           <tbody>
-            ${[1, 2, 3, 4, 5].map((rowIdx) => `
-              <tr style="${rowIdx % 2 === 0 ? 'background: #f8fafc;' : 'background: #ffffff;'}">
-                ${cols.map((_, cIdx) => `
+            ${rows.map((row, rIdx) => `
+              <tr style="${rIdx % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
+                ${row.map(cell => `
                   <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #475569;">
-                    Item ${rowIdx}-${cIdx + 1}
+                    ${DOMPurify.sanitize(cell)}
                   </td>
                 `).join('')}
               </tr>
@@ -892,74 +918,36 @@ export class PptPlugin implements PreviewPlugin {
   }
 
   /**
-   * Render high-fidelity vector presentation chart
+   * Render clean presentation chart/diagram card based on actual slide data
    */
-  private renderChartSvg(): string {
+  private renderChartDisplay(s: PptSlide): string {
+    const hasItems = s.paragraphs.length > 0;
     return `
-      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box;">
-        <div style="width: 100%; max-width: 680px; height: 340px; background: #ffffff; border-radius: 8px; padding: 20px 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; box-sizing: border-box; display: flex; flex-direction: column;">
-          <!-- Chart Header & Legend -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div style="font-size: 15px; font-weight: 600; color: #334155;">Performance Distribution</div>
-            <div style="display: flex; gap: 16px; font-size: 12px; color: #64748b;">
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <span style="width: 10px; height: 10px; border-radius: 2px; background: #3b82f6;"></span> Q1
-              </span>
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <span style="width: 10px; height: 10px; border-radius: 2px; background: #10b981;"></span> Q2
-              </span>
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <span style="width: 10px; height: 10px; border-radius: 2px; background: #f59e0b;"></span> Q3
-              </span>
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <span style="width: 10px; height: 10px; border-radius: 2px; background: #8b5cf6;"></span> Q4
-              </span>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+        <div style="width: 100%; max-width: 680px; min-height: 260px; background: #ffffff; border-radius: 8px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; box-sizing: border-box; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; background: #eff6ff; color: #3b82f6; font-size: 16px;">
+              📊
+            </span>
+            <div style="font-size: 16px; font-weight: 600; color: #1e293b;">
+              ${DOMPurify.sanitize(s.title || 'Chart Presentation Data')}
             </div>
           </div>
-          <!-- SVG Bar Chart -->
-          <svg viewBox="0 0 600 240" style="width: 100%; height: 100%; flex: 1;" preserveAspectRatio="none">
-            <!-- Gridlines -->
-            <line x1="40" y1="20" x2="580" y2="20" stroke="#f1f5f9" stroke-width="1" />
-            <line x1="40" y1="70" x2="580" y2="70" stroke="#f1f5f9" stroke-width="1" />
-            <line x1="40" y1="120" x2="580" y2="120" stroke="#f1f5f9" stroke-width="1" />
-            <line x1="40" y1="170" x2="580" y2="170" stroke="#f1f5f9" stroke-width="1" />
-            <line x1="40" y1="210" x2="580" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
-
-            <!-- Y Axis Labels -->
-            <text x="30" y="24" font-size="11" fill="#94a3b8" text-anchor="end">100</text>
-            <text x="30" y="74" font-size="11" fill="#94a3b8" text-anchor="end">75</text>
-            <text x="30" y="124" font-size="11" fill="#94a3b8" text-anchor="end">50</text>
-            <text x="30" y="174" font-size="11" fill="#94a3b8" text-anchor="end">25</text>
-            <text x="30" y="214" font-size="11" fill="#94a3b8" text-anchor="end">0</text>
-
-            <!-- Group 1 -->
-            <rect x="75" y="60" width="22" height="150" rx="3" fill="#3b82f6" />
-            <rect x="101" y="90" width="22" height="120" rx="3" fill="#10b981" />
-            <rect x="127" y="120" width="22" height="90" rx="3" fill="#f59e0b" />
-            <rect x="153" y="45" width="22" height="165" rx="3" fill="#8b5cf6" />
-            <text x="125" y="230" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Category 1</text>
-
-            <!-- Group 2 -->
-            <rect x="210" y="80" width="22" height="130" rx="3" fill="#3b82f6" />
-            <rect x="236" y="50" width="22" height="160" rx="3" fill="#10b981" />
-            <rect x="262" y="105" width="22" height="105" rx="3" fill="#f59e0b" />
-            <rect x="288" y="70" width="22" height="140" rx="3" fill="#8b5cf6" />
-            <text x="260" y="230" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Category 2</text>
-
-            <!-- Group 3 -->
-            <rect x="345" y="40" width="22" height="170" rx="3" fill="#3b82f6" />
-            <rect x="371" y="65" width="22" height="145" rx="3" fill="#10b981" />
-            <rect x="397" y="85" width="22" height="125" rx="3" fill="#f59e0b" />
-            <rect x="423" y="55" width="22" height="155" rx="3" fill="#8b5cf6" />
-            <text x="395" y="230" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Category 3</text>
-
-            <!-- Group 4 -->
-            <rect x="480" y="70" width="22" height="140" rx="3" fill="#3b82f6" />
-            <rect x="506" y="35" width="22" height="175" rx="3" fill="#10b981" />
-            <rect x="532" y="75" width="22" height="135" rx="3" fill="#f59e0b" />
-            <rect x="558" y="90" width="22" height="120" rx="3" fill="#8b5cf6" />
-            <text x="530" y="230" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Category 4</text>
-          </svg>
+          ${hasItems ? `
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center;">
+              ${s.paragraphs.map(p => `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; font-size: 15px; color: #334155;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; flex-shrink: 0;"></span>
+                  <span>${DOMPurify.sanitize(p)}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 14px; gap: 8px;">
+              <span style="font-size: 24px;">📈</span>
+              <span>Embedded Presentation Visual Object</span>
+            </div>
+          `}
         </div>
       </div>
     `;

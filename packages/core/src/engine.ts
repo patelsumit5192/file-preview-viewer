@@ -154,6 +154,50 @@ export class FilePreviewViewer {
         (instance as any).resetZoom = () => (instance.fitToWidth ? instance.fitToWidth() : instance.fitToPage?.());
       }
 
+      // Synchronize isUserZoomed state when zoom or fit methods are called programmatically or via toolbar
+      if (instance.zoomIn) {
+        const origZoomIn = instance.zoomIn.bind(instance);
+        instance.zoomIn = () => {
+          this.isUserZoomed = true;
+          return origZoomIn();
+        };
+      }
+      if (instance.zoomOut) {
+        const origZoomOut = instance.zoomOut.bind(instance);
+        instance.zoomOut = () => {
+          this.isUserZoomed = true;
+          return origZoomOut();
+        };
+      }
+      if (instance.setZoom) {
+        const origSetZoom = instance.setZoom.bind(instance);
+        instance.setZoom = (lvl: number) => {
+          this.isUserZoomed = true;
+          return origSetZoom(lvl);
+        };
+      }
+      if (instance.fitToWidth) {
+        const origFitToWidth = instance.fitToWidth.bind(instance);
+        instance.fitToWidth = () => {
+          this.isUserZoomed = false;
+          return origFitToWidth();
+        };
+      }
+      if (instance.fitToPage) {
+        const origFitToPage = instance.fitToPage.bind(instance);
+        instance.fitToPage = () => {
+          this.isUserZoomed = false;
+          return origFitToPage();
+        };
+      }
+      if (instance.resetZoom) {
+        const origResetZoom = instance.resetZoom.bind(instance);
+        instance.resetZoom = () => {
+          this.isUserZoomed = false;
+          return origResetZoom();
+        };
+      }
+
       // FAST STARTUP: Hide loading immediately once the instance is mounted!
       this.hideLoading();
       this.eventEmitter.emit('loaded', { metadata, plugin: matchedPlugin.id });
@@ -1082,14 +1126,15 @@ export class FilePreviewViewer {
     document.addEventListener('fullscreenchange', this.fullscreenHandler);
     document.addEventListener('webkitfullscreenchange', this.fullscreenHandler);
 
-    if (typeof ResizeObserver !== 'undefined' && this.contentEl) {
+    const observeTarget = this.wrapperEl || this.currentContainer;
+    if (typeof ResizeObserver !== 'undefined' && observeTarget) {
       this.resizeObserver = new ResizeObserver(() => {
         // Auto-fit content when viewport dimensions resize, unless user manually zoomed
         if (this.activeInstance && !this.isUserZoomed) {
           this.triggerAutoFit();
         }
       });
-      this.resizeObserver.observe(this.contentEl);
+      this.resizeObserver.observe(observeTarget);
     }
   }
 

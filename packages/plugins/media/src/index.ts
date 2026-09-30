@@ -6,7 +6,10 @@ import type {
   PreviewInstance 
 } from '@patel.sumit51/core';
 
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', '.tiff', '.tif', '.avif'];
+const IMAGE_EXTS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', 
+  '.tiff', '.tif', '.avif', '.apng', '.jfif', '.pjpeg', '.pjp'
+];
 const VIDEO_EXTS = ['.mp4', '.m4v', '.webm', '.ogv', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.3gp', '.mpg', '.mpeg'];
 const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma', '.opus', '.weba'];
 
@@ -15,7 +18,8 @@ export class MediaPlugin implements PreviewPlugin {
   name = 'Media Preview (Image, Video, Audio)';
   extensions = [...IMAGE_EXTS, ...VIDEO_EXTS, ...AUDIO_EXTS];
   mimeTypes = [
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon', 'image/tiff', 'image/avif',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 
+    'image/x-icon', 'image/vnd.microsoft.icon', 'image/tiff', 'image/avif', 'image/apng',
     'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-flv', 'video/x-ms-wmv', 'video/3gpp', 'video/mpeg',
     'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/mp4', 'audio/x-ms-wma', 'audio/opus', 'audio/webm'
   ];
@@ -255,10 +259,11 @@ export class MediaPlugin implements PreviewPlugin {
     if (isImage) {
       const img = document.createElement('img');
       img.src = url;
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '100%';
+      img.style.display = 'block';
       img.style.objectFit = 'contain';
-      img.style.transition = 'transform 0.2s ease';
+      img.style.userSelect = 'none';
+      img.setAttribute('draggable', 'false');
+      img.style.transition = 'transform 0.15s ease-out';
       element = img;
     } else if (isVideo) {
       const video = document.createElement('video');
@@ -393,18 +398,16 @@ export class MediaPlugin implements PreviewPlugin {
     scrollWrapper.style.display = 'flex';
     scrollWrapper.style.flexDirection = 'column';
     scrollWrapper.style.alignItems = 'center';
-    scrollWrapper.style.justifyContent = isAudio ? 'center' : 'flex-start';
-    scrollWrapper.style.padding = '16px';
+    scrollWrapper.style.justifyContent = 'center';
+    scrollWrapper.style.padding = isAudio ? '16px' : '24px';
     scrollWrapper.style.boxSizing = 'border-box';
 
     const sizer = document.createElement('div');
     sizer.className = 'fp-media-sizer';
     sizer.style.position = 'relative';
     sizer.style.flexShrink = '0';
-    sizer.style.display = 'flex';
-    sizer.style.justifyContent = 'center';
-    sizer.style.alignItems = 'center';
-    sizer.style.margin = 'auto 0';
+    sizer.style.margin = 'auto';
+    sizer.style.boxSizing = 'border-box';
     if (isAudio) {
       sizer.style.width = '100%';
       sizer.style.maxWidth = '520px';
@@ -429,8 +432,10 @@ export class MediaPlugin implements PreviewPlugin {
       if (isImage) {
         const img = element as HTMLImageElement;
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          naturalW = img.naturalWidth;
-          naturalH = img.naturalHeight;
+          if (!(ext === '.svg' && naturalW > 0 && naturalH > 0)) {
+            naturalW = img.naturalWidth;
+            naturalH = img.naturalHeight;
+          }
         }
       } else if (isVideo) {
         const vid = element as HTMLVideoElement;
@@ -440,14 +445,18 @@ export class MediaPlugin implements PreviewPlugin {
         }
       }
 
-      const availW = Math.max(100, ctx.container.clientWidth - 32);
-      const availH = Math.max(100, ctx.container.clientHeight - 32);
+      const availW = Math.max(100, ctx.container.clientWidth - 48);
+      const availH = Math.max(100, ctx.container.clientHeight - 48);
+
+      const isRotated90 = (rotation % 180 !== 0);
+      const orientedW = isRotated90 ? naturalH : naturalW;
+      const orientedH = isRotated90 ? naturalW : naturalH;
 
       let fitRatio: number;
       if (fitMode === 'page') {
-        fitRatio = Math.min(availW / naturalW, availH / naturalH);
+        fitRatio = Math.min(availW / orientedW, availH / orientedH);
       } else {
-        fitRatio = availW / naturalW;
+        fitRatio = availW / orientedW;
       }
       baseW = Math.max(1, Math.round(naturalW * fitRatio));
       baseH = Math.max(1, Math.round(naturalH * fitRatio));
@@ -455,27 +464,33 @@ export class MediaPlugin implements PreviewPlugin {
 
     const applyTransform = () => {
       if (isImage || isVideo) {
-        if (!isUserZoomed) {
-          updateBaseDimensions();
-        }
-        const availH = Math.max(100, ctx.container.clientHeight - 32);
+        updateBaseDimensions();
+
         const isRotated90 = (rotation % 180 !== 0);
+
+        // Visual bounding box of the oriented image at currentZoom scale
         const boxW = Math.round((isRotated90 ? baseH : baseW) * currentZoom);
         const boxH = Math.round((isRotated90 ? baseW : baseH) * currentZoom);
 
         sizer.style.width = `${boxW}px`;
         sizer.style.height = `${boxH}px`;
-        sizer.style.margin = boxH < availH ? 'auto 0' : '0';
+        sizer.style.margin = 'auto';
 
-        const elW = isRotated90 ? boxH : boxW;
-        const elH = isRotated90 ? boxW : boxH;
+        // Base element dimensions (unrotated natural aspect ratio)
+        const elW = Math.round(baseW * currentZoom);
+        const elH = Math.round(baseH * currentZoom);
+
+        element.style.position = 'absolute';
+        element.style.left = '50%';
+        element.style.top = '50%';
         element.style.width = `${elW}px`;
         element.style.height = `${elH}px`;
         element.style.maxWidth = 'none';
         element.style.maxHeight = 'none';
-        element.style.transform = rotation ? `rotate(${rotation}deg)` : 'none';
+        element.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
         element.style.transformOrigin = 'center center';
         element.style.flexShrink = '0';
+        element.style.cursor = isImage && currentZoom > 1.05 ? 'grab' : 'default';
       } else {
         if (!isAudio) {
           element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
@@ -509,8 +524,66 @@ export class MediaPlugin implements PreviewPlugin {
       : null;
     ro?.observe(ctx.container);
 
+    // Pan / Drag navigation when zoomed
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let scrollStartX = 0;
+    let scrollStartY = 0;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0 || !isImage || currentZoom <= 1.05) return;
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      scrollStartX = ctx.container.scrollLeft;
+      scrollStartY = ctx.container.scrollTop;
+      element.style.cursor = 'grabbing';
+      ctx.container.style.userSelect = 'none';
+      e.preventDefault();
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      ctx.container.scrollLeft = scrollStartX - dx;
+      ctx.container.scrollTop = scrollStartY - dy;
+    };
+
+    const onMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        element.style.cursor = isImage && currentZoom > 1.05 ? 'grab' : 'default';
+        ctx.container.style.userSelect = '';
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!isImage) return;
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        isUserZoomed = true;
+        if (e.deltaY < 0) {
+          currentZoom = Math.min(6.0, Math.round((currentZoom + 0.25) * 100) / 100);
+        } else {
+          currentZoom = Math.max(0.1, Math.round((currentZoom - 0.25) * 100) / 100);
+        }
+        applyTransform();
+      }
+    };
+
+    scrollWrapper.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    ctx.container.addEventListener('wheel', onWheel, { passive: false });
+
     const cleanup = () => {
       ro?.disconnect();
+      scrollWrapper.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      ctx.container.removeEventListener('wheel', onWheel);
       if (mediaElement) {
         mediaElement.pause();
         mediaElement.src = '';
@@ -526,18 +599,18 @@ export class MediaPlugin implements PreviewPlugin {
       destroy: cleanup,
       zoomIn: isImage ? () => {
         isUserZoomed = true;
-        currentZoom = Math.min(5.0, Math.round((currentZoom + 0.15) * 100) / 100);
+        currentZoom = Math.min(6.0, Math.round((currentZoom + 0.25) * 100) / 100);
         applyTransform();
       } : undefined,
       zoomOut: isImage ? () => {
         isUserZoomed = true;
-        currentZoom = Math.max(0.1, Math.round((currentZoom - 0.15) * 100) / 100);
+        currentZoom = Math.max(0.1, Math.round((currentZoom - 0.25) * 100) / 100);
         applyTransform();
       } : undefined,
       getZoom: isImage ? () => currentZoom : undefined,
       setZoom: isImage ? (level: number) => {
         isUserZoomed = true;
-        currentZoom = level;
+        currentZoom = Math.max(0.1, Math.min(6.0, Math.round(level * 100) / 100));
         applyTransform();
       } : undefined,
       fitToPage: () => {
@@ -545,10 +618,8 @@ export class MediaPlugin implements PreviewPlugin {
           isUserZoomed = false;
           fitMode = 'page';
           currentZoom = 1.0;
-          rotation = 0;
           ctx.container.scrollTop = 0;
           ctx.container.scrollLeft = 0;
-          updateBaseDimensions();
           applyTransform();
         } else if (isAudio) {
           ctx.container.scrollTop = 0;
@@ -561,10 +632,8 @@ export class MediaPlugin implements PreviewPlugin {
           isUserZoomed = false;
           fitMode = 'width';
           currentZoom = 1.0;
-          rotation = 0;
           ctx.container.scrollTop = 0;
           ctx.container.scrollLeft = 0;
-          updateBaseDimensions();
           applyTransform();
         } else if (isAudio) {
           ctx.container.scrollTop = 0;
@@ -580,7 +649,6 @@ export class MediaPlugin implements PreviewPlugin {
           rotation = 0;
           ctx.container.scrollTop = 0;
           ctx.container.scrollLeft = 0;
-          updateBaseDimensions();
           applyTransform();
         } else if (isAudio) {
           ctx.container.scrollTop = 0;

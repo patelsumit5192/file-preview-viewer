@@ -73,6 +73,11 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
   '.ico': 'image/x-icon',
   '.tiff': 'image/tiff',
   '.tif': 'image/tiff',
+  '.avif': 'image/avif',
+  '.apng': 'image/apng',
+  '.jfif': 'image/jpeg',
+  '.pjpeg': 'image/jpeg',
+  '.pjp': 'image/jpeg',
   // Media
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',

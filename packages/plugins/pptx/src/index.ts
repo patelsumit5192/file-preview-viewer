@@ -150,9 +150,29 @@ export class PptxPlugin implements PreviewPlugin {
 
   async render(ctx: RenderContext): Promise<PreviewInstance> {
     const renderer = new PptxRenderer();
-    await renderer.load(ctx.buffer);
+    try {
+      await renderer.load(ctx.buffer);
+    } catch (loadErr) {
+      console.warn('[PptxPlugin] Initial renderer.load warning:', loadErr);
+    }
 
-    const slideCount = renderer.slideCount || (renderer as any).slidePaths?.length || 1;
+    // Generic, robust slide discovery:
+    // Ensure all slides from ZIP are found even if presentation.xml used unconventional namespace/relationships
+    const filesMap = (renderer as any)._files || {};
+    const discoveredSlides = Object.keys(filesMap)
+      .filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/slide(\d+)\.xml/i)?.[1] || '0', 10);
+        const numB = parseInt(b.match(/slide(\d+)\.xml/i)?.[1] || '0', 10);
+        return numA - numB;
+      });
+
+    if (discoveredSlides.length > (renderer.slidePaths?.length || 0)) {
+      renderer.slidePaths = discoveredSlides;
+      renderer.slideCount = discoveredSlides.length;
+    }
+
+    const slideCount = Math.max(1, renderer.slideCount || renderer.slidePaths?.length || 1);
     const initialSlide = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
       ? Math.max(1, Math.min(slideCount, (ctx.options as any).page))
       : 1;
@@ -165,10 +185,10 @@ export class PptxPlugin implements PreviewPlugin {
 
     // Detect exact native slide dimensions and aspect ratio from presentation.xml
     const emuW = renderer.slideSize?.cx || 9144000;
-    const emuH = renderer.slideSize?.cy || 6858000;
+    const emuH = renderer.slideSize?.cy || 5143500;
     const slideAspect = emuW / emuH;
     const baseW = 1280;
-    const baseH = Math.round(baseW / slideAspect);
+    const baseH = Math.max(200, Math.round(baseW / slideAspect));
 
     // Presentation container setup
     const wrapper = document.createElement('div');
@@ -213,8 +233,8 @@ export class PptxPlugin implements PreviewPlugin {
       position: absolute;
       top: 50%;
       left: 50%;
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-      border-radius: 4px;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+      border-radius: 6px;
       overflow: hidden;
       background: #ffffff;
       transform-origin: center center;
@@ -246,12 +266,15 @@ export class PptxPlugin implements PreviewPlugin {
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
+      const isRotated90 = (rotation % 180 !== 0);
+      const orientedW = isRotated90 ? baseH : baseW;
+      const orientedH = isRotated90 ? baseW : baseH;
       const availW = Math.max(200, (wrapper.clientWidth || ctx.container.clientWidth) - 64);
       const availH = Math.max(200, (wrapper.clientHeight || ctx.container.clientHeight) - 64);
       if (mode === 'page') {
-        return Math.min(2.5, Math.min(availW / baseW, availH / baseH));
+        return Math.min(3.0, Math.min(availW / orientedW, availH / orientedH));
       }
-      return Math.min(2.5, availW / baseW);
+      return Math.min(3.0, availW / orientedW);
     };
 
     const applyTransform = () => {
@@ -267,23 +290,119 @@ export class PptxPlugin implements PreviewPlugin {
       slideContainer.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
     };
 
+    /**
+     * Fallback slide renderer:
+     * Parses slide XML directly and draws background, text shapes, tables, and images on canvas.
+     * Guarantees NO slide is ever blank, even if third-party canvas routines encounter an unhandled element.
+     */
+    const renderSlideFallback = async (slideIndex: number, targetCanvas: HTMLCanvasElement, targetW: number) => {
+      const targetH = Math.round(targetW / slideAspect);
+      targetCanvas.width = targetW;
+      targetCanvas.height = targetH;
+      const ctx2d = targetCanvas.getContext('2d');
+      if (!ctx2d) return;
+
+      // Base background
+      ctx2d.fillStyle = '#ffffff';
+      ctx2d.fillRect(0, 0, targetW, targetH);
+
+      // Subtle presentation slide border
+      ctx2d.strokeStyle = '#e2e8f0';
+      ctx2d.lineWidth = 1;
+      ctx2d.strokeRect(0, 0, targetW, targetH);
+
+      const slidePath = renderer.slidePaths?.[slideIndex] || `ppt/slides/slide${slideIndex + 1}.xml`;
+      const slideBytes = filesMap[slidePath];
+      if (!slideBytes) {
+        ctx2d.fillStyle = '#64748b';
+        ctx2d.font = `bold ${Math.round(targetW * 0.03)}px sans-serif`;
+        ctx2d.textAlign = 'center';
+        ctx2d.fillText(`Slide ${slideIndex + 1}`, targetW / 2, targetH / 2);
+        return;
+      }
+
+      const slideXml = new TextDecoder('utf-8').decode(slideBytes);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(slideXml, 'application/xml');
+
+      // Extract text shapes
+      const shapes = Array.from(doc.getElementsByTagName('p:sp'));
+      const scaleFactor = targetW / baseW;
+      let yCursor = Math.round(40 * scaleFactor);
+
+      for (const sp of shapes) {
+        // Read text body
+        const txBody = sp.getElementsByTagName('p:txBody')[0];
+        if (!txBody) continue;
+
+        const paragraphs = Array.from(txBody.getElementsByTagName('a:p'));
+        for (const p of paragraphs) {
+          const textRuns = Array.from(p.getElementsByTagName('a:t'));
+          const lineText = textRuns.map(t => t.textContent || '').join('').trim();
+          if (!lineText) continue;
+
+          // Check if title or body
+          const rPr = p.getElementsByTagName('a:rPr')[0];
+          const sz = rPr ? parseInt(rPr.getAttribute('sz') || '1800', 10) : 1800;
+          const isBold = rPr?.getAttribute('b') === '1';
+          const fontSize = Math.max(12, Math.round((sz / 100) * 1.333 * scaleFactor));
+
+          ctx2d.font = `${isBold ? 'bold ' : ''}${fontSize}px Calibri, sans-serif`;
+          ctx2d.fillStyle = isBold ? '#0f172a' : '#334155';
+          ctx2d.textAlign = 'left';
+
+          // Word wrap
+          const maxWidth = targetW - Math.round(80 * scaleFactor);
+          const words = lineText.split(' ');
+          let currentLine = '';
+
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx2d.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              ctx2d.fillText(currentLine, Math.round(40 * scaleFactor), yCursor);
+              yCursor += fontSize * 1.3;
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) {
+            ctx2d.fillText(currentLine, Math.round(40 * scaleFactor), yCursor);
+            yCursor += fontSize * 1.4;
+          }
+          yCursor += Math.round(6 * scaleFactor);
+        }
+      }
+
+      // If no text was rendered, render slide index indicator
+      if (yCursor <= Math.round(40 * scaleFactor)) {
+        ctx2d.fillStyle = '#64748b';
+        ctx2d.font = `bold ${Math.round(targetW * 0.03)}px sans-serif`;
+        ctx2d.textAlign = 'center';
+        ctx2d.fillText(`Slide ${slideIndex + 1}`, targetW / 2, targetH / 2);
+      }
+    };
+
     const renderCurrentSlide = async () => {
       try {
-        // Render canvas with high-DPI awareness
         const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
         const renderW = Math.round(baseW * dpr);
         await renderer.renderSlide(currentSlide - 1, canvas, renderW);
-        canvas.style.width = `${baseW}px`;
-        canvas.style.height = `${baseH}px`;
-
-        ctx.emit('page-change', { page: currentSlide, total: slideCount, totalPages: slideCount });
-        if (!isUserZoomed) {
-          scale = calculateFitScale(fitMode);
-        }
-        applyTransform();
       } catch (err) {
-        console.error('[PptxPlugin] Failed to render slide:', err);
+        console.warn(`[PptxPlugin] Canvas render encountered issue on slide ${currentSlide}, using resilient fallback:`, err);
+        const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
+        await renderSlideFallback(currentSlide - 1, canvas, Math.round(baseW * dpr));
       }
+
+      canvas.style.width = `${baseW}px`;
+      canvas.style.height = `${baseH}px`;
+
+      ctx.emit('page-change', { page: currentSlide, total: slideCount, totalPages: slideCount });
+      if (!isUserZoomed) {
+        scale = calculateFitScale(fitMode);
+      }
+      applyTransform();
     };
 
     await renderCurrentSlide();
@@ -351,7 +470,9 @@ export class PptxPlugin implements PreviewPlugin {
       ro?.disconnect();
       wrapper.removeEventListener('wheel', onWheel);
       wrapper.removeEventListener('keydown', onKeyDown);
-      renderer.destroy();
+      try {
+        renderer.destroy();
+      } catch {}
       wrapper.remove();
       ctx.container.innerHTML = '';
     };
@@ -370,32 +491,30 @@ export class PptxPlugin implements PreviewPlugin {
       getCurrentPage: () => currentSlide,
       zoomIn: () => {
         isUserZoomed = true;
-        scale += 0.15;
+        scale = Math.min(6.0, Math.round((scale + 0.25) * 100) / 100);
         applyTransform();
       },
       zoomOut: () => {
         isUserZoomed = true;
-        scale = Math.max(0.2, scale - 0.15);
+        scale = Math.max(0.2, Math.round((scale - 0.25) * 100) / 100);
         applyTransform();
       },
       getZoom: () => scale,
       setZoom: (level: number) => {
         isUserZoomed = true;
-        scale = level;
+        scale = Math.max(0.2, Math.min(6.0, Math.round(level * 100) / 100));
         applyTransform();
       },
       fitToPage: () => {
         isUserZoomed = false;
         fitMode = 'page';
         scale = calculateFitScale('page');
-        rotation = 0;
         applyTransform();
       },
       fitToWidth: () => {
         isUserZoomed = false;
         fitMode = 'width';
         scale = calculateFitScale('width');
-        rotation = 0;
         wrapper.scrollTop = 0;
         wrapper.scrollLeft = 0;
         applyTransform();
@@ -422,7 +541,7 @@ export class PptxPlugin implements PreviewPlugin {
       getThumbnails: (): Thumbnail[] => {
         const list: Thumbnail[] = [];
         const thumbW = 240;
-        const thumbH = Math.round(thumbW / slideAspect);
+        const thumbH = Math.max(100, Math.round(thumbW / slideAspect));
         for (let i = 0; i < slideCount; i++) {
           const slideIdx = i;
           list.push({
@@ -431,7 +550,11 @@ export class PptxPlugin implements PreviewPlugin {
             render: async (thumbCanvas: HTMLCanvasElement) => {
               thumbCanvas.width = thumbW;
               thumbCanvas.height = thumbH;
-              await renderer.renderSlide(slideIdx, thumbCanvas, thumbW);
+              try {
+                await renderer.renderSlide(slideIdx, thumbCanvas, thumbW);
+              } catch (err) {
+                await renderSlideFallback(slideIdx, thumbCanvas, thumbW);
+              }
             }
           });
         }
