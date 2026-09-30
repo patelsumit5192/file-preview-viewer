@@ -17,9 +17,9 @@
     window.addEventListener('error', function(e) { window.__consoleLogs.push({ t: 'window.error', m: e.message + ' at ' + e.filename + ':' + e.lineno }); });
     window.addEventListener('unhandledrejection', function(e) { window.__consoleLogs.push({ t: 'unhandledrejection', m: (e.reason && e.reason.message) || String(e.reason) }); });
   </script>
-  <script type="module" crossorigin src="./assets/main-BCqnmke7.js"></script>
+  <script type="module" crossorigin src="./assets/main-CoXy9L2P.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="./assets/main-BO-XrImy.css">
+  <link rel="stylesheet" crossorigin href="./assets/main-C3pkO8WO.css">
 </head>
 <body class="theme-light">
   <div class="app-layout">
@@ -33,8 +33,8 @@
         <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer" target="_blank" class="nav-btn npm-btn">
           <span>npm i @file-preview-viewer/viewer</span>
         </a>
-        <a href="./docs.html" class="nav-btn docs-btn" title="View Full Interactive Documentation">
-          📖 Documentation
+        <a href="./docs.html" class="nav-btn docs-btn" title="View Full Interactive Documentation & API Reference">
+          📖 Documentation & API
         </a>
         <a href="https://github.com/patelsumit5192/file-preview-viewer" target="_blank" class="nav-btn">
           GitHub
@@ -47,6 +47,15 @@
 
     <div class="app-main">
       <aside class="sidebar">
+        <!-- Prominent Interactive Documentation Link Card -->
+        <a href="./docs.html" class="sidebar-docs-card" title="Explore Interactive Documentation & API Reference">
+          <div class="sidebar-docs-icon">📚</div>
+          <div class="sidebar-docs-body">
+            <span class="sidebar-docs-heading">Interactive Documentation</span>
+            <span class="sidebar-docs-sub">Full API, 80+ Formats, & Framework Guides →</span>
+          </div>
+        </a>
+
         <div class="dropzone" id="dropzone">
           <input type="file" id="file-input" class="file-input-hidden" />
           <div class="drop-content">
@@ -177,6 +186,12 @@
         </div>
 
         <div class="sidebar-footer">
+          <div class="sidebar-footer-links">
+            <a href="./docs.html" class="sidebar-footer-doc-link" title="Open Complete Documentation & API Reference">
+              <span>📖 Full API Documentation</span>
+              <span class="footer-link-arrow">→</span>
+            </a>
+          </div>
           <div class="compliance-badge">
             <span class="check-icon">✓</span> 100% Client-Side · Permissive MIT License
           </div>
@@ -191,6 +206,10 @@
               <span id="file-meta" class="active-file-meta">Loading preview...</span>
             </div>
             <div class="preview-header-actions">
+              <a href="./docs.html" class="header-action-btn header-action-docs-btn" title="Open Interactive Documentation & API Reference" target="_self">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span>Docs</span>
+              </a>
               <button id="toggle-toolbar-btn" class="header-action-btn" title="Toggle Toolbar Property (showToolbar)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                 <span id="toolbar-btn-text">Toolbar: ON</span>
@@ -225,6 +244,9 @@
               <button class="tab-btn" data-tab="vue">Vue 3</button>
               <button class="tab-btn" data-tab="vanilla">Vanilla JS</button>
             </div>
+            <a href="./docs.html" class="snippet-docs-btn" title="View Detailed Framework Guides, Props & Events">
+              📖 Documentation & API →
+            </a>
           </div>
           <div class="snippet-body">
             <pre><code id="snippet-code"></code></pre>

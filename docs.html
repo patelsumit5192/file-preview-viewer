@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Documentation & API Reference - File Preview Viewer</title>
   <meta name="description" content="Complete documentation and property guide for @file-preview-viewer/viewer across React, Angular, Vue 3, and Vanilla JS." />
-  <script type="module" crossorigin src="./assets/docs-COZwrZqY.js"></script>
+  <script type="module" crossorigin src="./assets/docs-B0QiLimi.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="./assets/docs-Dsk9D-ZY.css">
+  <link rel="stylesheet" crossorigin href="./assets/docs-BL3aj1cD.css">
 </head>
 <body class="docs-body">
 
@@ -171,7 +171,7 @@
       <div class="docs-nav-group">
         <div class="docs-nav-title">Supported Formats</div>
         <a href="#supported-formats" class="docs-nav-item">
-          <span>📄 50+ File Types</span>
+          <span>📄 80+ File Types & Formats</span>
         </a>
       </div>
     </aside>
@@ -1491,8 +1491,8 @@ viewer.print();               // Trigger print</pre>
 
         <!-- SUPPORTED FORMATS SECTION -->
         <section class="docs-section" id="supported-formats">
-          <h2 class="docs-section-heading">📄 50+ Supported File Formats</h2>
-          <p class="docs-section-desc">Zero cloud conversion, 100% private client-side rendering across all popular extensions.</p>
+          <h2 class="docs-section-heading">📄 80+ Supported File Formats (15 Categories)</h2>
+          <p class="docs-section-desc">Zero cloud conversion, 100% private client-side rendering across all popular office, media, code, and archive extensions.</p>
 
           <table class="format-table">
             <thead>
@@ -1515,10 +1515,27 @@ viewer.print();               // Trigger print</pre>
                     <span class="format-badge">.dot</span>
                   </div>
                 </td>
-                <td>DrawingML chart rendering, table styling, images, native pagination, automatic page-change scrolling.</td>
+                <td>Native docx-preview & CFBF binary parser. DrawingML charts, tables, images, native pagination, automatic page-change scrolling, print, download.</td>
               </tr>
               <tr>
-                <td><strong>Spreadsheets</strong></td>
+                <td><strong>PowerPoint Presentations</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.pptx</span>
+                    <span class="format-badge">.pptm</span>
+                    <span class="format-badge">.ppsx</span>
+                    <span class="format-badge">.ppsm</span>
+                    <span class="format-badge">.potx</span>
+                    <span class="format-badge">.potm</span>
+                    <span class="format-badge">.ppt</span>
+                    <span class="format-badge">.pps</span>
+                    <span class="format-badge">.pot</span>
+                  </div>
+                </td>
+                <td>Slide-by-slide canvas rendering, default fitMode: 'page', slide thumbnails sidebar, navigation & wheel scroll, full in-slide text search (Ctrl+F) with transparent selection layer, multi-format embedded pictures (PNG, JPEG, GIF, BMP).</td>
+              </tr>
+              <tr>
+                <td><strong>Spreadsheets & Workbooks</strong></td>
                 <td>
                   <div class="format-badges">
                     <span class="format-badge">.xlsx</span>
@@ -1530,21 +1547,7 @@ viewer.print();               // Trigger print</pre>
                     <span class="format-badge">.ods</span>
                   </div>
                 </td>
-                <td>Multi-sheet workbook tabs, cell formatting, formula evaluation, column resizing.</td>
-              </tr>
-              <tr>
-                <td><strong>PowerPoint</strong></td>
-                <td>
-                  <div class="format-badges">
-                    <span class="format-badge">.pptx</span>
-                    <span class="format-badge">.potx</span>
-                    <span class="format-badge">.ppsx</span>
-                    <span class="format-badge">.ppt</span>
-                    <span class="format-badge">.pot</span>
-                    <span class="format-badge">.pps</span>
-                  </div>
-                </td>
-                <td>Slide renderer with animations, wheel scrolling navigation, thumbnail jumping.</td>
+                <td>Multi-sheet workbook tabs, cell formatting, formula evaluation, column resizing, sheet thumbnails, print, download.</td>
               </tr>
               <tr>
                 <td><strong>PDF Documents</strong></td>
@@ -1553,7 +1556,7 @@ viewer.print();               // Trigger print</pre>
                     <span class="format-badge">.pdf</span>
                   </div>
                 </td>
-                <td>Continuous lazy-loading multi-page viewer, text layer selection, search highlights, automatic page scroll tracking.</td>
+                <td>Continuous lazy-loading multi-page viewer, text layer selection, search highlights, automatic page scroll tracking, CW/CCW rotation, thumbnail jumping.</td>
               </tr>
               <tr>
                 <td><strong>Emails & Messages</strong></td>
@@ -1575,9 +1578,10 @@ viewer.print();               // Trigger print</pre>
                     <span class="format-badge">.otp</span>
                     <span class="format-badge">.ods</span>
                     <span class="format-badge">.odg</span>
+                    <span class="format-badge">.odf</span>
                   </div>
                 </td>
-                <td>ODF XML text, tables, embedded charts, continuous multi-page scrolling layout.</td>
+                <td>Native OpenDocument ODF XML text, tables, embedded charts, continuous multi-page scrolling layout, print, download.</td>
               </tr>
               <tr>
                 <td><strong>Rich Text & HTML</strong></td>
@@ -1586,53 +1590,174 @@ viewer.print();               // Trigger print</pre>
                     <span class="format-badge">.rtf</span>
                     <span class="format-badge">.html</span>
                     <span class="format-badge">.htm</span>
+                    <span class="format-badge">.xhtml</span>
                   </div>
                 </td>
-                <td>RTF parser with embedded images, continuous page cards, sandboxed iframe HTML preview.</td>
+                <td>Native RTF parser with font formatting and embedded images, sandboxed iframe HTML preview with DOMPurify sanitization.</td>
               </tr>
               <tr>
-                <td><strong>Code & Text</strong></td>
+                <td><strong>Rich Markdown</strong></td>
                 <td>
                   <div class="format-badges">
-                    <span class="format-badge">.ts</span>
-                    <span class="format-badge">.js</span>
-                    <span class="format-badge">.py</span>
-                    <span class="format-badge">.java</span>
-                    <span class="format-badge">.json</span>
-                    <span class="format-badge">.xml</span>
-                    <span class="format-badge">.txt</span>
                     <span class="format-badge">.md</span>
+                    <span class="format-badge">.markdown</span>
+                    <span class="format-badge">.mdown</span>
+                    <span class="format-badge">.mkd</span>
                   </div>
                 </td>
-                <td>190+ languages syntax highlighting, line numbers, word wrap, code search, text copy.</td>
+                <td>GitHub Flavored Markdown (tables, task checklists, blockquotes), syntax-highlighted code blocks, copy markdown, print, download.</td>
               </tr>
               <tr>
-                <td><strong>Media & 3D</strong></td>
-                <td>
-                  <div class="format-badges">
-                    <span class="format-badge">.mp3</span>
-                    <span class="format-badge">.wav</span>
-                    <span class="format-badge">.mp4</span>
-                    <span class="format-badge">.webm</span>
-                    <span class="format-badge">.stl</span>
-                    <span class="format-badge">.obj</span>
-                    <span class="format-badge">.png</span>
-                    <span class="format-badge">.jpg</span>
-                    <span class="format-badge">.svg</span>
-                  </div>
-                </td>
-                <td>Audio visualizer / waveforms, video player, interactive Three.js 3D orbit controls, pan and zoom.</td>
-              </tr>
-              <tr>
-                <td><strong>Data & Archives</strong></td>
+                <td><strong>Data & Tables</strong></td>
                 <td>
                   <div class="format-badges">
                     <span class="format-badge">.csv</span>
                     <span class="format-badge">.tsv</span>
+                  </div>
+                </td>
+                <td>Interactive paginated data grid, auto delimiter detection (comma/tab), column sorting, header styling, print, download.</td>
+              </tr>
+              <tr>
+                <td><strong>ZIP Archives</strong></td>
+                <td>
+                  <div class="format-badges">
                     <span class="format-badge">.zip</span>
                   </div>
                 </td>
-                <td>Interactive paginated data grid, sorting, ZIP archive file tree explorer and extraction.</td>
+                <td>Hierarchical file tree & detail table, real-time search filtering, individual file extraction and direct download, full zip download.</td>
+              </tr>
+              <tr>
+                <td><strong>3D Models</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.stl</span>
+                    <span class="format-badge">.obj</span>
+                  </div>
+                </td>
+                <td>Three.js interactive 360° orbit controls, perspective camera, ambient & directional lighting, solid vs wireframe toggle, reset view.</td>
+              </tr>
+              <tr>
+                <td><strong>Images & Vector</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.jpg</span>
+                    <span class="format-badge">.jpeg</span>
+                    <span class="format-badge">.png</span>
+                    <span class="format-badge">.gif</span>
+                    <span class="format-badge">.webp</span>
+                    <span class="format-badge">.svg</span>
+                    <span class="format-badge">.bmp</span>
+                    <span class="format-badge">.ico</span>
+                    <span class="format-badge">.tiff</span>
+                    <span class="format-badge">.tif</span>
+                    <span class="format-badge">.avif</span>
+                    <span class="format-badge">.apng</span>
+                    <span class="format-badge">.jfif</span>
+                    <span class="format-badge">.pjpeg</span>
+                    <span class="format-badge">.pjp</span>
+                  </div>
+                </td>
+                <td>Smooth pan & zoom, rotate 90° CW/CCW, SVG DOM sanitization with DOMPurify, reset view, print, download.</td>
+              </tr>
+              <tr>
+                <td><strong>Video Media</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.mp4</span>
+                    <span class="format-badge">.m4v</span>
+                    <span class="format-badge">.webm</span>
+                    <span class="format-badge">.ogv</span>
+                    <span class="format-badge">.ogg</span>
+                    <span class="format-badge">.mov</span>
+                    <span class="format-badge">.avi</span>
+                    <span class="format-badge">.mkv</span>
+                    <span class="format-badge">.flv</span>
+                    <span class="format-badge">.wmv</span>
+                    <span class="format-badge">.3gp</span>
+                    <span class="format-badge">.mpg</span>
+                    <span class="format-badge">.mpeg</span>
+                  </div>
+                </td>
+                <td>Responsive HTML5 video player, play/pause, seek bar, volume/mute, video rotation, fullscreen support, download.</td>
+              </tr>
+              <tr>
+                <td><strong>Audio Media</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.mp3</span>
+                    <span class="format-badge">.wav</span>
+                    <span class="format-badge">.ogg</span>
+                    <span class="format-badge">.flac</span>
+                    <span class="format-badge">.aac</span>
+                    <span class="format-badge">.m4a</span>
+                    <span class="format-badge">.wma</span>
+                    <span class="format-badge">.opus</span>
+                    <span class="format-badge">.weba</span>
+                  </div>
+                </td>
+                <td>Centered player card, Web Audio API waveform visualizer, audio playback controls, time display, download.</td>
+              </tr>
+              <tr>
+                <td><strong>Code & Text (190+ Languages)</strong></td>
+                <td>
+                  <div class="format-badges">
+                    <span class="format-badge">.ts</span>
+                    <span class="format-badge">.tsx</span>
+                    <span class="format-badge">.js</span>
+                    <span class="format-badge">.jsx</span>
+                    <span class="format-badge">.mjs</span>
+                    <span class="format-badge">.cjs</span>
+                    <span class="format-badge">.json</span>
+                    <span class="format-badge">.jsonc</span>
+                    <span class="format-badge">.json5</span>
+                    <span class="format-badge">.html</span>
+                    <span class="format-badge">.css</span>
+                    <span class="format-badge">.scss</span>
+                    <span class="format-badge">.sass</span>
+                    <span class="format-badge">.less</span>
+                    <span class="format-badge">.py</span>
+                    <span class="format-badge">.pyw</span>
+                    <span class="format-badge">.java</span>
+                    <span class="format-badge">.c</span>
+                    <span class="format-badge">.cpp</span>
+                    <span class="format-badge">.cc</span>
+                    <span class="format-badge">.h</span>
+                    <span class="format-badge">.hpp</span>
+                    <span class="format-badge">.cs</span>
+                    <span class="format-badge">.go</span>
+                    <span class="format-badge">.rs</span>
+                    <span class="format-badge">.sql</span>
+                    <span class="format-badge">.php</span>
+                    <span class="format-badge">.rb</span>
+                    <span class="format-badge">.swift</span>
+                    <span class="format-badge">.kt</span>
+                    <span class="format-badge">.scala</span>
+                    <span class="format-badge">.r</span>
+                    <span class="format-badge">.lua</span>
+                    <span class="format-badge">.sh</span>
+                    <span class="format-badge">.bash</span>
+                    <span class="format-badge">.zsh</span>
+                    <span class="format-badge">.fish</span>
+                    <span class="format-badge">.bat</span>
+                    <span class="format-badge">.cmd</span>
+                    <span class="format-badge">.ps1</span>
+                    <span class="format-badge">.yaml</span>
+                    <span class="format-badge">.yml</span>
+                    <span class="format-badge">.toml</span>
+                    <span class="format-badge">.xml</span>
+                    <span class="format-badge">.txt</span>
+                    <span class="format-badge">.log</span>
+                    <span class="format-badge">.ini</span>
+                    <span class="format-badge">.cfg</span>
+                    <span class="format-badge">.env</span>
+                    <span class="format-badge">.dockerfile</span>
+                    <span class="format-badge">.graphql</span>
+                    <span class="format-badge">.proto</span>
+                    <span class="format-badge">.diff</span>
+                    <span class="format-badge">.patch</span>
+                  </div>
+                </td>
+                <td>190+ languages syntax highlighting via highlight.js, line numbers gutter, clean text copy (excluding line numbers), code search, font zoom in/out, print, download.</td>
               </tr>
             </tbody>
           </table>
