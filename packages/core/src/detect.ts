@@ -59,6 +59,9 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
   '.odf': 'application/vnd.oasis.opendocument.formula',
   // Documents — RTF
   '.rtf': 'text/rtf',
+  // Emails
+  '.eml': 'message/rfc822',
+  '.msg': 'application/vnd.ms-outlook',
   // Images
   '.png': 'image/png',
   '.jpg': 'image/jpeg',

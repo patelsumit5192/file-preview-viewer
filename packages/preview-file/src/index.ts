@@ -14,6 +14,7 @@ import { htmlPreviewPlugin } from '@patel.sumit51/plugin-html-preview';
 import { openDocumentPlugin } from '@patel.sumit51/plugin-opendocument';
 import { docPlugin } from '@patel.sumit51/plugin-doc';
 import { pptPlugin } from '@patel.sumit51/plugin-ppt';
+import { emailPlugin } from '@patel.sumit51/plugin-email';
 import type { PreviewPlugin } from '@patel.sumit51/core';
 
 /**
@@ -41,6 +42,7 @@ export function getDefaultPlugins(): PreviewPlugin[] {
     archivePlugin(),
     markdownPlugin(),
     threeDPlugin(),
+    emailPlugin(),
     codePlugin(),
   ];
 }
@@ -74,6 +76,7 @@ export {
   archivePlugin,
   markdownPlugin,
   threeDPlugin,
+  emailPlugin,
   codePlugin,
 };
 

@@ -718,6 +718,8 @@ Each file format plugin adheres to the universal standard while honoring the nat
 | **HTML Webpages** | `.html`, `.htm`, `.xhtml` | ❌ (Single document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy HTML | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Rich Markdown** | `.md`, `.markdown`, `.mdown`, `.mkd` | ❌ (Continuous document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy Markdown | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Word Documents** | `.docx`, `.doc`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
+| **PowerPoint** | `.pptx`, `.ppt`, `.potx`, `.pot`, `.ppsx`, `.pps` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ (Presentation) | ✅ Auto-fit width / slide | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Emails & Messages** | `.eml`, `.msg` | ❌ (Single message / card) | ❌ | ❌ (Email card) | ✅ Auto-fit width | ❌ | ✅ Supported (Inline CID & Attachments) | ✅ Supported | **LOCKED** 🔒 |
 | **Video Media** | `.mp4`, `.webm`, `.m4v`, `.ogv`, `.ogg`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.3gp`, `.mpg`, `.mpeg` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ✅ Auto Fit-to-Width (Responsive) | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **Audio Media** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma`, `.opus`, `.weba` | ❌ (Seek bar) | ❌ | ❌ | ✅ Centered Card Player & Waveform | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
 | **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view & Fit-to-Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |

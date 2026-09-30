@@ -54,6 +54,7 @@ export default defineConfig({
     '@patel.sumit51/plugin-opendocument',
     '@patel.sumit51/plugin-doc',
     '@patel.sumit51/plugin-ppt',
+    '@patel.sumit51/plugin-email',
     '@patel.sumit51/react',
     '@patel.sumit51/vue',
     '@patel.sumit51/angular'

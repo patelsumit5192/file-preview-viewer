@@ -15,5 +15,6 @@ This project uses the following open-source libraries. All dependencies use stri
 | highlight.js | ^11.x | BSD-3-Clause | Ivan Sagalaev | https://github.com/highlightjs/highlight.js |
 | @panzoom/panzoom | ^4.x | MIT | Timmy Willison | https://github.com/timmywil/panzoom |
 | dompurify | ^3.x | Apache-2.0 | Cure53 | https://github.com/cure53/DOMPurify |
+| postal-mime | ^2.x | MIT-0 | Postal Systems | https://github.com/postalsys/postal-mime |
 
 All licenses are included in their respective `node_modules/<package>/LICENSE` files.

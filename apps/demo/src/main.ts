@@ -386,6 +386,16 @@ export class LRUCache<K, V> {
     ext: '.rtf',
     data: getSampleUrl('document.rtf')
   }),
+  eml: () => ({
+    name: 'email.eml',
+    ext: '.eml',
+    data: getSampleUrl('email.eml')
+  }),
+  msg: () => ({
+    name: 'email.msg',
+    ext: '.msg',
+    data: getSampleUrl('email.msg')
+  }),
   html: () => ({
     name: 'webpage.html',
     ext: '.html',

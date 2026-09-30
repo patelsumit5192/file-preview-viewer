@@ -16,7 +16,7 @@
 </p>
 
 > **The all-in-one, 100% client-side file preview library for React, Next.js, Angular, Vue 3, Nuxt 3, and Vanilla JavaScript / TypeScript.**  
-> Preview **PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV/TSV, ZIP Archives, Rich Markdown, 3D Models (.stl, .obj), Images, Video, Audio, and Code/Text (190+ languages)** with a built-in customizable toolbar (zoom, rotate, thumbnails, page jump, download, print). 100% free, permissive open-source, and client-side (zero cloud or server needed).
+> Preview **PDF, Word (.docx, .doc), Excel (.xlsx, .xls), PowerPoint (.pptx, .ppt), Emails (.eml, .msg), CSV/TSV, ZIP Archives, Rich Markdown, 3D Models (.stl, .obj), Images, Video, Audio, and Code/Text (190+ languages)** with a built-in customizable toolbar (zoom, rotate, thumbnails, page jump, download, print). 100% free, permissive open-source, and client-side (zero cloud or server needed).
 
 ---
 
@@ -665,16 +665,17 @@ Customize colors, borders, and typography using standard CSS custom properties:
 
 ---
 
-## 📂 Supported Formats Matrix (All 10 Categories)
+## 📂 Supported Formats Matrix (All 11 Categories)
 
 Every file format is rendered 100% in the browser using permissive open-source engines:
 
 | Category | File Extensions | Engine | License | Supported Features |
 |---|---|---|---|---|
 | **PDF** | `.pdf` | PDF.js (`pdfjs-dist`) | Apache-2.0 | Multi-page canvas rendering, Zoom In/Out, Fit to page, Rotate CW/CCW, Page jump, Thumbnails sidebar, Print, Download |
-| **Word Document** | `.docx` | `docx-preview` | Apache-2.0 | Preserves styles, tables, bullets, images, fonts, Zoom In/Out, Fit to page, Print, Download |
+| **Word Document** | `.docx`, `.doc` | `docx-preview` + Native CFBF | Apache-2.0 / MIT | Preserves styles, tables, bullets, images, fonts, Zoom In/Out, Fit to page, Print, Download |
 | **Excel Spreadsheet** | `.xlsx`, `.xls` | `exceljs` | MIT | Multi-sheet tab bar, styled grid cells, borders, formatting, Zoom, Print, Download |
-| **PowerPoint** | `.pptx`, `.ppsx` | `pptx-browser` | MIT | Slide-by-slide canvas rendering, slide thumbnails sidebar, navigation jump, Zoom, Fit to slide, Print, Download |
+| **PowerPoint** | `.pptx`, `.ppt`, `.ppsx` | `pptx-browser` + Native CFBF | MIT | Slide-by-slide canvas rendering, slide thumbnails sidebar, navigation jump, Zoom, Fit to width/slide, Print, Download |
+| **Emails & Messages** | `.eml`, `.msg` | `postal-mime` + Native CFBF | MIT-0 / MIT | Header cards (From, To, Cc, Subject, Date), user avatar badge, inline CID image resolution, DOMPurify HTML sanitization, attachment chips with direct download, Zoom In/Out, Fit to width, Print, Download |
 | **CSV / TSV Data** | `.csv`, `.tsv` | `papaparse` | MIT | Auto-detects comma/tab delimiter, tabular grid with header styling, Zoom, Print, Download |
 | **ZIP Archives** | `.zip` | `fflate` | MIT | Hierarchical file tree/table explorer, compression stats, instant search filter, single-file extract/download, download ZIP |
 | **Rich Markdown** | `.md`, `.markdown` | `marked` + `dompurify` | MIT / Apache-2.0 | GitHub Flavored Markdown (tables, checklists, blockquotes), syntax-highlighted code blocks, XSS sanitized, font zoom, Print, Download |
