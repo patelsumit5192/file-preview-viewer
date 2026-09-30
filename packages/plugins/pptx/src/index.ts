@@ -152,7 +152,7 @@ export class PptxPlugin implements PreviewPlugin {
     const renderer = new PptxRenderer();
     await renderer.load(ctx.buffer);
 
-    const slideCount = (renderer as any).slidePaths?.length || 1;
+    const slideCount = renderer.slideCount || (renderer as any).slidePaths?.length || 1;
     const initialSlide = typeof (ctx.options as any)?.page === 'number' && (ctx.options as any).page >= 1
       ? Math.max(1, Math.min(slideCount, (ctx.options as any).page))
       : 1;
@@ -163,14 +163,24 @@ export class PptxPlugin implements PreviewPlugin {
     let scale = initialZoom;
     let rotation = 0;
 
+    // Detect exact native slide dimensions and aspect ratio from presentation.xml
+    const emuW = renderer.slideSize?.cx || 9144000;
+    const emuH = renderer.slideSize?.cy || 6858000;
+    const slideAspect = emuW / emuH;
+    const baseW = 1280;
+    const baseH = Math.round(baseW / slideAspect);
+
+    // Presentation container setup
     const wrapper = document.createElement('div');
     wrapper.className = 'fp-pptx-wrapper';
+    wrapper.tabIndex = 0;
     wrapper.style.cssText = `
       width: 100%;
       height: 100%;
       overflow: auto;
       box-sizing: border-box;
       background: var(--fp-bg-canvas, #525659);
+      outline: none;
     `;
 
     const scrollWrapper = document.createElement('div');
@@ -200,58 +210,72 @@ export class PptxPlugin implements PreviewPlugin {
     const slideContainer = document.createElement('div');
     slideContainer.className = 'fp-slide-container';
     slideContainer.style.cssText = `
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
       border-radius: 4px;
       overflow: hidden;
       background: #ffffff;
       transform-origin: center center;
       transition: transform 0.2s ease;
       flex-shrink: 0;
+      width: ${baseW}px;
+      height: ${baseH}px;
+      transform: translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg);
     `;
 
     const canvas = document.createElement('canvas');
+    canvas.style.cssText = `
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: fill;
+    `;
     slideContainer.appendChild(canvas);
     sizer.appendChild(slideContainer);
     scrollWrapper.appendChild(sizer);
     wrapper.appendChild(scrollWrapper);
 
     ctx.container.innerHTML = '';
-    ctx.container.style.overflow = 'auto';
+    ctx.container.style.overflow = 'hidden';
     ctx.container.appendChild(wrapper);
 
-    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    // Presentations should fit cleanly inside the screen by default
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'page';
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
-      const availW = Math.max(200, ctx.container.clientWidth - 32);
-      const availH = Math.max(200, ctx.container.clientHeight - 32);
-      const cW = canvas.offsetWidth || 1280;
-      const cH = canvas.offsetHeight || 720;
+      const availW = Math.max(200, (wrapper.clientWidth || ctx.container.clientWidth) - 64);
+      const availH = Math.max(200, (wrapper.clientHeight || ctx.container.clientHeight) - 64);
       if (mode === 'page') {
-        return Math.min(2.5, Math.min(availW / cW, availH / cH));
+        return Math.min(2.5, Math.min(availW / baseW, availH / baseH));
       }
-      return Math.min(2.5, availW / cW);
+      return Math.min(2.5, availW / baseW);
     };
 
     const applyTransform = () => {
-      const cW = canvas.offsetWidth || 1280;
-      const cH = canvas.offsetHeight || 720;
       const isRotated90 = (rotation % 180 !== 0);
-      const boxW = Math.round((isRotated90 ? cH : cW) * scale);
-      const boxH = Math.round((isRotated90 ? cW : cH) * scale);
+      const boxW = Math.round((isRotated90 ? baseH : baseW) * scale);
+      const boxH = Math.round((isRotated90 ? baseW : baseH) * scale);
 
       sizer.style.width = `${boxW}px`;
       sizer.style.height = `${boxH}px`;
 
-      slideContainer.style.width = `${cW}px`;
-      slideContainer.style.height = `${cH}px`;
-      slideContainer.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      slideContainer.style.transformOrigin = 'center center';
+      slideContainer.style.width = `${baseW}px`;
+      slideContainer.style.height = `${baseH}px`;
+      slideContainer.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
     };
 
     const renderCurrentSlide = async () => {
       try {
-        await renderer.renderSlide(currentSlide - 1, canvas, 1280);
+        // Render canvas with high-DPI awareness
+        const dpr = typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1;
+        const renderW = Math.round(baseW * dpr);
+        await renderer.renderSlide(currentSlide - 1, canvas, renderW);
+        canvas.style.width = `${baseW}px`;
+        canvas.style.height = `${baseH}px`;
+
         ctx.emit('page-change', { page: currentSlide, total: slideCount, totalPages: slideCount });
         if (!isUserZoomed) {
           scale = calculateFitScale(fitMode);
@@ -264,6 +288,7 @@ export class PptxPlugin implements PreviewPlugin {
 
     await renderCurrentSlide();
 
+    // Mouse wheel slide-by-slide navigation
     let lastWheelTime = 0;
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) return;
@@ -285,6 +310,33 @@ export class PptxPlugin implements PreviewPlugin {
     };
     wrapper.addEventListener('wheel', onWheel, { passive: true });
 
+    // Keyboard navigation
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        if (currentSlide < slideCount) {
+          currentSlide++;
+          renderCurrentSlide();
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        if (currentSlide > 1) {
+          currentSlide--;
+          renderCurrentSlide();
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        currentSlide = 1;
+        renderCurrentSlide();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        currentSlide = slideCount;
+        renderCurrentSlide();
+      }
+    };
+    wrapper.addEventListener('keydown', onKeyDown);
+
+    // Responsive container observer
     const ro = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
           if (!isUserZoomed) {
@@ -293,11 +345,12 @@ export class PptxPlugin implements PreviewPlugin {
           }
         })
       : null;
-    ro?.observe(ctx.container);
+    ro?.observe(wrapper);
 
     const cleanup = () => {
       ro?.disconnect();
       wrapper.removeEventListener('wheel', onWheel);
+      wrapper.removeEventListener('keydown', onKeyDown);
       renderer.destroy();
       wrapper.remove();
       ctx.container.innerHTML = '';
@@ -347,7 +400,7 @@ export class PptxPlugin implements PreviewPlugin {
       },
       resetZoom: () => {
         isUserZoomed = true;
-        fitMode = 'width';
+        fitMode = 'page';
         scale = 1.0;
         rotation = 0;
         wrapper.scrollTop = 0;
@@ -366,13 +419,17 @@ export class PptxPlugin implements PreviewPlugin {
       },
       getThumbnails: (): Thumbnail[] => {
         const list: Thumbnail[] = [];
+        const thumbW = 240;
+        const thumbH = Math.round(thumbW / slideAspect);
         for (let i = 0; i < slideCount; i++) {
           const slideIdx = i;
           list.push({
             index: slideIdx,
             label: `Slide ${slideIdx + 1}`,
             render: async (thumbCanvas: HTMLCanvasElement) => {
-              await renderer.renderSlide(slideIdx, thumbCanvas, 240);
+              thumbCanvas.width = thumbW;
+              thumbCanvas.height = thumbH;
+              await renderer.renderSlide(slideIdx, thumbCanvas, thumbW);
             }
           });
         }

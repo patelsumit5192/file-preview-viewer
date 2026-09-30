@@ -23,6 +23,7 @@ import type {
 export class FilePreviewViewer {
   private plugins: PreviewPlugin[] = [];
   private activeInstance: PreviewInstance | null = null;
+  private activePlugin: PreviewPlugin | null = null;
   private abortController: AbortController | null = null;
   private eventEmitter = new EventEmitter();
   private toolbar: ToolbarController | null = null;
@@ -39,6 +40,7 @@ export class FilePreviewViewer {
   private resizeObserver: ResizeObserver | null = null;
   private fullscreenHandler: (() => void) | null = null;
   private titleBarEl: HTMLElement | null = null;
+  private isUserZoomed = false;
 
   /**
    * Register a preview plugin.
@@ -68,10 +70,8 @@ export class FilePreviewViewer {
     source: FileSource,
     options: PreviewViewerOptions = {}
   ): Promise<PreviewInstance> {
-    options = {
-      ...options,
-      fitMode: options.fitMode ?? 'width',
-    };
+    options = { ...options };
+    this.isUserZoomed = typeof options.zoom === 'number' && options.zoom > 0;
     this.currentOptions = options;
     this.currentSource = source;
 
@@ -118,6 +118,15 @@ export class FilePreviewViewer {
       if (this.contentEl) {
         this.contentEl.innerHTML = '';
       }
+
+      this.activePlugin = matchedPlugin;
+      const isPresentation = matchedPlugin.id === 'pptx' || matchedPlugin.id === 'ppt';
+      const effectiveFitMode = options.fitMode ?? (isPresentation ? 'page' : 'width');
+      options = {
+        ...options,
+        fitMode: effectiveFitMode,
+      };
+      this.currentOptions = options;
 
       const instance = await matchedPlugin.render({
         container: this.contentEl!,
@@ -286,6 +295,10 @@ export class FilePreviewViewer {
             instance.setZoom?.(targetZoom);
           } catch {}
         }, 120);
+      } else {
+        setTimeout(() => {
+          this.triggerAutoFit();
+        }, 60);
       }
 
       return instance;
@@ -536,13 +549,23 @@ export class FilePreviewViewer {
    * Fit document to page so it fills the frame width with minimal margins.
    */
   fitToPage(): void {
+    this.isUserZoomed = false;
     this.activeInstance?.fitToPage?.();
+  }
+
+  /**
+   * Fit document to container width.
+   */
+  fitToWidth(): void {
+    this.isUserZoomed = false;
+    this.activeInstance?.fitToWidth?.();
   }
 
   /**
    * Reset zoom level to initial/default fit state.
    */
   resetZoom(): void {
+    this.isUserZoomed = false;
     if (this.activeInstance?.resetZoom) {
       this.activeInstance.resetZoom();
     } else if (this.activeInstance?.fitToPage) {
@@ -554,6 +577,7 @@ export class FilePreviewViewer {
    * Zoom in.
    */
   zoomIn(): void {
+    this.isUserZoomed = true;
     this.activeInstance?.zoomIn?.();
   }
 
@@ -561,6 +585,7 @@ export class FilePreviewViewer {
    * Zoom out.
    */
   zoomOut(): void {
+    this.isUserZoomed = true;
     this.activeInstance?.zoomOut?.();
   }
 
@@ -568,6 +593,7 @@ export class FilePreviewViewer {
    * Set specific zoom level.
    */
   setZoom(level: number): void {
+    this.isUserZoomed = true;
     this.activeInstance?.setZoom?.(level);
   }
 
@@ -1031,8 +1057,12 @@ export class FilePreviewViewer {
 
   private triggerAutoFit(): void {
     if (!this.activeInstance) return;
-    const mode = this.currentOptions?.fitMode ?? 'width';
-    if (mode === 'width' && this.activeInstance.fitToWidth) {
+    const isPresentation = this.activePlugin?.id === 'pptx' || this.activePlugin?.id === 'ppt';
+    const defaultMode = isPresentation ? 'page' : 'width';
+    const mode = this.currentOptions?.fitMode ?? defaultMode;
+    if (mode === 'page' && this.activeInstance.fitToPage) {
+      this.activeInstance.fitToPage();
+    } else if (mode === 'width' && this.activeInstance.fitToWidth) {
       this.activeInstance.fitToWidth();
     } else if (this.activeInstance.fitToPage) {
       this.activeInstance.fitToPage();
@@ -1055,8 +1085,8 @@ export class FilePreviewViewer {
 
     if (typeof ResizeObserver !== 'undefined' && this.contentEl) {
       this.resizeObserver = new ResizeObserver(() => {
-        // Auto-fit content when viewport dimensions resize
-        if (this.activeInstance && (!this.activeInstance.getZoom || Math.abs((this.activeInstance.getZoom?.() ?? 1) - 1.0) < 0.05)) {
+        // Auto-fit content when viewport dimensions resize, unless user manually zoomed
+        if (this.activeInstance && !this.isUserZoomed) {
           this.triggerAutoFit();
         }
       });
