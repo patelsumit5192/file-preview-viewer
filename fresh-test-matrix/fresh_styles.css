@@ -1,0 +1,15 @@
+:root {
+  --fp-primary: #2563eb;
+  --fp-primary-hover: #1d4ed8;
+  --fp-bg-surface: #ffffff;
+  --fp-border: #e2e8f0;
+}
+
+.fp-preview-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--fp-bg-surface);
+}

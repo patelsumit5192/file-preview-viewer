@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns="http://enterprise.org/config/v2">
+  <cluster name="omega-prod" environment="production">
+    <nodes count="32">
+      <node id="node-01" ip="10.0.1.10" status="leader"/>
+      <node id="node-02" ip="10.0.1.11" status="follower"/>
+      <node id="node-03" ip="10.0.1.12" status="follower"/>
+    </nodes>
+    <consensus protocol="Raft" electionTimeoutMs="300" heartbeatIntervalMs="50"/>
+  </cluster>
+</configuration>

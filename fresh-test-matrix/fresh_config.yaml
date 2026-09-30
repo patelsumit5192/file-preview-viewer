@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: preview-viewer-engine
+  labels:
+    app: preview-service
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: preview-service
+  template:
+    metadata:
+      labels:
+        app: preview-service
+    spec:
+      containers:
+      - name: viewer
+        image: enterprise/preview-viewer:1.2.1
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"

@@ -1,0 +1,7 @@
+PROJECT HORIZON DOCUMENTATION
+=============================
+Version: 1.2.1
+Status: Production Ready
+
+This is a comprehensive text specification validating text rendering, search matching,
+and scrolling capabilities across large and small plain text payloads.
