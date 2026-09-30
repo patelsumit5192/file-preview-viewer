@@ -120,8 +120,7 @@ export class FilePreviewViewer {
       }
 
       this.activePlugin = matchedPlugin;
-      const isPresentation = matchedPlugin.id === 'pptx' || matchedPlugin.id === 'ppt';
-      const effectiveFitMode = options.fitMode ?? (isPresentation ? 'page' : 'width');
+      const effectiveFitMode = options.fitMode ?? 'width';
       options = {
         ...options,
         fitMode: effectiveFitMode,
@@ -1057,12 +1056,12 @@ export class FilePreviewViewer {
 
   private triggerAutoFit(): void {
     if (!this.activeInstance) return;
-    const isPresentation = this.activePlugin?.id === 'pptx' || this.activePlugin?.id === 'ppt';
-    const defaultMode = isPresentation ? 'page' : 'width';
-    const mode = this.currentOptions?.fitMode ?? defaultMode;
-    if (mode === 'page' && this.activeInstance.fitToPage) {
+    const mode = this.currentOptions?.fitMode ?? 'width';
+    if (mode === 'width' && this.activeInstance.fitToWidth) {
+      this.activeInstance.fitToWidth();
+    } else if (mode === 'page' && this.activeInstance.fitToPage) {
       this.activeInstance.fitToPage();
-    } else if (mode === 'width' && this.activeInstance.fitToWidth) {
+    } else if (this.activeInstance.fitToWidth) {
       this.activeInstance.fitToWidth();
     } else if (this.activeInstance.fitToPage) {
       this.activeInstance.fitToPage();

@@ -240,7 +240,7 @@ export class PptPlugin implements PreviewPlugin {
       : 1.0;
     let scale = initialZoom;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'page';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
@@ -487,11 +487,13 @@ export class PptPlugin implements PreviewPlugin {
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         applyTransform();
       },
       resetZoom: () => {
         isUserZoomed = true;
-        fitMode = 'page';
+        fitMode = 'width';
         scale = 1.0;
         rotation = 0;
         container.scrollTop = 0;

@@ -78,7 +78,7 @@ export interface PreviewViewerOptions extends ToolbarConfig {
 | `showFileName` | `boolean` | `true` | When `true`, renders the file name and format badge (`📄 filename.ext [EXT]`) in the title bar above the toolbar. Set `false` to hide. |
 | `fileName` | `string` | `undefined` | Custom file title override displayed in the title bar. If omitted, uses the filename from `src` or metadata. |
 | `showThumbnails`| `boolean` | `false` | When `true`, automatically opens the thumbnail sidebar panel immediately upon initial load. |
-| `fitMode` | `'page' \| 'width'` | `'page'` | Preferred fit calculation strategy. |
+| `fitMode` | `'width' \| 'page'` | `'width'` | Preferred fit calculation strategy ('width' fits container width, 'page' fits entire page/slide inside viewport). |
 | `zoom` | `number` | `1.0` | Initial zoom scale factor (`1.0` = 100%, `1.5` = 150%, `0.8` = 80%). |
 | `page` | `number` | `1` | Initial page number (1-based) to jump to after rendering completes. |
 | `locale` | `string` | `'en'` | UI locale language code for accessible button tooltips. |

@@ -241,8 +241,8 @@ export class PptxPlugin implements PreviewPlugin {
     ctx.container.style.overflow = 'hidden';
     ctx.container.appendChild(wrapper);
 
-    // Presentations should fit cleanly inside the screen by default
-    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'page';
+    // Default fit mode is 'width'
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
@@ -396,11 +396,13 @@ export class PptxPlugin implements PreviewPlugin {
         fitMode = 'width';
         scale = calculateFitScale('width');
         rotation = 0;
+        wrapper.scrollTop = 0;
+        wrapper.scrollLeft = 0;
         applyTransform();
       },
       resetZoom: () => {
         isUserZoomed = true;
-        fitMode = 'page';
+        fitMode = 'width';
         scale = 1.0;
         rotation = 0;
         wrapper.scrollTop = 0;
