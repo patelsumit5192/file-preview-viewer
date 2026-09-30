@@ -1,0 +1,144 @@
+From: "Elena Rostova" <elena.rostova@nexus-tech.io>
+To: "Product Operations" <prod-ops@nexus-tech.io>, "Sumit Patel" <sumit@example.com>
+Cc: "Engineering Board" <eng-board@nexus-tech.io>
+Subject: Product Launch Update: Universal File Preview Engine v1.2
+Date: Wed, 30 Sep 2026 08:45:00 +0000
+Message-ID: <20260930084500.98765@nexus-tech.io>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_NextPart_000_Mixed_12345"
+
+------=_NextPart_000_Mixed_12345
+Content-Type: multipart/alternative; boundary="----=_NextPart_001_Alt_67890"
+
+------=_NextPart_001_Alt_67890
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Hi Team,
+
+We are excited to announce that the Universal File Preview Engine v1.2 release preparation is completed.
+
+Key Highlights:
+- Over 50+ document, presentation, spreadsheet, and media formats supported client-side.
+- Zero server-side rendering latency; 100% offline-ready in browser.
+- Added native email preview support for .eml and .msg files.
+- Default "fit to width" view across all visual previewers.
+
+Timeline & Rollout:
+- Phase 1 (Internal Staging): Sep 30, 2026
+- Phase 2 (Global CDN Edge Mirrors): Oct 02, 2026
+
+Please find the detailed release notes attached.
+
+Best regards,
+Elena Rostova
+Lead Product Architect | Nexus Technologies
+
+------=_NextPart_001_Alt_67890
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; }
+    .email-container { max-width: 680px; margin: 0 auto; padding: 20px; }
+    .hero { background: linear-gradient(135deg, #0ea5e9, #3b82f6); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+    .hero h1 { margin: 0 0 8px 0; font-size: 22px; font-weight: 700; }
+    .hero p { margin: 0; opacity: 0.92; font-size: 14px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    .card h3 { margin: 0 0 12px 0; font-size: 16px; color: #0f172a; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-right: 6px; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-info { background: #e0f2fe; color: #0369a1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th { text-align: left; padding: 10px; background: #e2e8f0; color: #334155; font-weight: 600; }
+    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #cbd5e1; font-size: 13px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="hero">
+      <h1>🚀 Universal File Preview Engine v1.2</h1>
+      <p>Official release update and milestone announcement</p>
+    </div>
+    
+    <p>Hi Team,</p>
+    <p>We are excited to announce that the <strong>Universal File Preview Engine v1.2</strong> release preparation is successfully finalized. All preview engines and plugins have passed automated end-to-end verification.</p>
+    
+    <div class="card">
+      <h3>✨ Key Milestones Achieved</h3>
+      <p><span class="badge badge-success">Done</span> <strong>50+ Formats Supported:</strong> Complete coverage across Office, PDFs, presentations, spreadsheets, archives, and code.</p>
+      <p><span class="badge badge-success">Done</span> <strong>Native Email Preview:</strong> Seamless client-side viewing for Outlook <code>.msg</code> and RFC 822 <code>.eml</code> files with headers, rich HTML, and attachments.</p>
+      <p><span class="badge badge-info">Default</span> <strong>Fit-to-Width Strategy:</strong> Universal responsive layout standard across all viewport dimensions.</p>
+    </div>
+
+    <div class="card">
+      <h3>📅 Rollout Schedule</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Milestone Phase</th>
+            <th>Target Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Internal Staging & Visual Regression</td>
+            <td>Sep 30, 2026</td>
+            <td><strong style="color: #16a34a;">Completed</strong></td>
+          </tr>
+          <tr>
+            <td>NPM Public Registry Release</td>
+            <td>Sep 30, 2026</td>
+            <td><strong style="color: #16a34a;">Published</strong></td>
+          </tr>
+          <tr>
+            <td>Global CDN Edge Deployment</td>
+            <td>Oct 02, 2026</td>
+            <td><strong style="color: #2563eb;">Scheduled</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Please review the attached release summary for comprehensive implementation details.</p>
+
+    <div class="footer">
+      <strong>Elena Rostova</strong><br>
+      Lead Product Architect · Nexus Technologies<br>
+      <a href="mailto:elena.rostova@nexus-tech.io" style="color: #0284c7;">elena.rostova@nexus-tech.io</a>
+    </div>
+  </div>
+</body>
+</html>
+
+------=_NextPart_001_Alt_67890--
+
+------=_NextPart_000_Mixed_12345
+Content-Type: text/plain; name="release-notes.txt"
+Content-Disposition: attachment; filename="release-notes.txt"
+Content-Transfer-Encoding: 7bit
+
+=======================================================
+UNIVERSAL FILE PREVIEW ENGINE v1.2 - RELEASE SPECIFICATION
+=======================================================
+
+1. Email Format Support:
+   - Added RFC 822 / RFC 2822 (.eml) parsing and rendering.
+   - Added Outlook MS-OXMSG (.msg) parsing and rendering.
+   - Full support for multipart MIME, rich HTML, plain text, and attachment downloads.
+
+2. Presentation Upgrades:
+   - Modern PowerPoint (.pptx) and Legacy PowerPoint (.ppt) zero-overflow rendering.
+   - Proportional aspect ratio containment and high-DPI canvas renderers.
+
+3. Fit Strategy:
+   - Standardized default fitMode to 'width' across all file types.
+
+=======================================================
+------=_NextPart_000_Mixed_12345--
