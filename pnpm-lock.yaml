@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   pptx-browser@4.1.5:
-    hash: 3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259
+    hash: fa3dec2aa50313786588e68a6d31326cff3fb287d985bb9a638f262fdcfc138a
     path: patches/pptx-browser@4.1.5.patch
 
 importers:
@@ -36,7 +36,7 @@ importers:
         version: 4.0.1
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
+        version: 4.1.5(patch_hash=fa3dec2aa50313786588e68a6d31326cff3fb287d985bb9a638f262fdcfc138a)
       prettier:
         specifier: ^3.5.0
         version: 3.9.7
@@ -505,7 +505,7 @@ importers:
         version: 0.8.3
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
+        version: 4.1.5(patch_hash=fa3dec2aa50313786588e68a6d31326cff3fb287d985bb9a638f262fdcfc138a)
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*
@@ -570,7 +570,7 @@ importers:
         version: 4.10.38
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
+        version: 4.1.5(patch_hash=fa3dec2aa50313786588e68a6d31326cff3fb287d985bb9a638f262fdcfc138a)
       rtf.js:
         specifier: ^3.0.9
         version: 3.0.9
@@ -5157,7 +5157,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  pptx-browser@4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259): {}
+  pptx-browser@4.1.5(patch_hash=fa3dec2aa50313786588e68a6d31326cff3fb287d985bb9a638f262fdcfc138a): {}
 
   prettier@2.8.8: {}
 

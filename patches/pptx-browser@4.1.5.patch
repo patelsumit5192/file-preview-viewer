@@ -11,10 +11,40 @@ index 2f22c894bc259749d9cf18a23ab80bc706b840e7..74b60cd83156db3795fb354259162259
    return a < 1
      ? `rgba(${c.r},${c.g},${c.b},${a.toFixed(3)})`
 diff --git a/src/index.js b/src/index.js
-index eddc206af12a1fbf1204a3509199bf0d8b12dc73..5609f76d9c5a8591d563c516cfb2d3b6d806c4c1 100644
+index eddc206af12a1fbf1204a3509199bf0d8b12dc73..9ba887386b74eacbfe284286c7c1ebe20347fc46 100644
 --- a/src/index.js
 +++ b/src/index.js
-@@ -201,9 +201,9 @@ export default class PptxRenderer {
+@@ -89,7 +89,12 @@ export default class PptxRenderer {
+     }
+ 
+     onProgress(0.05, 'Decompressing…');
+-    this._files = await readZip(buf);
++    const rawFiles = await readZip(buf);
++    this._files = {};
++    for (const [k, v] of Object.entries(rawFiles)) {
++      const cleanKey = k.replace(/\\/g, '/').replace(/^\//, '');
++      this._files[cleanKey] = v;
++    }
+ 
+     // ── presentation.xml ─────────────────────────────────────────────────
+     onProgress(0.1, 'Parsing presentation…');
+@@ -123,6 +128,15 @@ export default class PptxRenderer {
+         if (rel) this.slidePaths.push(rel.fullPath);
+       }
+     }
++    if (this.slidePaths.length === 0) {
++      const discovered = Object.keys(this._files).filter(k => /(^|\/)slides\/[^/]+\.xml$/i.test(k) && !k.endsWith('.rels'));
++      discovered.sort((a, b) => {
++        const numA = parseInt(a.match(/slide[-_]?(\d+)\.xml/i)?.[1] || '0', 10);
++        const numB = parseInt(b.match(/slide[-_]?(\d+)\.xml/i)?.[1] || '0', 10);
++        return numA - numB;
++      });
++      this.slidePaths = discovered;
++    }
+     this.slideCount = this.slidePaths.length;
+ 
+     // ── Theme ─────────────────────────────────────────────────────────────
+@@ -201,13 +215,15 @@ export default class PptxRenderer {
      const allImages = { ...this.masterImages, ...layoutImages, ...slideImages };
      const placeholderMap = buildPlaceholderMap([layoutDoc, this.masterDoc]);
  
@@ -25,12 +55,156 @@ index eddc206af12a1fbf1204a3509199bf0d8b12dc73..5609f76d9c5a8591d563c516cfb2d3b6
 +    loadGoogleFontsFor(usedFonts, this.themeData).catch(() => {});
  
      // Canvas setup
-     const scale  = width / this.slideSize.cx;
+-    const scale  = width / this.slideSize.cx;
+-    const height = Math.round(this.slideSize.cy * scale);
++    const cx = this.slideSize?.cx > 0 ? this.slideSize.cx : 9144000;
++    const cy = this.slideSize?.cy > 0 ? this.slideSize.cy : 5143500;
++    const scale  = width / cx;
++    const height = Math.round(cy * scale);
+     canvas.width  = width;
+     canvas.height = height;
+     const ctx = canvas.getContext('2d');
+@@ -315,7 +331,18 @@ export default class PptxRenderer {
+   // ── Private helpers ───────────────────────────────────────────────────────
+ 
+   _readText(path) {
+-    const data = this._files[path];
++    if (!path || !this._files) return null;
++    const clean = path.replace(/\\/g, '/').replace(/^\//, '');
++    let data = this._files[clean] || this._files[path];
++    if (!data) {
++      const lower = clean.toLowerCase();
++      for (const [k, v] of Object.entries(this._files)) {
++        if (k.toLowerCase() === lower) {
++          data = v;
++          break;
++        }
++      }
++    }
+     return data ? new TextDecoder().decode(data) : null;
+   }
+ 
+@@ -331,14 +358,25 @@ export default class PptxRenderer {
+     const spTree = cSld ? g1(cSld, 'spTree') : null;
+     if (!spTree) return;
+ 
+-    for (const child of spTree.children) {
++    const processNonPhChild = async (child) => {
+       const ln = child.localName;
+-      if (!['sp','pic','grpSp','graphicFrame','cxnSp'].includes(ln)) continue;
++      if (ln === 'AlternateContent') {
++        const choice = g1(child, 'Choice');
++        const fallback = g1(child, 'Fallback');
++        const container = choice || fallback;
++        if (container) {
++          for (const subChild of container.children) {
++            await processNonPhChild(subChild);
++          }
++        }
++        return;
++      }
++      if (!['sp','pic','grpSp','graphicFrame','cxnSp'].includes(ln)) return;
+ 
+       // Skip placeholders — those are filled by slide content
+       const nvSpPr = g1(child, 'nvSpPr');
+       const nvPr   = nvSpPr ? g1(nvSpPr, 'nvPr') : null;
+-      if (nvPr && g1(nvPr, 'ph')) continue;
++      if (nvPr && g1(nvPr, 'ph')) return;
+ 
+       try {
+         if      (ln === 'sp')           await renderShape(ctx, child, rels, images, this.themeColors, this.themeData, scale);
+@@ -349,6 +387,10 @@ export default class PptxRenderer {
+       } catch (e) {
+         console.warn(`[PptxRenderer] master/layout shape error (${ln}):`, e);
+       }
++    };
++
++    for (const child of spTree.children) {
++      await processNonPhChild(child);
+     }
+   }
+ 
 diff --git a/src/render.js b/src/render.js
-index 8d0e215b7823cb7fa8ae1c0b6f2d5d6e8dd6bdac..55bf2493a6aafb5b3f72257f473e2a6de008765d 100644
+index 8d0e215b7823cb7fa8ae1c0b6f2d5d6e8dd6bdac..800d7a762ecd95ea14330ddb90953fcaba7947fd 100644
 --- a/src/render.js
 +++ b/src/render.js
-@@ -596,15 +596,15 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
+@@ -241,13 +241,24 @@ export async function applyFill(ctx, fillEl, x, y, w, h, scale, themeColors, ima
+ 
+ export async function getRels(files, partPath) {
+   // ppt/slides/slide1.xml → ppt/slides/_rels/slide1.xml.rels
+-  const parts = partPath.split('/');
++  const cleanPart = partPath.replace(/\\/g, '/').replace(/^\//, '');
++  const parts = cleanPart.split('/');
+   const filename = parts.pop();
+   const relsPath = [...parts, '_rels', filename + '.rels'].join('/');
+-  const rawData = files[relsPath];
++  let rawData = files[relsPath];
++  if (!rawData) {
++    const lower = relsPath.toLowerCase();
++    for (const [k, v] of Object.entries(files)) {
++      if (k.replace(/\\/g, '/').replace(/^\//, '').toLowerCase() === lower) {
++        rawData = v;
++        break;
++      }
++    }
++  }
+   if (!rawData) return {};
+   const content = new TextDecoder().decode(rawData);
+   const doc = parseXml(content);
++  if (!doc) return {};
+   const rels = {};
+   for (const rel of Array.from(doc.getElementsByTagName('Relationship'))) {
+     const id = rel.getAttribute('Id');
+@@ -260,7 +271,7 @@ export async function getRels(files, partPath) {
+         fullPath = target.slice(1);
+       } else {
+         // Resolve relative to the directory of partPath
+-        const baseParts = partPath.split('/');
++        const baseParts = cleanPart.split('/');
+         baseParts.pop();
+         const targetParts = target.split('/');
+         for (const part of targetParts) {
+@@ -270,6 +281,7 @@ export async function getRels(files, partPath) {
+         fullPath = baseParts.join('/');
+       }
+     }
++    fullPath = fullPath.replace(/\\/g, '/').replace(/^\//, '');
+     rels[id] = { target, fullPath, type, external: mode === 'External' };
+   }
+   return rels;
+@@ -284,10 +296,20 @@ export async function loadImages(files, rels) {
+   const imgExts = new Set(['png','jpg','jpeg','gif','webp','bmp','tiff','tif','svg']);
+   for (const [rId, rel] of Object.entries(rels)) {
+     if (rel.external) continue;
+-    const ext = rel.fullPath.split('.').pop().toLowerCase();
++    const cleanPath = (rel.fullPath || '').replace(/\\/g, '/').replace(/^\//, '');
++    const ext = cleanPath.split('.').pop().toLowerCase();
+     if (!imgExts.has(ext)) continue;
+     try {
+-      const data = files[rel.fullPath];
++      let data = files[cleanPath] || files[rel.fullPath];
++      if (!data) {
++        const lower = cleanPath.toLowerCase();
++        for (const [k, v] of Object.entries(files)) {
++          if (k.replace(/\\/g, '/').replace(/^\//, '').toLowerCase() === lower) {
++            data = v;
++            break;
++          }
++        }
++      }
+       if (!data) continue;
+       const mimeMap = {
+         png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',
+@@ -297,7 +319,7 @@ export async function loadImages(files, rels) {
+       const mime = mimeMap[ext] || 'image/png';
+       const blob = new Blob([data], { type: mime });
+       const url = URL.createObjectURL(blob);
+-      const img = await new Promise((resolve, reject) => {
++      const img = await new Promise((resolve) => {
+         const image = new Image();
+         image.onload = () => resolve(image);
+         image.onerror = () => resolve(null);
+@@ -596,15 +618,15 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
      const marL = attrInt(pPr, 'marL', 0) * scale;
      const indent = attrInt(pPr, 'indent', 0) * scale;
  
@@ -49,7 +223,7 @@ index 8d0e215b7823cb7fa8ae1c0b6f2d5d6e8dd6bdac..55bf2493a6aafb5b3f72257f473e2a6d
      // Default font size: lstStyle (lowest) → pPr defRPr (higher) → run rPr (highest)
      let paraDefSz = defaultFontSz;
      if (lstDefRPr) {
-@@ -869,7 +869,7 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
+@@ -869,7 +891,7 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
        // ── Draw each run ──────────────────────────────────────────────────────
        for (const run of runs) {
          const c = run.color;
@@ -58,17 +232,309 @@ index 8d0e215b7823cb7fa8ae1c0b6f2d5d6e8dd6bdac..55bf2493a6aafb5b3f72257f473e2a6d
  
          // Superscript / subscript: smaller font + vertical offset
          let drawY = baseline;
+@@ -999,7 +1021,34 @@ export async function renderShape(ctx, spEl, rels, imageCache, themeColors, them
+       w = phData.w * scale;
+       h = phData.h * scale;
+     } else {
+-      return; // Can't determine position — skip
++      const hasTx = !!g1(spEl, 'txBody');
++      if (hasTx) {
++        const nvSpPr = g1(spEl, 'nvSpPr');
++        const nvPr = nvSpPr ? g1(nvSpPr, 'nvPr') : null;
++        const ph = nvPr ? g1(nvPr, 'ph') : null;
++        const rawType = (ph ? attr(ph, 'type', '') : '').toLowerCase();
++        const phIdx = ph ? attr(ph, 'idx', '0') : '0';
++        const cw = ctx.canvas?.width || 1280;
++        const ch = ctx.canvas?.height || 720;
++        if (rawType.includes('title') || phIdx === '0') {
++          x = cw * 0.08;
++          y = ch * 0.10;
++          w = cw * 0.84;
++          h = ch * 0.20;
++        } else if (rawType.includes('sub') || phIdx === '1') {
++          x = cw * 0.10;
++          y = ch * 0.35;
++          w = cw * 0.80;
++          h = ch * 0.20;
++        } else {
++          x = cw * 0.08;
++          y = ch * 0.25;
++          w = cw * 0.84;
++          h = ch * 0.65;
++        }
++      } else {
++        return; // Can't determine position — skip
++      }
+     }
+   }
  
-+diff --git a/src/utils.js b/src/utils.js
-+index 45543d3..6ebc2aa 100644
-+--- a/src/utils.js
-++++ b/src/utils.js
-+@@ -4,4 +4,6 @@
-+ 
-+ export function parseXml(str) {
-+-  return new DOMParser().parseFromString(str, 'application/xml');
-++  if (typeof str !== 'string') return null;
-++  const sanitized = str.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
-++  return new DOMParser().parseFromString(sanitized, 'application/xml');
-+ }
+@@ -1313,20 +1362,27 @@ export function applyOutline(ctx, lnEl, themeColors, scale) {
+ 
+ export async function renderPicture(ctx, picEl, rels, imageCache, themeColors, scale) {
+   const spPr = g1(picEl, 'spPr');
+-  const xfrm = g1(spPr, 'xfrm');
+-  if (!xfrm) return;
+-
+-  const off = g1(xfrm, 'off');
+-  const ext = g1(xfrm, 'ext');
+-  if (!off || !ext) return;
+-
+-  const x = attrInt(off, 'x', 0) * scale;
+-  const y = attrInt(off, 'y', 0) * scale;
+-  const w = attrInt(ext, 'cx', 0) * scale;
+-  const h = attrInt(ext, 'cy', 0) * scale;
+-  const rot = attrInt(xfrm, 'rot', 0) / 60000;
+-  const flipH = attr(xfrm, 'flipH', '0') === '1';
+-  const flipV = attr(xfrm, 'flipV', '0') === '1';
++  const xfrm = spPr ? g1(spPr, 'xfrm') : null;
++  let x = 0, y = 0, w = 0, h = 0, rot = 0, flipH = false, flipV = false;
++  if (xfrm) {
++    const off = g1(xfrm, 'off');
++    const ext = g1(xfrm, 'ext');
++    if (!off || !ext) return;
++    x = attrInt(off, 'x', 0) * scale;
++    y = attrInt(off, 'y', 0) * scale;
++    w = attrInt(ext, 'cx', 0) * scale;
++    h = attrInt(ext, 'cy', 0) * scale;
++    rot = attrInt(xfrm, 'rot', 0) / 60000;
++    flipH = attr(xfrm, 'flipH', '0') === '1';
++    flipV = attr(xfrm, 'flipV', '0') === '1';
++  } else {
++    const cw = ctx.canvas?.width || 1280;
++    const ch = ctx.canvas?.height || 720;
++    x = cw * 0.1;
++    y = ch * 0.15;
++    w = cw * 0.8;
++    h = ch * 0.7;
++  }
+ 
+   if (w <= 0 || h <= 0) return;
+ 
+@@ -1580,13 +1636,31 @@ export async function renderGroupShape(ctx, grpSpEl, rels, imageCache, themeColo
+     ctx.translate(-grpCx, -grpCy);
+   }
+ 
+-  for (const child of grpSpEl.children) {
++  const processGroupChild = async (child) => {
+     const ln = child.localName;
+-    if (ln === 'sp') await renderShape(ctx, child, rels, imageCache, themeColors, themeData, scale, parentGroup);
+-    else if (ln === 'pic') await renderPicture(ctx, child, rels, imageCache, themeColors, scale);
+-    else if (ln === 'grpSp') await renderGroupShape(ctx, child, rels, imageCache, themeColors, themeData, scale);
+-    else if (ln === 'graphicFrame') await renderGraphicFrame(ctx, child, themeColors, themeData, scale, files, rels);
+-    else if (ln === 'cxnSp') await renderConnector(ctx, child, themeColors, scale);
++    try {
++      if (ln === 'sp') await renderShape(ctx, child, rels, imageCache, themeColors, themeData, scale, parentGroup);
++      else if (ln === 'pic') await renderPicture(ctx, child, rels, imageCache, themeColors, scale);
++      else if (ln === 'grpSp') await renderGroupShape(ctx, child, rels, imageCache, themeColors, themeData, scale);
++      else if (ln === 'graphicFrame') await renderGraphicFrame(ctx, child, themeColors, themeData, scale, files, rels);
++      else if (ln === 'cxnSp') await renderConnector(ctx, child, themeColors, scale);
++      else if (ln === 'AlternateContent') {
++        const choice = g1(child, 'Choice');
++        const fallback = g1(child, 'Fallback');
++        const container = choice || fallback;
++        if (container) {
++          for (const subChild of container.children) {
++            await processGroupChild(subChild);
++          }
++        }
++      }
++    } catch(e) {
++      console.warn('Error rendering group shape child:', ln, e);
++    }
++  };
 +
++  for (const child of grpSpEl.children) {
++    await processGroupChild(child);
+   }
+   ctx.restore();
+ }
+@@ -1819,26 +1893,48 @@ export function buildPlaceholderMap(docs) {
+       const ph = nvPr ? g1(nvPr, 'ph') : null;
+       if (!ph) continue;
+ 
+-      const phType = attr(ph, 'type', 'body');
++      const rawType = attr(ph, 'type', 'body');
++      const phType = rawType.toLowerCase();
+       const phIdx = attr(ph, 'idx', '0');
+-      const key = `${phType}:${phIdx}`;
+-
+-      if (map[key]) continue; // layout wins over master
+ 
+       const spPr = g1(sp, 'spPr');
+-      const xfrm = g1(spPr, 'xfrm');
++      const xfrm = spPr ? g1(spPr, 'xfrm') : null;
+       if (!xfrm) continue;
+       const off = g1(xfrm, 'off');
+       const ext = g1(xfrm, 'ext');
+       if (!off || !ext) continue;
+ 
+-      map[key] = {
++      const phInfo = {
+         x: attrInt(off, 'x', 0),
+         y: attrInt(off, 'y', 0),
+         w: attrInt(ext, 'cx', 0),
+         h: attrInt(ext, 'cy', 0),
+         txBody: g1(sp, 'txBody'),
+       };
++
++      const exactKey = `${rawType}:${phIdx}`;
++      if (!map[exactKey]) map[exactKey] = phInfo;
++
++      const lowerKey = `${phType}:${phIdx}`;
++      if (!map[lowerKey]) map[lowerKey] = phInfo;
++
++      if (!map[`type:${phType}`]) map[`type:${phType}`] = phInfo;
++      if (!map[`idx:${phIdx}`]) map[`idx:${phIdx}`] = phInfo;
++
++      if (phType === 'ctrtitle' || phType === 'title') {
++        if (!map['title:0']) map['title:0'] = phInfo;
++        if (!map['ctrtitle:0']) map['ctrtitle:0'] = phInfo;
++        if (!map['type:title']) map['type:title'] = phInfo;
++        if (!map['type:ctrtitle']) map['type:ctrtitle'] = phInfo;
++      } else if (phType === 'subtitle') {
++        if (!map['subtitle:1']) map['subtitle:1'] = phInfo;
++        if (!map['type:subtitle']) map['type:subtitle'] = phInfo;
++      } else if (phType === 'body' || phType === 'obj') {
++        if (!map[`body:${phIdx}`]) map[`body:${phIdx}`] = phInfo;
++        if (!map[`obj:${phIdx}`]) map[`obj:${phIdx}`] = phInfo;
++        if (!map['type:body']) map['type:body'] = phInfo;
++        if (!map['type:obj']) map['type:obj'] = phInfo;
++      }
+     }
+   }
+   return map;
+@@ -1851,13 +1947,50 @@ export function resolvePlaceholderXfrm(spEl, placeholderMap) {
+   const nvPr = nvSpPr ? g1(nvSpPr, 'nvPr') : null;
+   const ph = nvPr ? g1(nvPr, 'ph') : null;
+   if (!ph) return null;
+-  const phType = attr(ph, 'type', 'body');
+-  const phIdx = attr(ph, 'idx', '0');
+-  // Try exact key, then idx-only, then type-only
+-  return placeholderMap[`${phType}:${phIdx}`]
+-      || placeholderMap[`${phType}:0`]
+-      || placeholderMap[`body:${phIdx}`]
+-      || null;
++  const rawType = attr(ph, 'type', 'body');
++  const phType = rawType ? rawType.toLowerCase() : 'body';
++  const phIdx = attr(ph, 'idx', '');
++
++  // 1. Direct key lookups
++  if (phType && phIdx && placeholderMap[`${phType}:${phIdx}`]) return placeholderMap[`${phType}:${phIdx}`];
++  if (rawType && phIdx && placeholderMap[`${rawType}:${phIdx}`]) return placeholderMap[`${rawType}:${phIdx}`];
++
++  // 2. Aliases for title / ctrTitle
++  if (phType === 'ctrtitle' || phType === 'title') {
++    return placeholderMap['title:0']
++        || placeholderMap['ctrtitle:0']
++        || placeholderMap['type:title']
++        || placeholderMap['type:ctrtitle']
++        || (phIdx ? placeholderMap[`idx:${phIdx}`] : null)
++        || null;
++  }
++
++  // 3. Aliases for subTitle
++  if (phType === 'subtitle') {
++    return placeholderMap['subtitle:1']
++        || placeholderMap['subtitle:0']
++        || placeholderMap['type:subtitle']
++        || (phIdx ? placeholderMap[`idx:${phIdx}`] : null)
++        || placeholderMap['type:body']
++        || null;
++  }
++
++  // 4. Aliases for body / obj
++  if (phType === 'body' || phType === 'obj') {
++    return (phIdx ? placeholderMap[`body:${phIdx}`] : null)
++        || (phIdx ? placeholderMap[`obj:${phIdx}`] : null)
++        || placeholderMap[`${phType}:0`]
++        || placeholderMap['type:body']
++        || placeholderMap['type:obj']
++        || (phIdx ? placeholderMap[`idx:${phIdx}`] : null)
++        || null;
++  }
++
++  // 5. Index-only lookup
++  if (phIdx && placeholderMap[`idx:${phIdx}`]) return placeholderMap[`idx:${phIdx}`];
++  if (phType && placeholderMap[`type:${phType}`]) return placeholderMap[`type:${phType}`];
++
++  return null;
+ }
+ 
+ // ═══════════════════════════════════════════════════════════════════════════════
+@@ -1875,13 +2008,22 @@ export async function renderGraphicFrame(ctx, graphicFrame, themeColors, themeDa
+   }
+ 
+   const xfrm = g1(graphicFrame, 'xfrm');
+-  if (!xfrm) return;
+-  const off = g1(xfrm, 'off'), ext = g1(xfrm, 'ext');
+-  if (!off || !ext) return;
+-  const fx = attrInt(off, 'x', 0) * scale;
+-  const fy = attrInt(off, 'y', 0) * scale;
+-  const fw = attrInt(ext, 'cx', 0) * scale;
+-  const fh = attrInt(ext, 'cy', 0) * scale;
++  let fx = 0, fy = 0, fw = 0, fh = 0;
++  if (xfrm) {
++    const off = g1(xfrm, 'off'), ext = g1(xfrm, 'ext');
++    if (!off || !ext) return;
++    fx = attrInt(off, 'x', 0) * scale;
++    fy = attrInt(off, 'y', 0) * scale;
++    fw = attrInt(ext, 'cx', 0) * scale;
++    fh = attrInt(ext, 'cy', 0) * scale;
++  } else {
++    const cw = ctx.canvas?.width || 1280;
++    const ch = ctx.canvas?.height || 720;
++    fx = cw * 0.08;
++    fy = ch * 0.15;
++    fw = cw * 0.84;
++    fh = ch * 0.75;
++  }
+   if (fw <= 0 || fh <= 0) return;
+ 
+   const isChart   = uri.includes('chart');
+@@ -1949,7 +2091,7 @@ export async function renderGraphicFrame(ctx, graphicFrame, themeColors, themeDa
+ 
+ export async function renderSpTree(ctx, spTreeEl, rels, imageCache, themeColors, themeData, scale, placeholderMap, files) {
+   if (!spTreeEl) return;
+-  for (const child of spTreeEl.children) {
++  const processChild = async (child) => {
+     const ln = child.localName;
+     try {
+       if (ln === 'sp') await renderShape(ctx, child, rels, imageCache, themeColors, themeData, scale, null, placeholderMap);
+@@ -1957,8 +2099,22 @@ export async function renderSpTree(ctx, spTreeEl, rels, imageCache, themeColors,
+       else if (ln === 'grpSp') await renderGroupShape(ctx, child, rels, imageCache, themeColors, themeData, scale);
+       else if (ln === 'graphicFrame') await renderGraphicFrame(ctx, child, themeColors, themeData, scale, files, rels);
+       else if (ln === 'cxnSp') await renderConnector(ctx, child, themeColors, scale);
++      else if (ln === 'AlternateContent') {
++        const choice = g1(child, 'Choice');
++        const fallback = g1(child, 'Fallback');
++        const container = choice || fallback;
++        if (container) {
++          for (const subChild of container.children) {
++            await processChild(subChild);
++          }
++        }
++      }
+     } catch(e) {
+       console.warn('Error rendering shape:', ln, e);
+     }
++  };
++
++  for (const child of spTreeEl.children) {
++    await processChild(child);
+   }
+ }
+diff --git a/src/utils.js b/src/utils.js
+index cb4d0478ee4ca5dcff63f467355cf08350da3124..a9e52627985d539303080595adad9e75f1def6c3 100644
+--- a/src/utils.js
++++ b/src/utils.js
+@@ -3,7 +3,9 @@
+  */
+ 
+ export function parseXml(str) {
+-  return new DOMParser().parseFromString(str, 'application/xml');
++  if (typeof str !== 'string') return null;
++  const sanitized = str.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
++  return new DOMParser().parseFromString(sanitized, 'application/xml');
+ }
+ 
+ /** Get all descendant elements with a given local name (namespace-agnostic). */

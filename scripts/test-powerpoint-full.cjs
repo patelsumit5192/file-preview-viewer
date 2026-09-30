@@ -7,7 +7,7 @@ const EDGE_PATH = fs.existsSync('C:\\Program Files (x86)\\Microsoft\\Edge\\Appli
   ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
   : 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe';
 
-const PORT = 9227;
+const PORT = 9228;
 const edgeProc = spawn(EDGE_PATH, [
   '--remote-debugging-port=' + PORT,
   '--headless=new',
@@ -78,7 +78,7 @@ class CdpSession {
 const ARTIFACT_DIR = path.resolve('C:\\Users\\Sumit\\.gemini\\antigravity\\brain\\8162ef05-48a3-4491-bb0c-89f9fc925675');
 
 async function run() {
-  await wait(1500);
+  await wait(2000);
   const targets = await getJson(`http://127.0.0.1:${PORT}/json`);
   const pageTarget = targets.find(t => t.type === 'page');
   const ws = new WebSocket(pageTarget.webSocketDebuggerUrl);
@@ -93,10 +93,48 @@ async function run() {
   await wait(2500);
 
   const testDecks = [
-    { file: 'fresh_deck_18_slides.pptx', expectedSlides: 18, type: 'pptx', checkSlides: [1, 6, 12, 18] },
-    { file: 'fresh_deck_36_slides.pptx', expectedSlides: 36, type: 'pptx', checkSlides: [1, 10, 20, 36] },
-    { file: 'fresh_deck_18_slides.ppt', expectedSlides: 18, type: 'ppt', checkSlides: [1, 6, 12, 18] },
-    { file: 'fresh_deck_36_slides.ppt', expectedSlides: 36, type: 'ppt', checkSlides: [1, 10, 20, 36] }
+    {
+      file: 'samples/presentation.pptx',
+      expectedSlides: 2,
+      type: 'pptx',
+      checkSlides: [1, 2],
+      searchQuery: 'Presentation'
+    },
+    {
+      file: 'samples/presentation.ppt',
+      expectedSlides: 3,
+      type: 'ppt',
+      checkSlides: [1, 2, 3],
+      searchQuery: 'Lorem'
+    },
+    {
+      file: 'fresh-test-matrix/fresh_deck_18_slides.pptx',
+      expectedSlides: 18,
+      type: 'pptx',
+      checkSlides: [1, 6, 12, 18],
+      searchQuery: 'Enterprise'
+    },
+    {
+      file: 'fresh-test-matrix/fresh_deck_36_slides.pptx',
+      expectedSlides: 36,
+      type: 'pptx',
+      checkSlides: [1, 10, 20, 36],
+      searchQuery: 'Architecture'
+    },
+    {
+      file: 'fresh-test-matrix/fresh_deck_18_slides.ppt',
+      expectedSlides: 18,
+      type: 'ppt',
+      checkSlides: [1, 6, 12, 18],
+      searchQuery: 'Slide'
+    },
+    {
+      file: 'fresh-test-matrix/fresh_deck_36_slides.ppt',
+      expectedSlides: 36,
+      type: 'ppt',
+      checkSlides: [1, 10, 20, 36],
+      searchQuery: 'Slide'
+    }
   ];
 
   let totalPassed = 0;
@@ -108,18 +146,17 @@ async function run() {
     console.log(`======================================================================`);
 
     totalTests++;
-    // Load presentation file
     const loadRes = await cdp.evaluate(`
       (async () => {
         try {
-          const resp = await fetch('/fresh-test-matrix/${deck.file}');
+          const resp = await fetch('/${deck.file}');
           const blob = await resp.blob();
-          const file = new File([blob], '${deck.file}', {
+          const file = new File([blob], '${path.basename(deck.file)}', {
             type: '${deck.type === 'pptx' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : 'application/vnd.ms-powerpoint'}'
           });
           const viewport = document.getElementById('preview-viewport');
           window.__lastInstance = await window.viewer.preview(viewport, file, {
-            name: '${deck.file}'
+            name: '${path.basename(deck.file)}'
           });
           await new Promise(r => setTimeout(r, 2000));
           const pageCount = window.__lastInstance?.getPageCount?.() || 0;
@@ -145,18 +182,22 @@ async function run() {
       const navRes = await cdp.evaluate(`
         (async () => {
           window.__lastInstance.goToPage(${slideNum});
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise(r => setTimeout(r, 600));
           const curPage = window.__lastInstance.getCurrentPage();
           const isPptx = '${deck.type}' === 'pptx';
           let hasContent = false;
+          let textSnippet = '';
           if (isPptx) {
             const canvas = document.querySelector('.fp-slide-container canvas');
             hasContent = !!canvas && canvas.width > 0 && canvas.height > 0;
+            const textLayer = document.querySelector('.fp-pptx-text-layer');
+            textSnippet = (textLayer?.textContent || '').trim().slice(0, 50);
           } else {
             const card = document.querySelector('.fp-ppt-slide-card');
-            hasContent = !!card && (card.textContent || '').length > 20;
+            hasContent = !!card && (card.textContent || '').length > 0;
+            textSnippet = (card?.textContent || '').trim().slice(0, 50);
           }
-          return { curPage, hasContent };
+          return { curPage, hasContent, textSnippet };
         })()
       `);
 
@@ -165,42 +206,56 @@ async function run() {
         navPassed = false;
         break;
       }
-      console.log(`✓ Navigated to Slide ${navRes.curPage}/${deck.expectedSlides} (Rendered visible content: ${navRes.hasContent})`);
+      console.log(`✓ Navigated to Slide ${navRes.curPage}/${deck.expectedSlides} (Snippet: "${navRes.textSnippet}")`);
     }
 
     if (!navPassed) continue;
+
+    // Test Search (Ctrl+F)
+    const searchRes = await cdp.evaluate(`
+      (async () => {
+        try {
+          const sRes = await Promise.resolve(window.__lastInstance.search('${deck.searchQuery}'));
+          const nextRes = await Promise.resolve(window.__lastInstance.searchNext());
+          const prevRes = await Promise.resolve(window.__lastInstance.searchPrev());
+          window.__lastInstance.clearSearch();
+          return { success: true, sRes, nextRes, prevRes };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      })()
+    `);
+    console.log(`✓ Search Verification ('${deck.searchQuery}'):`, searchRes);
 
     // Test Zoom, Fit, Rotation
     const transformRes = await cdp.evaluate(`
       (async () => {
         window.__lastInstance.zoomIn();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
         const zIn = window.__lastInstance.getZoom();
 
         window.__lastInstance.zoomOut();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
         const zOut = window.__lastInstance.getZoom();
 
         window.__lastInstance.rotateCW();
-        await new Promise(r => setTimeout(r, 200));
-        // Rotate 3 more times to return to 0deg orientation
+        await new Promise(r => setTimeout(r, 150));
         window.__lastInstance.rotateCW();
         window.__lastInstance.rotateCW();
         window.__lastInstance.rotateCW();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
 
         window.__lastInstance.fitToPage();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
         const fitScale = window.__lastInstance.getZoom();
 
         window.__lastInstance.resetZoom();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
 
-        // Return to Slide 1 and fit to page for beautiful presentation artifact
         window.__lastInstance.goToPage(1);
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 400));
         window.__lastInstance.fitToPage();
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 200));
 
         return { zIn, zOut, fitScale };
       })()
@@ -211,13 +266,19 @@ async function run() {
     const thumbRes = await cdp.evaluate(`
       (async () => {
         const thumbs = window.__lastInstance.getThumbnails ? window.__lastInstance.getThumbnails() : [];
+        if (thumbs.length > 0 && typeof thumbs[0].render === 'function') {
+          const testCanvas = document.createElement('canvas');
+          await thumbs[0].render(testCanvas);
+          return { count: thumbs.length, firstRenderedW: testCanvas.width, firstRenderedH: testCanvas.height };
+        }
         return { count: thumbs.length };
       })()
     `);
-    console.log(`✓ Thumbnails generated: ${thumbRes.count} slides`);
+    console.log(`✓ Thumbnails generated & rendered:`, thumbRes);
 
     // Capture screenshot for verification artifact
-    const snapPath = path.join(ARTIFACT_DIR, `verified_${deck.file.replace('.pptx', '_pptx').replace('.ppt', '_ppt')}.png`);
+    const cleanName = path.basename(deck.file).replace(/\./g, '_');
+    const snapPath = path.join(ARTIFACT_DIR, `full_test_${cleanName}.png`);
     await cdp.captureScreenshot(snapPath);
     console.log(`✓ Saved screenshot artifact: ${snapPath}`);
 

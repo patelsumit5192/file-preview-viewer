@@ -120,7 +120,11 @@ export class FilePreviewViewer {
       }
 
       this.activePlugin = matchedPlugin;
-      const effectiveFitMode = options.fitMode ?? 'width';
+      const isPresentation = matchedPlugin.id === 'pptx' || 
+                             matchedPlugin.id === 'ppt' || 
+                             ['.pptx', '.ppt', '.ppsx', '.pps', '.pptm', '.ppsm', '.potx', '.pot', '.potm'].includes(metadata.extension?.toLowerCase() || '');
+      const defaultFit = isPresentation ? 'page' : 'width';
+      const effectiveFitMode = options.fitMode ?? defaultFit;
       options = {
         ...options,
         fitMode: effectiveFitMode,
@@ -1100,15 +1104,18 @@ export class FilePreviewViewer {
 
   private triggerAutoFit(): void {
     if (!this.activeInstance) return;
-    const mode = this.currentOptions?.fitMode ?? 'width';
-    if (mode === 'width' && this.activeInstance.fitToWidth) {
-      this.activeInstance.fitToWidth();
-    } else if (mode === 'page' && this.activeInstance.fitToPage) {
+    const isPresentation = this.activePlugin?.id === 'pptx' || 
+                           this.activePlugin?.id === 'ppt';
+    const defaultFit = isPresentation ? 'page' : 'width';
+    const mode = this.currentOptions?.fitMode ?? defaultFit;
+    if (mode === 'page' && this.activeInstance.fitToPage) {
       this.activeInstance.fitToPage();
-    } else if (this.activeInstance.fitToWidth) {
+    } else if (mode === 'width' && this.activeInstance.fitToWidth) {
       this.activeInstance.fitToWidth();
     } else if (this.activeInstance.fitToPage) {
       this.activeInstance.fitToPage();
+    } else if (this.activeInstance.fitToWidth) {
+      this.activeInstance.fitToWidth();
     } else if (this.activeInstance.resetZoom) {
       this.activeInstance.resetZoom();
     }

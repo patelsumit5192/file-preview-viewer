@@ -394,6 +394,19 @@ export class PptxPlugin implements PreviewPlugin {
       object-fit: fill;
     `;
     slideContainer.appendChild(canvas);
+
+    const textLayer = document.createElement('div');
+    textLayer.className = 'fp-pptx-text-layer';
+    textLayer.style.cssText = `
+      position: absolute;
+      inset: 0;
+      pointer-events: auto;
+      user-select: text;
+      -webkit-user-select: text;
+      overflow: hidden;
+      z-index: 10;
+    `;
+    slideContainer.appendChild(textLayer);
     sizer.appendChild(slideContainer);
     scrollWrapper.appendChild(sizer);
     wrapper.appendChild(scrollWrapper);
@@ -402,16 +415,16 @@ export class PptxPlugin implements PreviewPlugin {
     ctx.container.style.overflow = 'hidden';
     ctx.container.appendChild(wrapper);
 
-    // Default fit mode is 'width'
-    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    // Default fit mode for presentations is 'page' (shows entire slide in viewport)
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'page';
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const isRotated90 = (rotation % 180 !== 0);
       const orientedW = isRotated90 ? baseH : baseW;
       const orientedH = isRotated90 ? baseW : baseH;
-      const availW = Math.max(200, (wrapper.clientWidth || ctx.container.clientWidth) - 64);
-      const availH = Math.max(200, (wrapper.clientHeight || ctx.container.clientHeight) - 64);
+      const availW = Math.max(200, (wrapper.clientWidth || ctx.container.clientWidth) - 48);
+      const availH = Math.max(200, (wrapper.clientHeight || ctx.container.clientHeight) - 48);
       if (mode === 'page') {
         return Math.min(3.0, Math.min(availW / orientedW, availH / orientedH));
       }
@@ -689,9 +702,38 @@ export class PptxPlugin implements PreviewPlugin {
         const box = getBox(sp);
         const spPrs = getTags(sp, 'spPr');
         const spPr = spPrs[0];
+        let shapeBox = box;
+        if (!shapeBox) {
+          const phs = getTags(sp, 'ph');
+          const ph = phs[0];
+          const rawType = (ph ? ph.getAttribute('type') || '' : '').toLowerCase();
+          const phIdx = ph ? ph.getAttribute('idx') || '0' : '0';
+          if (rawType.includes('title') || phIdx === '0') {
+            shapeBox = {
+              x: Math.round(targetW * 0.08),
+              y: Math.round(targetH * 0.12),
+              w: Math.round(targetW * 0.84),
+              h: Math.round(targetH * 0.22)
+            };
+          } else if (rawType.includes('sub') || phIdx === '1') {
+            shapeBox = {
+              x: Math.round(targetW * 0.10),
+              y: Math.round(targetH * 0.38),
+              w: Math.round(targetW * 0.80),
+              h: Math.round(targetH * 0.22)
+            };
+          } else {
+            shapeBox = {
+              x: Math.round(targetW * 0.08),
+              y: Math.round(targetH * 0.25),
+              w: Math.round(targetW * 0.84),
+              h: Math.round(targetH * 0.65)
+            };
+          }
+        }
 
         // Draw shape background fill
-        if (spPr && box && box.w > 0 && box.h > 0) {
+        if (spPr && shapeBox && shapeBox.w > 0 && shapeBox.h > 0) {
           const solidFills = getTags(spPr, 'solidFill');
           if (solidFills.length > 0) {
             const fillColor = getColor(solidFills[0], '');
@@ -700,12 +742,12 @@ export class PptxPlugin implements PreviewPlugin {
               const prstGeom = getTags(spPr, 'prstGeom')[0];
               const prst = prstGeom?.getAttribute('prst');
               if (prst === 'roundRect') {
-                const radius = Math.min(12, Math.round(Math.min(box.w, box.h) * 0.15));
+                const radius = Math.min(12, Math.round(Math.min(shapeBox.w, shapeBox.h) * 0.15));
                 ctx2d.beginPath();
-                ctx2d.roundRect(box.x, box.y, box.w, box.h, radius);
+                ctx2d.roundRect(shapeBox.x, shapeBox.y, shapeBox.w, shapeBox.h, radius);
                 ctx2d.fill();
               } else {
-                ctx2d.fillRect(box.x, box.y, box.w, box.h);
+                ctx2d.fillRect(shapeBox.x, shapeBox.y, shapeBox.w, shapeBox.h);
               }
               renderedElementsCount++;
             }
@@ -718,7 +760,7 @@ export class PptxPlugin implements PreviewPlugin {
             if (strokeColor) {
               ctx2d.strokeStyle = strokeColor;
               ctx2d.lineWidth = 1;
-              ctx2d.strokeRect(box.x, box.y, box.w, box.h);
+              ctx2d.strokeRect(shapeBox.x, shapeBox.y, shapeBox.w, shapeBox.h);
             }
           }
         }
@@ -729,9 +771,9 @@ export class PptxPlugin implements PreviewPlugin {
         const txBody = txBodies[0];
 
         const paragraphs = getTags(txBody, 'p');
-        let textY = box ? box.y + 16 : Math.round(50 * (targetW / baseW));
-        const boundX = box ? box.x + 12 : Math.round(60 * (targetW / baseW));
-        const maxTextW = box ? Math.max(100, box.w - 24) : targetW - Math.round(120 * (targetW / baseW));
+        let textY = shapeBox ? shapeBox.y + 16 : Math.round(50 * (targetW / baseW));
+        const boundX = shapeBox ? shapeBox.x + 12 : Math.round(60 * (targetW / baseW));
+        const maxTextW = shapeBox ? Math.max(100, shapeBox.w - 24) : targetW - Math.round(120 * (targetW / baseW));
 
         for (const p of paragraphs) {
           const textRuns = getTags(p, 't');
@@ -803,23 +845,205 @@ export class PptxPlugin implements PreviewPlugin {
       try {
         const testCtx = c.getContext('2d');
         if (!testCtx || c.width === 0 || c.height === 0) return false;
-        // Sample 400 pixels across canvas
-        const sampleW = Math.min(c.width, 20);
-        const sampleH = Math.min(c.height, 20);
-        const imgData = testCtx.getImageData(
-          Math.floor(c.width / 4),
-          Math.floor(c.height / 4),
-          sampleW,
-          sampleH
-        ).data;
-        for (let i = 0; i < imgData.length; i += 4) {
-          // If pixel has alpha and is not pure white (#ffffff)
-          if (imgData[i + 3] > 0 && (imgData[i] < 250 || imgData[i + 1] < 250 || imgData[i + 2] < 250)) {
-            return true;
+        // Sample 10x10 pixel blocks across a distributed 5x5 grid across the canvas
+        const sampleW = Math.min(10, c.width);
+        const sampleH = Math.min(10, c.height);
+        const xRatios = [0.15, 0.35, 0.5, 0.65, 0.85];
+        const yRatios = [0.15, 0.35, 0.5, 0.65, 0.85];
+        for (const xp of xRatios) {
+          for (const yp of yRatios) {
+            const sx = Math.max(0, Math.min(c.width - sampleW, Math.floor(c.width * xp)));
+            const sy = Math.max(0, Math.min(c.height - sampleH, Math.floor(c.height * yp)));
+            const imgData = testCtx.getImageData(sx, sy, sampleW, sampleH).data;
+            for (let i = 0; i < imgData.length; i += 4) {
+              // If pixel has alpha and is not pure white (#ffffff)
+              if (imgData[i + 3] > 0 && (imgData[i] < 250 || imgData[i + 1] < 250 || imgData[i + 2] < 250)) {
+                return true;
+              }
+            }
           }
         }
       } catch {}
       return false;
+    };
+
+    // Pre-extract text from all slides for search & text layer
+    interface SlideTextEntry {
+      slideNumber: number;
+      fullText: string;
+      runs: Array<{ text: string }>;
+    }
+    const slideTextCache = new Map<number, SlideTextEntry>();
+
+    const getSlideTextEntry = (slideIndex: number): SlideTextEntry => {
+      if (slideTextCache.has(slideIndex)) {
+        return slideTextCache.get(slideIndex)!;
+      }
+      const slidePath = orderedSlidePaths[slideIndex] || `ppt/slides/slide${slideIndex + 1}.xml`;
+      const slideBytes = findFile(slidePath);
+      const runs: Array<{ text: string }> = [];
+      const textPieces: string[] = [];
+
+      if (slideBytes) {
+        try {
+          const xml = new TextDecoder('utf-8').decode(slideBytes);
+          const doc = safeParseXml(xml);
+          const rawNodes = [
+            ...Array.from(doc.getElementsByTagNameNS('*', 't')),
+            ...Array.from(doc.getElementsByTagName('a:t')),
+            ...Array.from(doc.getElementsByTagName('t'))
+          ];
+          const textNodes = Array.from(new Set(rawNodes));
+          for (let i = 0; i < textNodes.length; i++) {
+            const txt = textNodes[i].textContent || '';
+            if (txt.trim()) {
+              runs.push({ text: txt.trim() });
+              textPieces.push(txt.trim());
+            }
+          }
+        } catch {}
+      }
+      const entry: SlideTextEntry = {
+        slideNumber: slideIndex + 1,
+        fullText: textPieces.join(' '),
+        runs
+      };
+      slideTextCache.set(slideIndex, entry);
+      return entry;
+    };
+
+    let activeSearchQuery = '';
+    let searchMatches: Array<{ slideNumber: number; text: string }> = [];
+    let currentMatchIdx = -1;
+    let searchToast: HTMLElement | null = null;
+
+    const highlightSearchOnSlide = () => {
+      if (!activeSearchQuery) return;
+      if (!searchToast) {
+        searchToast = document.createElement('div');
+        searchToast.className = 'fp-pptx-search-indicator';
+        searchToast.style.cssText = `
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          background: rgba(15, 23, 42, 0.9);
+          backdrop-filter: blur(8px);
+          color: #fef08a;
+          font-weight: 600;
+          font-size: 13px;
+          padding: 6px 14px;
+          border-radius: 9999px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+          pointer-events: none;
+          z-index: 25;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+        slideContainer.appendChild(searchToast);
+      }
+      searchToast.textContent = `🔍 Found "${activeSearchQuery}" (${currentMatchIdx + 1}/${searchMatches.length})`;
+      searchToast.style.display = 'flex';
+    };
+
+    const clearSearchHighlight = () => {
+      if (searchToast) {
+        searchToast.style.display = 'none';
+      }
+    };
+
+    const performSearch = (query: string, caseSensitive = false): { current: number; total: number } => {
+      activeSearchQuery = query.trim();
+      searchMatches = [];
+      currentMatchIdx = -1;
+
+      if (!activeSearchQuery) {
+        clearSearchHighlight();
+        return { current: 0, total: 0 };
+      }
+
+      const q = caseSensitive ? activeSearchQuery : activeSearchQuery.toLowerCase();
+      for (let i = 0; i < slideCount; i++) {
+        const entry = getSlideTextEntry(i);
+        const hay = caseSensitive ? entry.fullText : entry.fullText.toLowerCase();
+        if (hay.includes(q)) {
+          let pos = 0;
+          while ((pos = hay.indexOf(q, pos)) !== -1) {
+            searchMatches.push({ slideNumber: i + 1, text: entry.fullText });
+            pos += q.length;
+          }
+        }
+      }
+
+      if (searchMatches.length > 0) {
+        const nextIdx = searchMatches.findIndex(m => m.slideNumber >= currentSlide);
+        currentMatchIdx = nextIdx !== -1 ? nextIdx : 0;
+        const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+        if (targetSlide !== currentSlide) {
+          currentSlide = targetSlide;
+          renderCurrentSlide();
+        } else {
+          highlightSearchOnSlide();
+        }
+        return { current: currentMatchIdx + 1, total: searchMatches.length };
+      }
+
+      clearSearchHighlight();
+      return { current: 0, total: 0 };
+    };
+
+    const searchNext = (): { current: number; total: number } => {
+      if (searchMatches.length === 0) return { current: 0, total: 0 };
+      currentMatchIdx = (currentMatchIdx + 1) % searchMatches.length;
+      const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+      if (targetSlide !== currentSlide) {
+        currentSlide = targetSlide;
+        renderCurrentSlide();
+      } else {
+        highlightSearchOnSlide();
+      }
+      return { current: currentMatchIdx + 1, total: searchMatches.length };
+    };
+
+    const searchPrev = (): { current: number; total: number } => {
+      if (searchMatches.length === 0) return { current: 0, total: 0 };
+      currentMatchIdx = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+      const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+      if (targetSlide !== currentSlide) {
+        currentSlide = targetSlide;
+        renderCurrentSlide();
+      } else {
+        highlightSearchOnSlide();
+      }
+      return { current: currentMatchIdx + 1, total: searchMatches.length };
+    };
+
+    const clearSearch = () => {
+      activeSearchQuery = '';
+      searchMatches = [];
+      currentMatchIdx = -1;
+      clearSearchHighlight();
+    };
+
+    const updateTextLayer = () => {
+      textLayer.innerHTML = '';
+      const entry = getSlideTextEntry(currentSlide - 1);
+      for (const run of entry.runs) {
+        const span = document.createElement('span');
+        span.textContent = run.text;
+        span.style.cssText = `
+          display: inline-block;
+          margin-right: 8px;
+          margin-bottom: 4px;
+          color: transparent;
+          font-size: 14px;
+          user-select: text;
+          -webkit-user-select: text;
+          cursor: text;
+        `;
+        textLayer.appendChild(span);
+      }
     };
 
     const renderCurrentSlide = async () => {
@@ -829,7 +1053,7 @@ export class PptxPlugin implements PreviewPlugin {
 
       try {
         await renderer.renderSlide(currentSlide - 1, canvas, renderW);
-        renderSucceeded = true;
+        renderSucceeded = hasCanvasDrawnContent(canvas);
       } catch (err) {
         console.warn(`[PptxPlugin] Canvas render encountered issue on slide ${currentSlide}:`, err);
         renderSucceeded = false;
@@ -838,6 +1062,9 @@ export class PptxPlugin implements PreviewPlugin {
       if (!renderSucceeded) {
         await renderSlideFallback(currentSlide - 1, canvas, renderW);
       }
+
+      updateTextLayer();
+      highlightSearchOnSlide();
 
       canvas.style.width = `${baseW}px`;
       canvas.style.height = `${baseH}px`;
@@ -953,6 +1180,8 @@ export class PptxPlugin implements PreviewPlugin {
         isUserZoomed = false;
         fitMode = 'page';
         scale = calculateFitScale('page');
+        wrapper.scrollTop = 0;
+        wrapper.scrollLeft = 0;
         applyTransform();
       },
       fitToWidth: () => {
@@ -964,9 +1193,9 @@ export class PptxPlugin implements PreviewPlugin {
         applyTransform();
       },
       resetZoom: () => {
-        isUserZoomed = true;
-        fitMode = 'width';
-        scale = 1.0;
+        isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
         rotation = 0;
         wrapper.scrollTop = 0;
         wrapper.scrollLeft = 0;
@@ -1016,6 +1245,24 @@ export class PptxPlugin implements PreviewPlugin {
       },
       print: () => {
         window.print();
+      },
+      search: (query: string, options?: any) => {
+        return performSearch(query, options?.caseSensitive);
+      },
+      searchNext: () => {
+        return searchNext();
+      },
+      searchPrev: () => {
+        return searchPrev();
+      },
+      clearSearch: () => {
+        clearSearch();
+      },
+      toggleThumbnails: () => {
+        (ctx as any)?.toggleThumbnails?.();
+      },
+      openInSeparateWindow: () => {
+        (ctx as any)?.openInSeparateWindow?.();
       }
     };
 

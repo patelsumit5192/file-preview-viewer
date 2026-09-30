@@ -241,15 +241,15 @@ export class PptPlugin implements PreviewPlugin {
       : 1.0;
     let scale = initialZoom;
     let rotation = 0;
-    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'width';
+    let fitMode: 'width' | 'page' = ((ctx as any)?.options?.fitMode as any) || 'page';
     let isUserZoomed = typeof (ctx.options as any)?.zoom === 'number' && (ctx.options as any).zoom > 0;
 
     const calculateFitScale = (mode: 'width' | 'page' = fitMode) => {
       const isRotated90 = (rotation % 180 !== 0);
       const orientedW = isRotated90 ? baseH : baseW;
       const orientedH = isRotated90 ? baseW : baseH;
-      const availW = Math.max(200, (container.clientWidth || ctx.container.clientWidth) - 64);
-      const availH = Math.max(200, (container.clientHeight || ctx.container.clientHeight) - 64);
+      const availW = Math.max(200, (container.clientWidth || ctx.container.clientWidth) - 48);
+      const availH = Math.max(200, (container.clientHeight || ctx.container.clientHeight) - 48);
       if (mode === 'page') {
         return Math.min(3.0, Math.min(availW / orientedW, availH / orientedH));
       }
@@ -269,6 +269,78 @@ export class PptPlugin implements PreviewPlugin {
       slideCard.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
     };
 
+    let activeSearchQuery = '';
+    let searchMatches: Array<{ slideNumber: number; text: string }> = [];
+    let currentMatchIdx = -1;
+
+    const highlightText = (text: string): string => {
+      if (!text) return '';
+      const safe = DOMPurify.sanitize(text);
+      if (!activeSearchQuery) return safe;
+      const escaped = activeSearchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      return safe.replace(regex, '<mark style="background: #fef08a; color: #0f172a; padding: 1px 4px; border-radius: 2px;">$1</mark>');
+    };
+
+    const performSearch = (query: string, caseSensitive = false): { current: number; total: number } => {
+      activeSearchQuery = query.trim();
+      searchMatches = [];
+      currentMatchIdx = -1;
+
+      if (!activeSearchQuery) {
+        renderSlide(currentSlide);
+        return { current: 0, total: 0 };
+      }
+
+      const q = caseSensitive ? activeSearchQuery : activeSearchQuery.toLowerCase();
+      for (let i = 0; i < totalSlides; i++) {
+        const s = slides[i];
+        const combined = [s.title, s.subtitle || '', ...(s.paragraphs || []), ...(s.tableCells || [])].join(' ');
+        const hay = caseSensitive ? combined : combined.toLowerCase();
+        if (hay.includes(q)) {
+          let pos = 0;
+          while ((pos = hay.indexOf(q, pos)) !== -1) {
+            searchMatches.push({ slideNumber: i + 1, text: combined });
+            pos += q.length;
+          }
+        }
+      }
+
+      if (searchMatches.length > 0) {
+        const nextIdx = searchMatches.findIndex(m => m.slideNumber >= currentSlide);
+        currentMatchIdx = nextIdx !== -1 ? nextIdx : 0;
+        const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+        renderSlide(targetSlide);
+        return { current: currentMatchIdx + 1, total: searchMatches.length };
+      }
+
+      renderSlide(currentSlide);
+      return { current: 0, total: 0 };
+    };
+
+    const searchNext = (): { current: number; total: number } => {
+      if (searchMatches.length === 0) return { current: 0, total: 0 };
+      currentMatchIdx = (currentMatchIdx + 1) % searchMatches.length;
+      const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+      renderSlide(targetSlide);
+      return { current: currentMatchIdx + 1, total: searchMatches.length };
+    };
+
+    const searchPrev = (): { current: number; total: number } => {
+      if (searchMatches.length === 0) return { current: 0, total: 0 };
+      currentMatchIdx = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+      const targetSlide = searchMatches[currentMatchIdx].slideNumber;
+      renderSlide(targetSlide);
+      return { current: currentMatchIdx + 1, total: searchMatches.length };
+    };
+
+    const clearSearch = () => {
+      activeSearchQuery = '';
+      searchMatches = [];
+      currentMatchIdx = -1;
+      renderSlide(currentSlide);
+    };
+
     const renderSlide = (idx: number) => {
       currentSlide = Math.max(1, Math.min(totalSlides, idx));
       const s = slides[currentSlide - 1];
@@ -280,84 +352,109 @@ export class PptPlugin implements PreviewPlugin {
       slideCard.style.display = 'flex';
       slideCard.style.flexDirection = 'column';
 
-      // Clean, modern presentation slide header
-      const titleWrapper = document.createElement('div');
-      titleWrapper.className = 'fp-ppt-title-zone';
-      titleWrapper.style.cssText = `
-        padding: 32px 48px 16px;
-        box-sizing: border-box;
-        flex-shrink: 0;
-      `;
-      titleWrapper.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px;">
-          <div style="flex: 1; padding-right: 24px;">
-            <h1 style="margin: 0 0 6px 0; font-size: 28px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; line-height: 1.25;">
-              ${DOMPurify.sanitize(s.title || `Slide ${currentSlide}`)}
-            </h1>
-            ${s.subtitle ? `<div style="font-size: 15px; color: #64748b; margin-top: 4px;">${DOMPurify.sanitize(s.subtitle)}</div>` : ''}
-          </div>
-          <span style="font-size: 13px; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 9999px; flex-shrink: 0;">
-            Slide ${currentSlide} / ${totalSlides}
-          </span>
-        </div>
-      `;
-      slideCard.appendChild(titleWrapper);
-
-      // Slide content zone
-      const contentZone = document.createElement('div');
-      contentZone.className = 'fp-ppt-content-zone';
-      contentZone.style.cssText = `
-        padding: 16px 48px 36px;
-        box-sizing: border-box;
-        flex: 1;
-        overflow: auto;
-        display: flex;
-        flex-direction: column;
-      `;
-
-      // Flexible, multi-element content layout: preserves text, tables, charts, and images simultaneously
       const hasImage = !!s.pictureUrl;
       const hasParagraphs = s.paragraphs && s.paragraphs.length > 0;
       const hasTable = s.tableCells && s.tableCells.length > 0;
       const hasChart = s.hasChart || s.hasOle;
+      const isTitleSlide = (currentSlide === 1 && !hasImage && !hasTable && !hasChart) ||
+                           (!hasParagraphs && !hasImage && !hasTable && !hasChart);
 
-      if (hasImage && hasParagraphs) {
-        // Dual layout: visual media + descriptive typography side by side
-        contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; flex-direction: row; gap: 32px; align-items: center; justify-content: space-between; overflow: auto; padding: 12px 8px; box-sizing: border-box;">
-            <div style="flex: 1.2; display: flex; justify-content: center; align-items: center; min-height: 240px;">
-              <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.14);" />
+      const matchBadge = activeSearchQuery && searchMatches.length > 0
+        ? `<span style="font-size: 12px; font-weight: 600; color: #854d0e; background: #fef08a; padding: 3px 10px; border-radius: 9999px; margin-right: 8px;">
+            🔍 Match ${currentMatchIdx + 1} of ${searchMatches.length}
+           </span>`
+        : '';
+
+      if (isTitleSlide) {
+        slideCard.innerHTML = `
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 48px 36px; box-sizing: border-box; background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);">
+            <div style="width: 56px; height: 5px; background: #3b82f6; border-radius: 3px; margin-bottom: 24px;"></div>
+            <h1 style="margin: 0 0 16px 0; font-size: clamp(26px, 3.8vw, 38px); font-weight: 800; color: #0f172a; letter-spacing: -0.5px; line-height: 1.25; max-width: 90%;">
+              ${highlightText(s.title || `Presentation Slide ${currentSlide}`)}
+            </h1>
+            ${s.subtitle ? `<div style="font-size: clamp(15px, 2vw, 20px); color: #64748b; font-weight: 500; max-width: 80%; line-height: 1.5;">${highlightText(s.subtitle)}</div>` : ''}
+            <div style="margin-top: 32px; display: flex; align-items: center; gap: 8px;">
+              ${matchBadge}
+              <span style="font-size: 12px; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 9999px;">
+                Slide ${currentSlide} / ${totalSlides}
+              </span>
             </div>
-            <div style="flex: 1.4; display: flex; flex-direction: column; justify-content: center; overflow: auto;">
-              ${this.renderTextDisplay(s)}
-            </div>
-          </div>
-        `;
-      } else if (hasImage) {
-        contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 12px;">
-            <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
-          </div>
-        `;
-      } else if (hasTable) {
-        contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
-            ${this.renderTableDisplay(s)}
-            ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s)}</div>` : ''}
-          </div>
-        `;
-      } else if (hasChart) {
-        contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
-            ${this.renderChartDisplay(s)}
-            ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s)}</div>` : ''}
           </div>
         `;
       } else {
-        contentZone.innerHTML = this.renderTextDisplay(s);
-      }
+        const titleWrapper = document.createElement('div');
+        titleWrapper.className = 'fp-ppt-title-zone';
+        titleWrapper.style.cssText = `
+          padding: 20px 36px 12px;
+          box-sizing: border-box;
+          flex-shrink: 0;
+        `;
+        titleWrapper.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+            <div style="flex: 1; padding-right: 20px;">
+              <h1 style="margin: 0 0 4px 0; font-size: clamp(20px, 2.5vw, 26px); font-weight: 700; color: #0f172a; letter-spacing: -0.3px; line-height: 1.25;">
+                ${highlightText(s.title || `Slide ${currentSlide}`)}
+              </h1>
+              ${s.subtitle ? `<div style="font-size: clamp(13px, 1.5vw, 15px); color: #64748b; margin-top: 2px;">${highlightText(s.subtitle)}</div>` : ''}
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              ${matchBadge}
+              <span style="font-size: 12px; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 4px 10px; border-radius: 9999px;">
+                Slide ${currentSlide} / ${totalSlides}
+              </span>
+            </div>
+          </div>
+        `;
+        slideCard.appendChild(titleWrapper);
 
-      slideCard.appendChild(contentZone);
+        const contentZone = document.createElement('div');
+        contentZone.className = 'fp-ppt-content-zone';
+        contentZone.style.cssText = `
+          padding: 12px 36px 20px;
+          box-sizing: border-box;
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+        `;
+
+        if (hasImage && hasParagraphs) {
+          contentZone.innerHTML = `
+            <div style="flex: 1; display: flex; flex-direction: row; gap: 32px; align-items: center; justify-content: space-between; overflow: auto; padding: 12px 8px; box-sizing: border-box;">
+              <div style="flex: 1.2; display: flex; justify-content: center; align-items: center; min-height: 240px;">
+                <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.14);" />
+              </div>
+              <div style="flex: 1.4; display: flex; flex-direction: column; justify-content: center; overflow: auto;">
+                ${this.renderTextDisplay(s, highlightText)}
+              </div>
+            </div>
+          `;
+        } else if (hasImage) {
+          contentZone.innerHTML = `
+            <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 12px;">
+              <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
+            </div>
+          `;
+        } else if (hasTable) {
+          contentZone.innerHTML = `
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
+              ${this.renderTableDisplay(s, highlightText)}
+              ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s, highlightText)}</div>` : ''}
+            </div>
+          `;
+        } else if (hasChart) {
+          contentZone.innerHTML = `
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
+              ${this.renderChartDisplay(s)}
+              ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s, highlightText)}</div>` : ''}
+            </div>
+          `;
+        } else {
+          contentZone.innerHTML = this.renderTextDisplay(s, highlightText);
+        }
+
+        slideCard.appendChild(contentZone);
+      }
 
       ctx.emit('page-change', { page: currentSlide, total: totalSlides, totalPages: totalSlides });
       if (!isUserZoomed) {
@@ -461,6 +558,8 @@ export class PptPlugin implements PreviewPlugin {
         isUserZoomed = false;
         fitMode = 'page';
         scale = calculateFitScale('page');
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
         applyTransform();
       },
       fitToWidth: () => {
@@ -472,9 +571,9 @@ export class PptPlugin implements PreviewPlugin {
         applyTransform();
       },
       resetZoom: () => {
-        isUserZoomed = true;
-        fitMode = 'width';
-        scale = 1.0;
+        isUserZoomed = false;
+        fitMode = 'page';
+        scale = calculateFitScale('page');
         rotation = 0;
         container.scrollTop = 0;
         container.scrollLeft = 0;
@@ -575,6 +674,24 @@ export class PptPlugin implements PreviewPlugin {
       },
       print: () => {
         window.print();
+      },
+      search: (query: string, options?: any) => {
+        return performSearch(query, options?.caseSensitive);
+      },
+      searchNext: () => {
+        return searchNext();
+      },
+      searchPrev: () => {
+        return searchPrev();
+      },
+      clearSearch: () => {
+        clearSearch();
+      },
+      toggleThumbnails: () => {
+        (ctx as any)?.toggleThumbnails?.();
+      },
+      openInSeparateWindow: () => {
+        (ctx as any)?.openInSeparateWindow?.();
       }
     };
   }
@@ -597,10 +714,10 @@ export class PptPlugin implements PreviewPlugin {
         const view = new DataView(pptStream.buffer, pptStream.byteOffset, pptStream.byteLength);
 
         // 1. Detect SlideSizeAtom (0x0400)
-        for (let o = 0; o + 16 <= pptStream.length; o += 2) {
+        for (let o = 0; o + 16 <= pptStream.length; o++) {
           const t = view.getUint16(o + 2, true);
           const l = view.getUint32(o + 4, true);
-          if (t === 0x0400 && l >= 8) {
+          if (t === 0x0400 && l >= 8 && o + 8 + l <= pptStream.length) {
             const szX = view.getInt32(o + 8, true);
             const szY = view.getInt32(o + 12, true);
             if (szX > 0 && szY > 0) {
@@ -612,34 +729,10 @@ export class PptPlugin implements PreviewPlugin {
           }
         }
 
-        // 2. Discover ALL SlideContainers (0x03EE) across the entire stream
+        // 2. Discover ALL SlideContainers (0x03EE) across the entire stream using thorough byte-level scanning
         const slideOffsets: Array<{ offset: number; len: number }> = [];
         const seenOffsets = new Set<number>();
 
-        const scan = (start: number, end: number) => {
-          let p = start;
-          while (p + 8 <= end) {
-            const ver = view.getUint16(p, true);
-            const recType = view.getUint16(p + 2, true);
-            const recLen = view.getUint32(p + 4, true);
-            const isCont = (ver & 0x0F) === 0x0F;
-            const recEnd = Math.min(end, p + 8 + recLen);
-
-            if (recType === 0x03EE && recLen > 0) {
-              if (!seenOffsets.has(p)) {
-                seenOffsets.add(p);
-                slideOffsets.push({ offset: p, len: recLen });
-              }
-            } else if (isCont && recLen > 0) {
-              scan(p + 8, recEnd);
-            }
-            p = recEnd;
-          }
-        };
-
-        scan(0, pptStream.length);
-
-        // Supplementary byte-by-byte scan to ensure arbitrary presentations with odd offsets or nested structures are fully discovered
         for (let p = 0; p + 8 <= pptStream.length; p++) {
           const ver = view.getUint16(p, true);
           const recType = view.getUint16(p + 2, true);
@@ -668,66 +761,58 @@ export class PptPlugin implements PreviewPlugin {
           let hasPicShape = false;
           let bgColor = '#ffffff';
 
-          const walk = (start: number, maxEnd: number) => {
-            let p = start;
-            while (p + 8 <= maxEnd) {
-              const ver = view.getUint16(p, true);
-              const recType = view.getUint16(p + 2, true);
-              const recLen = view.getUint32(p + 4, true);
-              const isCont = (ver & 0x0F) === 0x0F;
-              const recEnd = Math.min(maxEnd, p + 8 + recLen);
+          let p = sOff + 8;
+          while (p + 8 <= end) {
+            const ver = view.getUint16(p, true);
+            const recType = view.getUint16(p + 2, true);
+            const recLen = view.getUint32(p + 4, true);
+            const recEnd = Math.min(end, p + 8 + recLen);
 
-              // TextHeaderAtom
-              if (recType === 0x0F9F && recLen >= 4) {
-                currentType = view.getUint32(p + 8, true);
-              }
-              // UTF-16LE text atom
-              else if (recType === 0x0FA0 && recLen > 0) {
-                const str = new TextDecoder('utf-16le').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
-                if (str && str !== '\x04' && str !== '\x05' && !str.includes('style.visibility') && !str.includes('___PPT')) {
-                  texts.push({ type: currentType, text: str });
-                }
-              }
-              // Latin1 text atom
-              else if (recType === 0x0FA8 && recLen > 0) {
-                const str = new TextDecoder('latin1').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
-                if (str && str.length > 1 && !str.includes('style.visibility') && !str.includes('___PPT')) {
-                  texts.push({ type: currentType, text: str });
-                }
-              }
-              // OLE Object
-              else if (recType === 0x0BC1) {
-                hasOle = true;
-              }
-              // Escher shape with PictureFrame shape type (0x4B)
-              else if (recType === 0xF00A) {
-                const shapeType = ver >> 4;
-                if (shapeType === 0x4B) {
-                  hasPicShape = true;
-                }
-              }
-              // Escher OPT atom containing BLIP picture index property 0x0104 / 0x0105
-              else if (recType === 0xF00B) {
-                const propCount = ver >> 4;
-                let optP = p + 8;
-                for (let k = 0; k < propCount && optP + 6 <= recEnd; k++) {
-                  const propId = view.getUint16(optP, true) & 0x3FFF;
-                  const propVal = view.getUint32(optP + 2, true);
-                  if (propId === 0x0104 || propId === 0x0105) {
-                    picRefIndex = propVal;
-                  }
-                  optP += 6;
-                }
-              }
-
-              if (isCont && recLen > 0) {
-                walk(p + 8, recEnd);
-              }
-              p = recEnd;
+            // TextHeaderAtom (0x0F9F)
+            if (recType === 0x0F9F && recLen >= 4) {
+              currentType = view.getUint32(p + 8, true);
             }
-          };
+            // UTF-16LE text atom (0x0FA0)
+            else if (recType === 0x0FA0 && recLen > 0) {
+              const str = new TextDecoder('utf-16le').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
+              if (str && str !== '\x04' && str !== '\x05' && !str.includes('style.visibility') && !str.includes('___PPT')) {
+                texts.push({ type: currentType, text: str });
+              }
+            }
+            // Latin1 text atom (0x0FA8)
+            else if (recType === 0x0FA8 && recLen > 0) {
+              const str = new TextDecoder('latin1').decode(pptStream.subarray(p + 8, recEnd)).replace(/\0/g, '').trim();
+              if (str && str.length > 1 && !str.includes('style.visibility') && !str.includes('___PPT')) {
+                texts.push({ type: currentType, text: str });
+              }
+            }
+            // OLE Object (0x0BC1)
+            else if (recType === 0x0BC1) {
+              hasOle = true;
+            }
+            // Escher shape with PictureFrame shape type (0x4B)
+            else if (recType === 0xF00A) {
+              const shapeType = ver >> 4;
+              if (shapeType === 0x4B) {
+                hasPicShape = true;
+              }
+            }
+            // Escher OPT atom containing BLIP picture index property 0x0104 / 0x0105
+            else if (recType === 0xF00B) {
+              const propCount = ver >> 4;
+              let optP = p + 8;
+              for (let k = 0; k < propCount && optP + 6 <= recEnd; k++) {
+                const propId = view.getUint16(optP, true) & 0x3FFF;
+                const propVal = view.getUint32(optP + 2, true);
+                if (propId === 0x0104 || propId === 0x0105) {
+                  picRefIndex = propVal;
+                }
+                optP += 6;
+              }
+            }
 
-          walk(sOff + 8, end);
+            p++;
+          }
 
           // Categorize text by real MS-PPT TextHeader types:
           // 0 = Title, 6 = Center Title
@@ -768,8 +853,10 @@ export class PptPlugin implements PreviewPlugin {
           // Associate picture only if slide actually references a picture
           if (picRefIndex >= 1 && picRefIndex <= pictures.length) {
             slidePictureUrl = pictures[picRefIndex - 1];
-          } else if (hasPicShape && pictures.length > 0 && i < pictures.length) {
-            slidePictureUrl = pictures[i];
+          } else if (picRefIndex > 0 && pictures.length > 0) {
+            slidePictureUrl = pictures[Math.min(picRefIndex - 1, pictures.length - 1)];
+          } else if (hasPicShape && pictures.length > 0) {
+            slidePictureUrl = pictures[Math.min(i, pictures.length - 1)];
           }
 
           slides.push({
@@ -812,7 +899,7 @@ export class PptPlugin implements PreviewPlugin {
   }
 
   /**
-   * Extract PNG and JPEG images from the Pictures stream
+   * Extract PNG, JPEG, GIF, and BMP images from the Pictures stream
    */
   private extractPictures(cfbf: CfbfReader, createdUrls: string[]): string[] {
     const urls: string[] = [];
@@ -879,6 +966,43 @@ export class PptPlugin implements PreviewPlugin {
           }
         }
       }
+
+      // Scan for GIFs
+      for (let i = 0; i <= pBuf.length - 6; i++) {
+        if (pBuf[i] === 0x47 && pBuf[i + 1] === 0x49 && pBuf[i + 2] === 0x46 && pBuf[i + 3] === 0x38) {
+          let endIdx = -1;
+          for (let k = i + 6; k < pBuf.length; k++) {
+            if (pBuf[k] === 0x3b) {
+              endIdx = k + 1;
+              break;
+            }
+          }
+          if (endIdx !== -1) {
+            const gifBytes = pBuf.subarray(i, endIdx);
+            const blob = new Blob([gifBytes], { type: 'image/gif' });
+            const url = URL.createObjectURL(blob);
+            urls.push(url);
+            createdUrls.push(url);
+            i = endIdx;
+          }
+        }
+      }
+
+      // Scan for BMPs
+      const view = new DataView(pBuf.buffer, pBuf.byteOffset, pBuf.byteLength);
+      for (let i = 0; i <= pBuf.length - 14; i++) {
+        if (pBuf[i] === 0x42 && pBuf[i + 1] === 0x4d) {
+          const bmpSize = view.getUint32(i + 2, true);
+          if (bmpSize > 54 && bmpSize <= pBuf.length - i) {
+            const bmpBytes = pBuf.subarray(i, i + bmpSize);
+            const blob = new Blob([bmpBytes], { type: 'image/bmp' });
+            const url = URL.createObjectURL(blob);
+            urls.push(url);
+            createdUrls.push(url);
+            i += bmpSize - 1;
+          }
+        }
+      }
     } catch (err) {
       console.warn('[PptPlugin] Error extracting pictures:', err);
     }
@@ -888,8 +1012,27 @@ export class PptPlugin implements PreviewPlugin {
   /**
    * Render text paragraphs with clean typography
    */
-  private renderTextDisplay(s: PptSlide): string {
-    const rawParagraphs = s.paragraphs.length > 0 ? s.paragraphs : ['No additional text content on this slide.'];
+  private renderTextDisplay(s: PptSlide, highlightFn?: (text: string) => string): string {
+    const rawParagraphs = s.paragraphs || [];
+    if (rawParagraphs.length === 0) return '';
+    const hl = highlightFn || ((t: string) => DOMPurify.sanitize(t));
+    const totalLines = rawParagraphs.reduce((acc, p) => acc + p.split(/[\r\n]+/).length, 0);
+    const totalChars = rawParagraphs.reduce((acc, p) => acc + p.length, 0);
+
+    // Responsive font scaling based on content volume so text doesn't overflow slide bounds
+    let fontSize = 16;
+    let lineHeight = 1.6;
+    let marginBot = 12;
+    if (totalChars > 400 || totalLines > 7) {
+      fontSize = 13;
+      lineHeight = 1.45;
+      marginBot = 8;
+    } else if (totalChars > 200 || totalLines > 4) {
+      fontSize = 14;
+      lineHeight = 1.5;
+      marginBot = 10;
+    }
+
     const pElements = rawParagraphs.map(p => {
       const lines = p.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
       return lines.map(line => {
@@ -897,22 +1040,22 @@ export class PptPlugin implements PreviewPlugin {
         const cleanLine = isBullet ? line.slice(1).trim() : line;
         if (isBullet) {
           return `
-            <div style="display: flex; align-items: flex-start; margin-bottom: 12px; font-size: 17px; line-height: 1.6; color: #334155;">
-              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; margin-top: 10px; margin-right: 14px; flex-shrink: 0;"></span>
-              <span>${DOMPurify.sanitize(cleanLine)}</span>
+            <div style="display: flex; align-items: flex-start; margin-bottom: ${marginBot}px; font-size: ${fontSize}px; line-height: ${lineHeight}; color: #334155;">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; margin-top: 8px; margin-right: 12px; flex-shrink: 0;"></span>
+              <span>${hl(cleanLine)}</span>
             </div>
           `;
         }
         return `
-          <p style="margin: 0 0 16px; font-size: 17px; line-height: 1.65; color: #334155; letter-spacing: 0.1px;">
-            ${DOMPurify.sanitize(line)}
+          <p style="margin: 0 0 ${marginBot}px; font-size: ${fontSize}px; line-height: ${lineHeight}; color: #334155; letter-spacing: 0.1px;">
+            ${hl(line)}
           </p>
         `;
       }).join('');
     }).join('');
 
     return `
-      <div style="flex: 1; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column;">
+      <div style="flex: 1; overflow-y: auto; padding: 4px 8px; display: flex; flex-direction: column;">
         ${pElements}
       </div>
     `;
@@ -921,9 +1064,10 @@ export class PptPlugin implements PreviewPlugin {
   /**
    * Render real table structure from extracted table cells
    */
-  private renderTableDisplay(s: PptSlide): string {
+  private renderTableDisplay(s: PptSlide, highlightFn?: (text: string) => string): string {
     const cells = s.tableCells;
-    // Determine reasonable column count (e.g. 5 if 5 or more cells, or cells length)
+    if (!cells || cells.length === 0) return '';
+    const hl = highlightFn || ((t: string) => DOMPurify.sanitize(t));
     const numCols = Math.min(6, Math.max(2, Math.ceil(Math.sqrt(cells.length))));
     const headerCells = cells.slice(0, numCols);
     const bodyCells = cells.slice(numCols);
@@ -941,7 +1085,7 @@ export class PptPlugin implements PreviewPlugin {
             <tr style="background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);">
               ${headerCells.map(c => `
                 <th style="padding: 14px 18px; border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px;">
-                  ${DOMPurify.sanitize(c)}
+                  ${hl(c)}
                 </th>
               `).join('')}
             </tr>
@@ -951,7 +1095,7 @@ export class PptPlugin implements PreviewPlugin {
               <tr style="${rIdx % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
                 ${row.map(cell => `
                   <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #475569;">
-                    ${DOMPurify.sanitize(cell)}
+                    ${hl(cell)}
                   </td>
                 `).join('')}
               </tr>
