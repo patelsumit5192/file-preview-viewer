@@ -8,3 +8,6 @@ packages:
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
+
+patchedDependencies:
+  pptx-browser@4.1.5: patches/pptx-browser@4.1.5.patch

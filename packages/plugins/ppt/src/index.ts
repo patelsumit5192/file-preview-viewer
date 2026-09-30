@@ -315,24 +315,45 @@ export class PptPlugin implements PreviewPlugin {
         flex-direction: column;
       `;
 
-      // 1. If slide has an associated image
-      if (s.pictureUrl) {
+      // Flexible, multi-element content layout: preserves text, tables, charts, and images simultaneously
+      const hasImage = !!s.pictureUrl;
+      const hasParagraphs = s.paragraphs && s.paragraphs.length > 0;
+      const hasTable = s.tableCells && s.tableCells.length > 0;
+      const hasChart = s.hasChart || s.hasOle;
+
+      if (hasImage && hasParagraphs) {
+        // Dual layout: visual media + descriptive typography side by side
         contentZone.innerHTML = `
-          <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 12px;">
-            <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
+          <div style="flex: 1; display: flex; flex-direction: row; gap: 32px; align-items: center; justify-content: space-between; overflow: auto; padding: 12px 8px; box-sizing: border-box;">
+            <div style="flex: 1.2; display: flex; justify-content: center; align-items: center; min-height: 240px;">
+              <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.14);" />
+            </div>
+            <div style="flex: 1.4; display: flex; flex-direction: column; justify-content: center; overflow: auto;">
+              ${this.renderTextDisplay(s)}
+            </div>
           </div>
         `;
-      }
-      // 2. If slide has chart or OLE
-      else if (s.hasChart || s.hasOle) {
-        contentZone.innerHTML = this.renderChartDisplay(s);
-      }
-      // 3. If slide has table cells
-      else if (s.tableCells && s.tableCells.length > 0) {
-        contentZone.innerHTML = this.renderTableDisplay(s);
-      }
-      // 4. Slide paragraphs and text
-      else {
+      } else if (hasImage) {
+        contentZone.innerHTML = `
+          <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 12px;">
+            <img src="${s.pictureUrl}" alt="${DOMPurify.sanitize(s.title)}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
+          </div>
+        `;
+      } else if (hasTable) {
+        contentZone.innerHTML = `
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
+            ${this.renderTableDisplay(s)}
+            ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s)}</div>` : ''}
+          </div>
+        `;
+      } else if (hasChart) {
+        contentZone.innerHTML = `
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: auto;">
+            ${this.renderChartDisplay(s)}
+            ${hasParagraphs ? `<div style="margin-top: 10px;">${this.renderTextDisplay(s)}</div>` : ''}
+          </div>
+        `;
+      } else {
         contentZone.innerHTML = this.renderTextDisplay(s);
       }
 
@@ -469,7 +490,7 @@ export class PptPlugin implements PreviewPlugin {
         rotation = (rotation - 90 + 360) % 360;
         applyTransform();
       },
-      getThumbnails: async (): Promise<Thumbnail[]> => {
+      getThumbnails: (): Thumbnail[] => {
         return slides.map((s, idx) => ({
           index: idx,
           label: `Slide ${idx + 1}`,
@@ -618,20 +639,20 @@ export class PptPlugin implements PreviewPlugin {
 
         scan(0, pptStream.length);
 
-        // Fallback: If container scan missed slides, perform linear sweep for 0x03EE
-        if (slideOffsets.length === 0) {
-          for (let p = 0; p + 8 <= pptStream.length; p += 2) {
-            const ver = view.getUint16(p, true);
-            const recType = view.getUint16(p + 2, true);
-            const recLen = view.getUint32(p + 4, true);
-            if (recType === 0x03EE && (ver & 0x0F) === 0x0F && recLen > 16 && p + 8 + recLen <= pptStream.length + 1024) {
-              if (!seenOffsets.has(p)) {
-                seenOffsets.add(p);
-                slideOffsets.push({ offset: p, len: recLen });
-              }
+        // Supplementary byte-by-byte scan to ensure arbitrary presentations with odd offsets or nested structures are fully discovered
+        for (let p = 0; p + 8 <= pptStream.length; p++) {
+          const ver = view.getUint16(p, true);
+          const recType = view.getUint16(p + 2, true);
+          const recLen = view.getUint32(p + 4, true);
+          if (recType === 0x03EE && (ver & 0x0F) === 0x0F && recLen > 16 && p + 8 + recLen <= pptStream.length + 1024) {
+            if (!seenOffsets.has(p)) {
+              seenOffsets.add(p);
+              slideOffsets.push({ offset: p, len: recLen });
             }
           }
         }
+
+        slideOffsets.sort((a, b) => a.offset - b.offset);
 
         // 3. Extract slide contents for each discovered slide
         for (let i = 0; i < slideOffsets.length; i++) {
@@ -643,6 +664,8 @@ export class PptPlugin implements PreviewPlugin {
           let currentType = -1;
           let hasOle = false;
           let slidePictureUrl: string | null = null;
+          let picRefIndex = -1;
+          let hasPicShape = false;
           let bgColor = '#ffffff';
 
           const walk = (start: number, maxEnd: number) => {
@@ -675,6 +698,26 @@ export class PptPlugin implements PreviewPlugin {
               // OLE Object
               else if (recType === 0x0BC1) {
                 hasOle = true;
+              }
+              // Escher shape with PictureFrame shape type (0x4B)
+              else if (recType === 0xF00A) {
+                const shapeType = ver >> 4;
+                if (shapeType === 0x4B) {
+                  hasPicShape = true;
+                }
+              }
+              // Escher OPT atom containing BLIP picture index property 0x0104 / 0x0105
+              else if (recType === 0xF00B) {
+                const propCount = ver >> 4;
+                let optP = p + 8;
+                for (let k = 0; k < propCount && optP + 6 <= recEnd; k++) {
+                  const propId = view.getUint16(optP, true) & 0x3FFF;
+                  const propVal = view.getUint32(optP + 2, true);
+                  if (propId === 0x0104 || propId === 0x0105) {
+                    picRefIndex = propVal;
+                  }
+                  optP += 6;
+                }
               }
 
               if (isCont && recLen > 0) {
@@ -722,8 +765,10 @@ export class PptPlugin implements PreviewPlugin {
             }
           }
 
-          // Check if picture belongs specifically to this slide
-          if (pictures.length > 0 && pictures[i]) {
+          // Associate picture only if slide actually references a picture
+          if (picRefIndex >= 1 && picRefIndex <= pictures.length) {
+            slidePictureUrl = pictures[picRefIndex - 1];
+          } else if (hasPicShape && pictures.length > 0 && i < pictures.length) {
             slidePictureUrl = pictures[i];
           }
 

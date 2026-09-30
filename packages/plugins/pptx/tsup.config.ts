@@ -6,6 +6,7 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['@patel.sumit51/core', 'pptx-browser'],
+  external: ['@patel.sumit51/core', 'fflate'],
+  noExternal: ['pptx-browser'],
   treeshake: true,
 });

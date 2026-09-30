@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  pptx-browser@4.1.5:
+    hash: 3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259
+    path: patches/pptx-browser@4.1.5.patch
+
 importers:
 
   .:
@@ -31,7 +36,7 @@ importers:
         version: 4.0.1
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5
+        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
       prettier:
         specifier: ^3.5.0
         version: 3.9.7
@@ -307,12 +312,6 @@ importers:
 
   packages/plugins/email:
     dependencies:
-      '@kenjiuno/decompressrtf':
-        specifier: ^0.1.4
-        version: 0.1.4
-      '@kenjiuno/msgreader':
-        specifier: ^1.28.0
-        version: 1.28.0
       dompurify:
         specifier: ^3.2.4
         version: 3.4.15
@@ -501,9 +500,12 @@ importers:
 
   packages/plugins/pptx:
     dependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5
+        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
     devDependencies:
       '@patel.sumit51/core':
         specifier: workspace:*
@@ -568,7 +570,7 @@ importers:
         version: 4.10.38
       pptx-browser:
         specifier: ^4.1.5
-        version: 4.1.5
+        version: 4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259)
       rtf.js:
         specifier: ^3.0.9
         version: 3.0.9
@@ -5155,7 +5157,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  pptx-browser@4.1.5: {}
+  pptx-browser@4.1.5(patch_hash=3b5e51b60ea2d4da7bda6750a5fd5ccee6f978cb5fd9b9f83ba626a2db431259): {}
 
   prettier@2.8.8: {}
 

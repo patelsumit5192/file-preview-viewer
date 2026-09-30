@@ -1,0 +1,74 @@
+diff --git a/src/colors.js b/src/colors.js
+index 2f22c894bc259749d9cf18a23ab80bc706b840e7..74b60cd83156db3795fb35425916225934dc3c4d 100644
+--- a/src/colors.js
++++ b/src/colors.js
+@@ -262,6 +262,7 @@ export function resolveColorElement(colorEl, themeColors) {
+  */
+ export function colorToCss(c, alphaOverride) {
+   if (!c) return 'transparent';
++  if (typeof c === 'string') return c;
+   const a = alphaOverride !== undefined ? alphaOverride : (c.a ?? 1);
+   return a < 1
+     ? `rgba(${c.r},${c.g},${c.b},${a.toFixed(3)})`
+diff --git a/src/index.js b/src/index.js
+index eddc206af12a1fbf1204a3509199bf0d8b12dc73..5609f76d9c5a8591d563c516cfb2d3b6d806c4c1 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -201,9 +201,9 @@ export default class PptxRenderer {
+     const allImages = { ...this.masterImages, ...layoutImages, ...slideImages };
+     const placeholderMap = buildPlaceholderMap([layoutDoc, this.masterDoc]);
+ 
+-    // Load Google Font substitutes for MS fonts used in this slide
++    // Load Google Font substitutes asynchronously in background without blocking slide render
+     const usedFonts = collectUsedFonts([slideDoc, layoutDoc, this.masterDoc]);
+-    await loadGoogleFontsFor(usedFonts, this.themeData);
++    loadGoogleFontsFor(usedFonts, this.themeData).catch(() => {});
+ 
+     // Canvas setup
+     const scale  = width / this.slideSize.cx;
+diff --git a/src/render.js b/src/render.js
+index 8d0e215b7823cb7fa8ae1c0b6f2d5d6e8dd6bdac..55bf2493a6aafb5b3f72257f473e2a6de008765d 100644
+--- a/src/render.js
++++ b/src/render.js
+@@ -596,15 +596,15 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
+     const marL = attrInt(pPr, 'marL', 0) * scale;
+     const indent = attrInt(pPr, 'indent', 0) * scale;
+ 
+-    // ── Bullet / list marker ─────────────────────────────────────────────────
+-    const bullet = pPr ? parseBullet(pPr, defRPr, themeColors, themeData) : null;
+-
+     // Spacing
+     const spcBef = g1(pPr, 'spcBef');
+     const spcAft = g1(pPr, 'spcAft');
+     const lnSpc = g1(pPr, 'lnSpc');
+     const defRPr = g1(pPr, 'defRPr');
+ 
++    // ── Bullet / list marker ─────────────────────────────────────────────────
++    const bullet = pPr ? parseBullet(pPr, defRPr, themeColors, themeData) : null;
++
+     // Default font size: lstStyle (lowest) → pPr defRPr (higher) → run rPr (highest)
+     let paraDefSz = defaultFontSz;
+     if (lstDefRPr) {
+@@ -869,7 +869,7 @@ export async function renderTextBody(ctx, txBody, bx, by, bw, bh, scale, themeCo
+       // ── Draw each run ──────────────────────────────────────────────────────
+       for (const run of runs) {
+         const c = run.color;
+-        ctx.fillStyle = c ? colorToCss(c) : '#000000';
++        ctx.fillStyle = typeof c === 'string' ? c : (c ? colorToCss(c) : '#000000');
+ 
+         // Superscript / subscript: smaller font + vertical offset
+         let drawY = baseline;
+ 
++diff --git a/src/utils.js b/src/utils.js
++index 45543d3..6ebc2aa 100644
++--- a/src/utils.js
+++++ b/src/utils.js
++@@ -4,4 +4,6 @@
++ 
++ export function parseXml(str) {
++-  return new DOMParser().parseFromString(str, 'application/xml');
+++  if (typeof str !== 'string') return null;
+++  const sanitized = str.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
+++  return new DOMParser().parseFromString(sanitized, 'application/xml');
++ }
++
