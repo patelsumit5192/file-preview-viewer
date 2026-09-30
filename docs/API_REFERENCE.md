@@ -705,21 +705,22 @@ document.getElementById('btn-download')?.addEventListener('click', () => instanc
 
 Each file format plugin adheres to the universal standard while honoring the natural paradigm of its file type:
 
-| Format Category | Extensions | Page Navigation (`goToPage`) | Thumbnails Sidebar (`toggleThumbnails`) | Rotate (`rotateCW`) | Auto Fit-to-Width | Copy (`copy`) | Download & Print | Separate Full Window | Status |
-|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **PDF** | `.pdf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Fit to Page / Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Spreadsheets & Excel Extended** | `.xlsx`, `.xls`, `.ods`, `.xlsm`, `.xlsb`, `.xltx`, `.xltm` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **CSV Table** | `.csv`, `.tsv` | ❌ (Continuous single load) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Plain Text** | `.txt` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (Document) | ✅ Auto-fit width | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Archives** | `.zip` | ❌ (Tree browser) | ❌ | ❌ | ❌ | ❌ | ✅ Single & ZIP | ✅ Supported | **LOCKED** 🔒 |
-| **Rich Text** | `.rtf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ CW & CCW | ✅ Auto-fit width / page | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Images & Vector** | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`, `.tiff`, `.tif`, `.avif` | ❌ (Single image) | ❌ | ✅ CW & CCW (90°/180°/270°) | ✅ Auto Fit-to-Width & Reset Zoom | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Code (190+ Langs)** | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.py`, `.java`, `.c`, `.cpp`, `.h`, `.cs`, `.go`, `.rs`, `.sql`, `.php`, `.json`, `.yaml`, `.yml`, `.sh`, `.bash`, `.css`, `.scss`, `.less`, `.xml`, `.toml`, `.ini`, `.env` | ❌ (Single file / Multi-page for page-split) | ❌ | ❌ (Code editor) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Clean Code (No line numbers) | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **HTML Webpages** | `.html`, `.htm`, `.xhtml` | ❌ (Single document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy HTML | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Rich Markdown** | `.md`, `.markdown`, `.mdown`, `.mkd` | ❌ (Continuous document) | ❌ | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy Markdown | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Word Documents** | `.docx`, `.doc`, `.odt` | ✅ Multi-page | ✅ Page thumbnails | ❌ | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | Available |
-| **PowerPoint** | `.pptx`, `.ppt`, `.potx`, `.pot`, `.ppsx`, `.pps` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ❌ (Presentation) | ✅ Auto-fit width / slide | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Emails & Messages** | `.eml`, `.msg` | ❌ (Single message / card) | ❌ | ❌ (Email card) | ✅ Auto-fit width | ❌ | ✅ Supported (Inline CID & Attachments) | ✅ Supported | **LOCKED** 🔒 |
-| **Video Media** | `.mp4`, `.webm`, `.m4v`, `.ogv`, `.ogg`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.3gp`, `.mpg`, `.mpeg` | ❌ (Seek bar) | ❌ | ✅ Video rotate | ✅ Auto Fit-to-Width (Responsive) | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **Audio Media** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma`, `.opus`, `.weba` | ❌ (Seek bar) | ❌ | ❌ | ✅ Centered Card Player & Waveform | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
-| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ (3D Camera) | ✅ Reset view & Fit-to-Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| Format Category | Extensions | Page Navigation (`goToPage`) | Thumbnails Sidebar (`toggleThumbnails`) | Search (`search` / Ctrl+F) | Rotate (`rotateCW`) | Auto Fit-to-Width | Copy (`copy`) | Download & Print | Separate Full Window | Status |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **PDF Documents** | `.pdf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ✅ Text highlight search | ✅ CW & CCW | ✅ Fit to Page / Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Word Documents** | `.docx`, `.docm`, `.dotx`, `.dotm`, `.doc`, `.dot` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (DOM selection) | ❌ (Document) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **PowerPoint Presentations** | `.pptx`, `.pptm`, `.ppsx`, `.ppsm`, `.potx`, `.potm`, `.ppt`, `.pps`, `.pot` | ✅ Slide nav (`< 1 / N >`) | ✅ Slide thumbnails | ✅ In-slide text search & overlay | ❌ (Presentation) | ✅ Auto-fit slide/width (`fitMode: 'page'`) | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Spreadsheets & Workbooks** | `.xlsx`, `.xls`, `.ods`, `.xlsm`, `.xlsb`, `.xltx`, `.xltm` | ✅ Sheet nav (`< 1 / N >`) | ✅ Sheet thumbnails (`#107c41`) | ❌ (Grid search) | ❌ (Spreadsheet) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **OpenDocument Suite** | `.odt`, `.ott`, `.odp`, `.otp`, `.ods`, `.odg`, `.odf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (DOM selection) | ❌ (Document) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Emails & Messages** | `.eml`, `.msg` | ❌ (Single message card) | ❌ | ❌ (DOM selection) | ❌ (Email card) | ✅ Auto-fit width | ❌ | ✅ Inline CID & Attachments | ✅ Supported | **LOCKED** 🔒 |
+| **Rich Text (RTF)** | `.rtf` | ✅ Multi-page (`< 1 / N >`) | ✅ Page thumbnails | ❌ (DOM selection) | ✅ CW & CCW | ✅ Auto-fit width / page | ✅ Supported | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **HTML Webpages** | `.html`, `.htm`, `.xhtml` | ❌ (Continuous document) | ❌ | ❌ (Sandboxed) | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy HTML | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Rich Markdown** | `.md`, `.markdown`, `.mdown`, `.mkd` | ❌ (Continuous document) | ❌ | ❌ (DOM selection) | ❌ (Document) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Copy Markdown | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **CSV / TSV Tables** | `.csv`, `.tsv` | ❌ (Data grid) | ✅ Sheet thumbnail (`#107c41`) | ❌ (Table filter) | ❌ (Table) | ✅ Auto-fit width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **ZIP Archives** | `.zip` | ❌ (Tree browser) | ❌ | ✅ Real-time archive filter | ❌ | ❌ | ❌ | ✅ Single & Full ZIP | ✅ Supported | **LOCKED** 🔒 |
+| **Images & Vector** | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`, `.tiff`, `.tif`, `.avif`, `.apng`, `.jfif`, `.pjpeg`, `.pjp` | ❌ (Single image) | ❌ | ❌ | ✅ CW & CCW (90°/180°/270°) | ✅ Auto Fit-to-Width & Reset Zoom | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Video Media** | `.mp4`, `.m4v`, `.webm`, `.ogv`, `.ogg`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.3gp`, `.mpg`, `.mpeg` | ❌ (Seek bar) | ❌ | ❌ | ✅ Video rotate | ✅ Auto Fit-to-Width (Responsive) | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Audio Media** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma`, `.opus`, `.weba` | ❌ (Seek bar) | ❌ | ❌ | ❌ | ✅ Centered Card Player & Waveform | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **3D Models** | `.stl`, `.obj` | ❌ (360° orbit) | ❌ | ❌ | ❌ (3D Camera) | ✅ Reset view & Fit-to-Width | ❌ | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+| **Code & Text (190+ Langs)** | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.json`, `.jsonc`, `.json5`, `.html`, `.css`, `.scss`, `.sass`, `.less`, `.py`, `.pyw`, `.java`, `.c`, `.cpp`, `.cc`, `.h`, `.hpp`, `.cs`, `.go`, `.rs`, `.sql`, `.php`, `.rb`, `.swift`, `.kt`, `.scala`, `.r`, `.lua`, `.sh`, `.bash`, `.zsh`, `.ps1`, `.bat`, `.cmd`, `.yaml`, `.yml`, `.toml`, `.xml`, `.txt`, `.log`, `.ini`, `.env`, `.dockerfile`, `.graphql`, `.proto`, `.diff`, `.patch` | ❌ (Single file / Page split) | ❌ | ✅ Syntax code search | ❌ (Code editor) | ✅ Auto Fit-to-Width & Reset Zoom | ✅ Clean Code (No line numbers) | ✅ Supported | ✅ Supported | **LOCKED** 🔒 |
+

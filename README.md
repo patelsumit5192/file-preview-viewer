@@ -4,6 +4,9 @@
   <a href="https://patelsumit5192.github.io/file-preview-viewer/">
     <img src="https://img.shields.io/badge/Live%20Demo-Explore%20Online-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" />
   </a>
+  <a href="https://patelsumit5192.github.io/file-preview-viewer/docs.html">
+    <img src="https://img.shields.io/badge/Documentation-API%20%26%20Guides-purple?style=for-the-badge&logo=gitbook&logoColor=white" alt="Documentation" />
+  </a>
   <a href="https://www.npmjs.com/package/@file-preview-viewer/viewer">
     <img src="https://img.shields.io/npm/v/@file-preview-viewer/viewer.svg?style=for-the-badge&color=blue" alt="npm version" />
   </a>
@@ -24,6 +27,7 @@
 
 Try the interactive demo with instant sample files directly in your browser:  
 👉 **[Launch Live Demo (GitHub Pages)](https://patelsumit5192.github.io/file-preview-viewer/)**
+📖 **[Interactive Documentation & API Reference (Live Docs)](https://patelsumit5192.github.io/file-preview-viewer/docs.html)**
 
 - Instant samples for **PDF, DOCX, XLSX, PPTX, CSV, ZIP, Markdown, 3D STL, SVG, and Code**
 - Drag-and-drop your own files from your computer
@@ -665,24 +669,28 @@ Customize colors, borders, and typography using standard CSS custom properties:
 
 ---
 
-## 📂 Supported Formats Matrix (All 11 Categories)
+## 📂 Supported Formats Matrix (All 15 Categories — 80+ Formats)
 
 Every file format is rendered 100% in the browser using permissive open-source engines:
 
 | Category | File Extensions | Engine | License | Supported Features |
 |---|---|---|---|---|
-| **PDF** | `.pdf` | PDF.js (`pdfjs-dist`) | Apache-2.0 | Multi-page canvas rendering, Zoom In/Out, Fit to page, Rotate CW/CCW, Page jump, Thumbnails sidebar, Print, Download |
-| **Word Document** | `.docx`, `.doc` | `docx-preview` + Native CFBF | Apache-2.0 / MIT | Preserves styles, tables, bullets, images, fonts, Zoom In/Out, Fit to page, Print, Download |
-| **Excel Spreadsheet** | `.xlsx`, `.xls` | `exceljs` | MIT | Multi-sheet tab bar, styled grid cells, borders, formatting, Zoom, Print, Download |
-| **PowerPoint** | `.pptx`, `.ppt`, `.ppsx` | `pptx-browser` + Native CFBF | MIT | Slide-by-slide canvas rendering, slide thumbnails sidebar, navigation jump, Zoom, Fit to width/slide, Print, Download |
+| **PDF Documents** | `.pdf` | PDF.js (`pdfjs-dist`) | Apache-2.0 | Multi-page canvas rendering, Zoom In/Out, Fit to page/width, Rotate CW/CCW, Page jump, Thumbnails sidebar, Print, Download |
+| **Word Documents** | `.docx`, `.docm`, `.dotx`, `.dotm`, `.doc`, `.dot` | `docx-preview` + Native CFBF | Apache-2.0 / MIT | Preserves styles, tables, bullets, images, fonts, Zoom In/Out, Fit to page, Print, Download |
+| **PowerPoint Presentations** | `.pptx`, `.pptm`, `.ppsx`, `.ppsm`, `.potx`, `.potm`, `.ppt`, `.pps`, `.pot` | `pptx-browser` + Native CFBF | MIT | Slide-by-slide canvas rendering, default `fitMode: 'page'`, slide thumbnails sidebar, navigation jump & wheel scroll, full in-slide text search (`Ctrl+F`) with transparent text overlay, multi-format embedded pictures (PNG, JPEG, GIF, BMP), Print, Download |
+| **Excel & Spreadsheets** | `.xlsx`, `.xlsm`, `.xls`, `.xlsb`, `.xltx`, `.xltm`, `.ods` | `exceljs` | MIT | Multi-sheet tab bar, styled grid cells, borders, formatting, Zoom, Print, Download |
+| **OpenDocument Suite** | `.odt`, `.ott`, `.odp`, `.otp`, `.ods`, `.odg`, `.odf` | Native OpenDocument XML parser | MIT | Multi-page document layout, styles, tables, embedded graphics, continuous scrolling, Print, Download |
 | **Emails & Messages** | `.eml`, `.msg` | `postal-mime` + Native CFBF | MIT-0 / MIT | Header cards (From, To, Cc, Subject, Date), user avatar badge, inline CID image resolution, DOMPurify HTML sanitization, attachment chips with direct download, Zoom In/Out, Fit to width, Print, Download |
 | **CSV / TSV Data** | `.csv`, `.tsv` | `papaparse` | MIT | Auto-detects comma/tab delimiter, tabular grid with header styling, Zoom, Print, Download |
-| **ZIP Archives** | `.zip` | `fflate` | MIT | Hierarchical file tree/table explorer, compression stats, instant search filter, single-file extract/download, download ZIP |
-| **Rich Markdown** | `.md`, `.markdown` | `marked` + `dompurify` | MIT / Apache-2.0 | GitHub Flavored Markdown (tables, checklists, blockquotes), syntax-highlighted code blocks, XSS sanitized, font zoom, Print, Download |
+| **ZIP Archives** | `.zip` | `fflate` | MIT | Hierarchical file tree/table explorer, compression stats, instant search filter, single-file extract/download, download full ZIP |
+| **Rich Markdown** | `.md`, `.markdown`, `.mdown`, `.mkd` | `marked` + `dompurify` | MIT / Apache-2.0 | GitHub Flavored Markdown (tables, checklists, blockquotes), syntax-highlighted code blocks, XSS sanitized, font zoom, Print, Download |
+| **Rich Text (RTF)** | `.rtf` | Native RTF Parser | MIT | Embedded pictures, font formatting, color tables, multi-page layout, thumbnails, CW/CCW rotation, text copy, Print, Download |
+| **HTML Webpages** | `.html`, `.htm`, `.xhtml` | Sandboxed IFrame + `dompurify` | MIT | Responsive viewport, isolated preview, copy HTML, Print, Download |
 | **3D Models** | `.stl`, `.obj` | `three` (Three.js) | MIT | 360° mouse orbit controls, perspective camera, ambient & directional lighting, wireframe vs solid toggle, reset view, Download |
-| **Images & Vector** | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.svg`, `.ico`, `.tiff` | Native + `@panzoom/panzoom` + `dompurify` | MIT / Apache-2.0 | Smooth pan & zoom, rotate 90°, SVG DOM sanitization, Print, Download |
-| **Video & Audio** | `.mp4`, `.webm`, `.ogg`, `.mov`, `.mp3`, `.wav`, `.flac`, `.aac` | Native HTML5 Media | MIT | Play/Pause, seek bar, volume control, video rotate, fullscreen, Download |
-| **Code & Text** | `.js`, `.ts`, `.jsx`, `.tsx`, `.html`, `.css`, `.json`, `.xml`, `.yaml`, `.py`, `.java`, `.cpp`, `.sql`, `.sh`, etc. (190+ languages) | `highlight.js` | BSD-3-Clause | Syntax highlighting, line numbers gutter, font zoom in/out, Print, Download |
+| **Images & Vector** | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.svg`, `.ico`, `.tiff`, `.tif`, `.avif`, `.apng`, `.jfif`, `.pjpeg`, `.pjp` | Native + `@panzoom/panzoom` + `dompurify` | MIT / Apache-2.0 | Smooth pan & zoom, rotate 90° CW/CCW, SVG DOM sanitization, Print, Download |
+| **Video Media** | `.mp4`, `.m4v`, `.webm`, `.ogv`, `.ogg`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.3gp`, `.mpg`, `.mpeg` | Native HTML5 Media | MIT | Play/Pause, seek bar, volume control, video rotate, fullscreen, Download |
+| **Audio Media** | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma`, `.opus`, `.weba` | Native HTML5 Media + Web Audio API | MIT | Centered card player, waveform frequency visualizer, playback controls, seek, Download |
+| **Code & Text** | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.json`, `.jsonc`, `.json5`, `.html`, `.css`, `.scss`, `.sass`, `.less`, `.py`, `.pyw`, `.java`, `.c`, `.cpp`, `.cc`, `.h`, `.hpp`, `.cs`, `.go`, `.rs`, `.sql`, `.php`, `.rb`, `.swift`, `.kt`, `.scala`, `.r`, `.lua`, `.sh`, `.bash`, `.zsh`, `.ps1`, `.bat`, `.cmd`, `.yaml`, `.yml`, `.toml`, `.xml`, `.txt`, `.log`, `.ini`, `.env`, `.dockerfile`, `.graphql`, `.proto`, `.diff`, `.patch` (190+ languages) | `highlight.js` | BSD-3-Clause | Syntax highlighting, line numbers gutter, font zoom in/out, clean text copy, code search, Print, Download |
 
 ---
 
